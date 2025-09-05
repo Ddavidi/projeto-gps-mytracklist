@@ -1,9 +1,70 @@
 const express = require('express');
 const session = require('express-session');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 const { ControllerFactory } = require('./factories/ControllerFactory');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Configuração do CORS
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.ALLOWED_ORIGINS?.split(',') || false
+    : true, // Permite qualquer origem em desenvolvimento
+  credentials: true, // Permite cookies/sessões
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Configuração do Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // Limite de 100 requisições por janela
+  message: {
+    error: 'Muitas requisições. Tente novamente em 15 minutos.',
+    retryAfter: 15 * 60 * 1000
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting mais restritivo para autenticação
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // Limite de 5 tentativas de login por janela
+  message: {
+    error: 'Muitas tentativas de login. Tente novamente em 15 minutos.',
+    retryAfter: 15 * 60 * 1000
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Aplicar rate limiting geral
+app.use(limiter);
+
+// Aplicar rate limiting específico para rotas de autenticação
+app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/v1/admin/login', authLimiter);
+
+// Configuração do Helmet para headers de segurança
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
 
 // Instâncias dos controllers
 const userController = ControllerFactory.createUserController();
