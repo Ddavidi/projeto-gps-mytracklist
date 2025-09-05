@@ -8,6 +8,10 @@ const { ControllerFactory } = require('./factories/ControllerFactory');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Controllers (serão inicializados após o banco de dados)
+let userController: any;
+let adminController: any;
+
 // Configuração do CORS
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
@@ -66,10 +70,6 @@ app.use(helmet({
   }
 }));
 
-// Instâncias dos controllers
-const userController = ControllerFactory.createUserController();
-const adminController = ControllerFactory.createAdminController();
-
 // Configuração do middleware
 app.use(express.json());
 
@@ -110,12 +110,27 @@ const requireAdminAuth = (req: any, res: any, next: any) => {
   next();
 };
 
-// Inicializa o banco de dados
-ControllerFactory.initializeDatabase().then(() => {
-  console.log('Banco de dados inicializado');
-}).catch((error: any) => {
-  console.error('Falha ao inicializar banco de dados:', error);
-});
+// Inicializa o banco de dados e depois inicia o servidor
+async function startServer() {
+  try {
+    await ControllerFactory.initializeDatabase();
+    console.log('Banco de dados inicializado');
+
+    // Instâncias dos controllers (após inicialização do banco)
+    userController = ControllerFactory.createUserController();
+    adminController = ControllerFactory.createAdminController();
+
+    // Inicia o servidor
+    app.listen(PORT, () => {
+      console.log(`Servidor executando na porta ${PORT}`);
+    });
+  } catch (error: any) {
+    console.error('Falha ao inicializar banco de dados:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 // Rotas da API
 app.post('/api/v1/auth/register', async (req: any, res: any) => {
@@ -259,9 +274,4 @@ app.get('/api/v1/admin/users/hashes', requireAdminAuth, async (req: any, res: an
   } else {
     res.status(500).json({ error: result.message });
   }
-});
-
-// Inicia o servidor
-app.listen(PORT, () => {
-  console.log(`Servidor executando na porta ${PORT}`);
 });

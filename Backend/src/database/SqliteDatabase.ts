@@ -26,7 +26,10 @@ export class SqliteDatabase implements IDatabase {
   }
 
   async run(query: string, params?: any[]): Promise<any> {
-    if (!this.db) throw new Error('Database not connected');
+    if (!this.db) {
+      console.error('Database not connected in run method');
+      throw new Error('Database not connected');
+    }
     return this.db.prepare(query).run(params);
   }
 
