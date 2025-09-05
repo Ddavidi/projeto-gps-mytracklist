@@ -15,8 +15,14 @@ beforeAll(async () => {
 // Limpar banco após cada teste
 afterEach(async () => {
   const db = DatabaseFactory.create();
-  if (db && typeof (db as any).clearAll === 'function') {
-    await (db as any).clearAll();
+
+  // Limpar todas as tabelas para isolamento completo entre testes
+  try {
+    await db.exec('DELETE FROM admin_logs');
+    await db.exec('DELETE FROM admins');
+    await db.exec('DELETE FROM users');
+  } catch (error) {
+    // Ignorar erros se as tabelas não existirem ainda
   }
 });
 
