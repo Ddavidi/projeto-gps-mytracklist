@@ -58,6 +58,12 @@ export class AdminController {
 
   async updateUserPassword(userId: number, newPassword: string, adminId: number) {
     try {
+      // Verificar se usuário existe
+      const user = await this.db.get('SELECT id FROM users WHERE id = ?', [userId]);
+      if (!user) {
+        return { success: false, message: 'Usuário não encontrado.' };
+      }
+
       const hashedPassword = await argon2.hash(newPassword, {
         type: argon2.argon2id,
         memoryCost: 131072,
@@ -80,6 +86,12 @@ export class AdminController {
 
   async updateUsername(userId: number, newUsername: string, adminId: number) {
     try {
+      // Verificar se usuário existe
+      const user = await this.db.get('SELECT id FROM users WHERE id = ?', [userId]);
+      if (!user) {
+        return { success: false, message: 'Usuário não encontrado.' };
+      }
+
       await this.db.run('UPDATE users SET username = ? WHERE id = ?', [newUsername, userId]);
 
       // Log da ação

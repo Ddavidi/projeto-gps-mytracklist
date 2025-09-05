@@ -139,10 +139,11 @@ describe('AdminController', () => {
       expect(authResult.success).toBe(true);
     });
 
-    it('deve aceitar atualização mesmo para usuário inexistente (comportamento atual)', async () => {
+    it('deve rejeitar atualização de senha para usuário inexistente', async () => {
       const result = await adminController.updateUserPassword(999, 'NewPass456!', adminId);
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Usuário não encontrado.');
     });
   });
 
@@ -186,10 +187,11 @@ describe('AdminController', () => {
       expect(result.message).toBeDefined();
     });
 
-    it('deve aceitar atualização mesmo para usuário inexistente (comportamento atual)', async () => {
+    it('deve rejeitar atualização de nome para usuário inexistente', async () => {
       const result = await adminController.updateUsername(999, 'newusername', adminId);
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Usuário não encontrado.');
     });
   });
 
