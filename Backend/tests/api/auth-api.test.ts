@@ -1,5 +1,5 @@
 const request = require('supertest');
-import * as express from 'express';
+import express from 'express';
 import { DatabaseFactory } from '../../src/database/DatabaseFactory';
 import { ControllerFactory } from '../../src/factories/ControllerFactory';
 
