@@ -4,7 +4,14 @@ const argon2 = require('argon2');
 const registerUser = async (username: string, password: string) => {
   const db = await openDatabase();
   try {
-    const hashedPassword = await argon2.hash(password);
+    // Parâmetros Argon2 otimizados para segurança vs performance
+    const hashedPassword = await argon2.hash(password, {
+      type: argon2.argon2id,
+      memoryCost: 131072,    // 128 MB (aumento de ~2x do padrão)
+      timeCost: 4,           // 4 iterações (aumento de ~33% do padrão)
+      parallelism: 2,        // 2 threads (considerando possível VPS com 1 VCPU)
+      hashLength: 32         // 32 bytes de hash
+    });
     await db.run('INSERT INTO users (username, password_hash) VALUES (?, ?)', [username, hashedPassword]);
     return { success: true };
   } catch (error: any) {
