@@ -5,13 +5,15 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import crypto from 'crypto';
 import { ControllerFactory } from './factories/ControllerFactory';
+import { UserController } from './controllers/UserController';
+import { AdminController } from './controllers/AdminController';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Controllers (serão inicializados após o banco de dados)
-let userController: any;
-let adminController: any;
+let userController: UserController;
+let adminController: AdminController;
 
 // Configuração do CORS
 app.use(cors({
