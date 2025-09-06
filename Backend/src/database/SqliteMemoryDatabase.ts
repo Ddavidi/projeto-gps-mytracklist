@@ -17,22 +17,22 @@ export class SqliteMemoryDatabase implements IDatabase {
 
   async get(query: string, params?: any[]): Promise<any> {
     if (!this.db) throw new Error('Database not connected');
-    return this.db.prepare(query).get(params);
+    return this.db.prepare(query).get(params as any);
   }
 
   async run(query: string, params?: any[]): Promise<any> {
     if (!this.db) throw new Error('Database not connected');
-    return this.db.prepare(query).run(params);
+    return this.db.prepare(query).run(params as any);
   }
 
   async all(query: string, params?: any[]): Promise<any[]> {
     if (!this.db) throw new Error('Database not connected');
-    return this.db.prepare(query).all(params);
+    return this.db.prepare(query).all(params as any);
   }
 
   async exec(query: string): Promise<void> {
     if (!this.db) throw new Error('Database not connected');
-    this.db.exec(query);
+    this.db.run(query);
   }
 
   // Método adicional para limpar banco de teste
@@ -40,7 +40,7 @@ export class SqliteMemoryDatabase implements IDatabase {
     if (!this.db) return;
 
     // Limpar todas as tabelas
-    const tables = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+    const tables = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any;
     for (const table of tables) {
       if (table.name !== 'sqlite_sequence') {
         this.db.prepare(`DELETE FROM ${table.name}`).run();

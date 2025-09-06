@@ -22,7 +22,7 @@ export class SqliteDatabase implements IDatabase {
 
   async get(query: string, params?: any[]): Promise<any> {
     if (!this.db) throw new Error('Database not connected');
-    return this.db.prepare(query).get(params);
+    return this.db.prepare(query).get(params as any);
   }
 
   async run(query: string, params?: any[]): Promise<any> {
@@ -30,16 +30,16 @@ export class SqliteDatabase implements IDatabase {
       console.error('Database not connected in run method');
       throw new Error('Database not connected');
     }
-    return this.db.prepare(query).run(params);
+    return this.db.prepare(query).run(params as any);
   }
 
   async all(query: string, params?: any[]): Promise<any[]> {
     if (!this.db) throw new Error('Database not connected');
-    return this.db.prepare(query).all(params);
+    return this.db.prepare(query).all(params as any);
   }
 
   async exec(query: string): Promise<void> {
     if (!this.db) throw new Error('Database not connected');
-    this.db.exec(query);
+    this.db.run(query);
   }
 }
