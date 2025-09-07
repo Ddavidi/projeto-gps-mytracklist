@@ -1,18 +1,17 @@
 ![ICEI](images/icei-pucminas.png)
 
-# Nome do projeto
+# MyTrackList
 
-......  COLOQUE AQUI O SEU TEXTO ......
+O MyTrackList é uma plataforma web social projetada para amantes de música que desejam catalogar, avaliar e compartilhar suas descobertas musicais. Inspirado em comunidades como Letterboxd (para filmes) e MyAnimeList (para animes), o projeto tem como objetivo principal criar um espaço centralizado e intuitivo onde os usuários possam construir um diário musical, atribuindo notas a faixas individuais e explorando o gosto de outros membros da comunidade.
 
-> Descreva, em um ou dois parágrafos, um resumo do projeto (principais objetivos e justificativa).
+A principal justificativa para o MyTrackList é a carência de uma plataforma moderna que combine o rastreamento de músicas ouvidas com uma forte componente social de avaliação e descoberta. Enquanto serviços existentes focam ou na reprodução ou em catálogos extensos, nossa proposta é oferecer uma experiência focada na jornada pessoal do ouvinte, permitindo que ele organize suas opiniões e encontre novas músicas através das coleções e avaliações de amigos e outros usuários.
 
 ## Alunos integrantes da equipe
 
-* [Nome completo do aluno 1 (com link para Github)](https://github.com/aluno1)
-* [Nome completo do aluno 2 (com link para Github)](https://github.com/aluno2)
-* [Nome completo do aluno 3 (com link para Github)](https://github.com/aluno3)
-* [Nome completo do aluno 4 (com link para Github)](https://github.com/aluno4)
-* [Nome completo do aluno 5 (com link para Github)](https://github.com/aluno5)
+* [Bruna de Paula Anselmi](https://github.com/bruanselmi)
+* [Cauã Diniz Armani](https://github.com/Caua0305)
+* [David Nunes Ribeiro](https://github.com/Ddavidi)
+* [Lucca Mendes Alves Pellegrini](https://github.com/lucca-pellegrini)
 
 ## Professor responsável
 
@@ -20,10 +19,7 @@
 
 ## Gerenciamento do Projeto
 
-......  COLOQUE AQUI O SEU TEXTO (OPCIONAL) ......
-
-> Adicione aqui informações sobre o projeto que será gerenciado. 
-> Indique informações importantes sobre o projeto.
+O desenvolvimento do MyTrackList é gerenciado com base em metodologias ágeis, utilizando o GitHub Projects para organizar o fluxo de trabalho. O projeto é dividido em Sprints, com tarefas (issues) categorizadas por meio de labels que indicam tipo, área e prioridade. Essa abordagem garante entregas incrementais de valor e permite uma adaptação contínua às necessidades do projeto.
 
 Fases do Gerenciamento do Projeto:
 1. [Iniciação](docs/01-iniciacao)
