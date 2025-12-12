@@ -4,11 +4,6 @@
     "outDir": "./dist",
     "module": "commonjs",
     "target": "ES2020",
-    
-    // "types": ["node", "bun"],  <-- ESTA LINHA FOI REMOVIDA
-    // Ao removermos a linha acima, o TypeScript procura automaticamente
-    // todos os pacotes @types/* instalados no node_modules.
-
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
