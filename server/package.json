@@ -20,7 +20,6 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "@types/bcryptjs": "^3.0.0",
     "@types/bun": "^1.2.21",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
@@ -29,6 +28,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "argon2": "^0.40.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
