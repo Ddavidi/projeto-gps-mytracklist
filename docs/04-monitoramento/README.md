@@ -11,21 +11,54 @@
 - [Fase de Monitoramento](#monitoramento)
 - [Atas de Reunião](#atas-de-reunião)
 
-# Atas de Reunião
 
+# Ata de Reunião
 
-> A ata de reunião é responsável por registrar e documentar as discussões, decisões e ações tomadas durante as reuniões do projeto.
-> Este instrumento fornece uma narrativa estruturada daquilo que foi abordado na reunião, ajudando a preservar a transparência, a responsabilidade e a memória do grupo. 
-> Em uma ata de reunião típica, são registrados tópicos como a lista de participantes, agenda, pontos de discussão, decisões tomadas, ações atribuídas, e prazos acordados. 
-> A ata não apenas serve como uma referência histórica, mas também como um meio de comunicação eficaz para aqueles que não puderam participar, garantindo que todos estejam alinhados com os acontecimentos e responsabilidades subsequentes. 
+## Gerência de Projetos de Software
 
-> Para preenchimento das atas de reunião, utilize o seguinte template:
-> * [Template de Ata de Reunião](artefatos/template-ata-reuniao.docx)
+**Data:** 27/08/2025  
+**Hora:** 15:00  
+**Local:** Discord  
 
-> Atualize a lista de atas de reunião do projeto, com as atas entregues semanalmente na disciplina.
-> Mantenha um padrão de nomenclatura dos arquivos, utilizando as datas como referência.
+---
 
-1. [2024-02-23 - Ata de Reunião](artefatos/ata-reuniao_2024-02-23.pdf)
-2. [2024-03-01 - Ata de Reunião](artefatos/ata-reuniao_2024-03-01.pdf)
-3. ....
+## Participantes
+
+| Nome | E-mail | Papel |
+|-----|-------|-------|
+| Bruna de Paula Anselmi | bruanselmi@gmail.com | Desenvolvedora Front-end + UX/UI Designer |
+| Cauã Diniz Armani | cauaarmani@icloud.com | Product Owner (PO) + QA/Testador |
+| David Nunes Ribeiro | ddnr03@gmail.com | Scrum Master (SM) + Tech Lead + GP |
+| Lucca Mendes Alves Pellegrini | lucca@verticordia.com | Desenvolvedor Back-end |
+
+---
+
+## Pauta
+
+- Brainstorming para definição do tema do projeto  
+- Identificação dos stakeholders principais  
+- Análise de viabilidade das propostas  
+- Definição do escopo inicial do projeto  
+
+---
+
+## Notas e Decisões
+
+- Tema do projeto definido pela equipe  
+- Stakeholders identificados:
+  - Equipe de desenvolvimento  
+  - Cliente final  
+  - Usuários finais  
+  - Orientadores  
+- Escopo preliminar aprovado por todos os membros  
+- Cauã assumirá o papel de **Product Owner (PO)** para comunicação com os stakeholders  
+
+---
+
+## Pendências
+
+| Descrição da Pendência | Data para Solução | Responsável |
+|-----------------------|------------------|-------------|
+| Documentar formalmente o tema e stakeholders | 31/08/2025 | Cauã Diniz Armani |
+
 
