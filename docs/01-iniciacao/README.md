@@ -1,12 +1,5 @@
 # Iniciação
 
-> A fase de iniciação, em gerência de projetos, é o estágio que estabelece as bases para o sucesso do empreendimento. 
-> Durante essa etapa, os objetivos definidos, identificando-se suas metas, escopo, partes interessadas (*stakeholders*) e restrições. 
-> É o momento em que a viabilidade do projeto é avaliada, analisando-se recursos necessários, riscos potenciais e benefícios esperados.
-> Nesta etapa é elaborado o Termo de Abertura do Projeto (TAP).
-> Essa fase serve como um alicerce estratégico, proporcionando uma compreensão abrangente do que o projeto busca alcançar e delineando as diretrizes que orientarão as etapas subsequentes. 
-> O sucesso na fase de iniciação contribui significativamente para a eficácia do gerenciamento de projetos como um todo.
-
 # Estrutura do Documento
 
 - [Fase de Iniciação](#iniciação)
@@ -112,7 +105,7 @@ A identificação e gestão das partes interessadas (stakeholders) é crucial pa
 |Cauã Diniz Armani                 |Product Owner (PO) + QA/Testador                 |Definir prioridades do produto e garantir sua qualidade com testes.               |cauaarmani@icloud.com            |(31) 99840-0306             |
 |David Nunes Ribeiro                 |Scrum Master (SM) + Tech Lead + GP                 |Guiar o time, alinhar processos ágeis e liderar a parte técnica do projeto.               |ddnr03@gmail.com             |(31) 98618-2459            |
 |Lucca Pellegrini                 |Desenvolvedor Back-end                 |Construir a lógica e o funcionamento interno do sistema.               |lucca@verticordia.com             |(31) 99222-4189             |
-|                 |                 |               |             |             |
+                 
 
 ## Avaliação das Partes Interessadas
 
@@ -122,7 +115,6 @@ A identificação e gestão das partes interessadas (stakeholders) é crucial pa
 |Cauã Diniz Armani                 |Que o site seja divertido, funcional e popular.                        |Alta               |Média                     |Apoiador             |-               |
 |David Nunes Ribeiro                 |Que o projeto se torne bastante popular e bastante utilizável, igual o Letterboxd.                        |Alta               |Alta                     |Apoiador             |Sempre gostei de sites como Letterboxd e MyAnimeList, porém sempre senti a falta de um site para avaliar minhas músicas.               |
 | Lucca Pellegrini                |Que tenha um lucro extraordinário e que os usuários gostem e preencham uma lacuna no mercado.                        |Baixa               |Alta                     |Apoiador             |-               |
-|                 |                        |               |                     |             |               |
                 
 
 ```diff
