@@ -204,17 +204,26 @@ desenvolvimento de funcionalidades e finalização.
 
 # Cronograma do Projeto
 
-......  DESCREVA EM LINHAS GERAIS O CRONOGRAMA DO SEU PROJETO AQUI ......
+O cronograma do projeto MyTrackList abrange um período total de 90 dias úteis,
+iniciando em 17/10/2025 e concluindo em 14/01/2026. Ele é organizado em cinco
+sprints: Sprint 0 (configuração e fundação, 15 dias), Sprint 1 (autenticação de
+usuários, 20 dias), Sprint 2 (integração com Spotify e busca, 20 dias), Sprint
+3 (listas e avaliações, 20 dias) e Sprint 4 (perfis públicos e finalização, 15
+dias). As atividades incluem desenvolvimento de backend e frontend, integração
+de APIs, testes finais e deploy, com reuniões de planejamento semanais para
+cada sprint. Dependências entre tarefas são consideradas para garantir um fluxo
+eficiente, e o cronograma visa otimizar recursos e antecipar possíveis atrasos.
 
-> O cronograma do projeto fornece uma representação temporal detalhada de todas as atividades, marcos e eventos ao longo do ciclo de vida do projeto.
-> Elaborado durante o planejamento, o cronograma é uma ferramenta que oferece uma visão das interdependências entre as tarefas, alocando recursos e definindo prazos para as entregas.
-> Utilizando técnicas como a análise de rede (PERT/CPM) e estimativas de duração, o cronograma ajuda na identificação de caminhos críticos, permitindo aos gestores de projeto otimizar recursos, antecipar potenciais atrasos e tomar decisões.
-> Além disso, o cronograma serve como um guia para monitorar o progresso, comunicar efetivamente com a equipe e as partes interessadas, e ajustar estratégias para garantir a conclusão bem-sucedida do projeto dentro dos prazos estabelecidos.
+![Cronograma (página 1)](images/cronograma-1.png)
+![Cronograma (página 2)](images/cronograma-2.png)
+![Cronograma (página 3)](images/cronograma-3.png)
+![Cronograma (página 4)](images/cronograma-4.png)
+![Cronograma (página 5)](images/cronograma-5.png)
+![Cronograma (página 6)](images/cronograma-6.png)
 
 ### Documento Editável
 
-> Você deve atualiza o seguinte link (ou link correspondente), como o arquivo editável do Cronograma do Projeto:
-- [Cronograma e Orçamento do Projeto - Editável](artefatos/cronograma_orcamento.pod)
+- [Cronograma e Orçamento do Projeto - Editável](artefatos/cronograma.pod)
 
 ```diff
 + Tarefa 07:
