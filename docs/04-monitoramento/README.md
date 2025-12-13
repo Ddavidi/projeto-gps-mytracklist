@@ -438,6 +438,45 @@
 
 ---
 
+## 📝 Ata 11 – 30/11/2025
+📄 **Documento oficial:** [Ata de Reunião – 30/11/2025 (PDF)](docs/ata-reuniao-11.pdf)
+
+**Hora:** 15:00  
+**Local:** Discord  
+
+### 👥 Participantes
+| Nome | Papel |
+|-----|------|
+| Bruna de Paula Anselmi | Front-end + UX/UI |
+| Cauã Diniz Armani | Product Owner (PO) + QA |
+| David Nunes Ribeiro | Scrum Master + Tech Lead + GP |
+| Lucca Mendes Alves Pellegrini | Back-end |
+
+---
+
+### 📌 Pauta
+- Identificação de riscos do projeto
+- Análise qualitativa dos riscos identificados
+- Elaboração da matriz de probabilidade x impacto
+- Definição de estratégias de resposta para cada risco
+- Criação do registro de riscos
+- Atribuição de responsáveis por cada risco
+
+---
+
+### ✅ Decisões
+- Sessão de brainstorming para identificação de riscos realizada
+- Riscos identificados: técnicos, cronograma, recursos, qualidade, externos
+- Análise qualitativa completa com matriz de probabilidade x impacto
+- Riscos priorizados conforme criticidade
+- Estratégias de resposta definidas para riscos de alta prioridade
+- Registro de riscos documentado com: descrição, probabilidade, impacto, resposta, responsável
+
+---
+
+### ⏳ Pendências
+*Nenhuma pendência registrada*
+
 ## 📝 Ata 12 – 05/12/2025
 📄 **Documento oficial:** [Ata de Reunião – 05/12/2025 (PDF)](docs/ata-reuniao-12.pdf)
 
