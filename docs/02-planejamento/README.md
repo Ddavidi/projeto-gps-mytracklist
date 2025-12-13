@@ -130,30 +130,66 @@ desenvolvimento de funcionalidades e finalização.
 
 # Matriz de Responsabilidades
 
-......  COLOQUE AQUI O SEU TEXTO ......
-
-> A Matriz de Responsabilidades é uma ferramenta para definir e indicar as responsabilidades de cada membro da equipe em relação às atividades do projeto.
-> Também conhecida como RACI (Responsável, Aprovador, Consultado e Informado), essa matriz atribui papéis específicos a cada envolvido, indicando quem é responsável pela execução de uma tarefa, quem deve aprovar, quem precisa ser consultado e quem deve ser mantido informado.
-> Ao criar uma visão visual e estruturada das responsabilidades, a matriz RACI minimiza ambiguidades e conflitos de papel.
-> Essa ferramenta não apenas esclarece as expectativas em termos de contribuições individuais, mas também contribui para um ambiente de trabalho mais organizado e transparente, resultando em uma gestão de projeto mais eficaz e bem-sucedida.
-
-> Informações Adicionais:
-> * **R**esponsible -> Executor (pessoa(s) que executará(ão)/desenvolverá(ão) a atividade)
-> * **A**ccountable -> Responsável (pessoa responsável por aprovar a atividade)
-> * **C**onsulted   -> Consultado (especialista consultado sobre a atividade ou parte dela)
-> * **I**nformed    -> Informado (pessoas interessadas no projeto que devem ser informadas sobre a execução).
->
-> Link de auxílio: https://www.forbes.com/advisor/business/raci-chart/
-
-> Crie uma nova imagem da Estrutura Analítica do Projeto. Não se esqueça de adicionar o documento editável no repositório.
-
-![Matriz RACI](images/raci.png)
+## Matriz RACI
 
 
+ | Atividade                                                                                       | Gerente | Equipe gerenciada | Patrocinador |
+ | ----------------------------------------------------------------------------------------------- | ------- | ----------------- | ------------ |
+ | Iniciar o projeto                                                                               | R       | C                 | I            |
+ | Definir o escopo                                                                                | R       | I                 | A            |
+ | Elaborar a WBS                                                                                  | R       | I                 | I            |
+ | Elaborar o cronograma                                                                           | R       | C                 | C            |
+ | Planejar os riscos                                                                              | R       | C                 | I            |
+ | Planejar a qualidade                                                                            | R       | C                 | C            |
+ | Planejar o projeto                                                                              | R       | C                 | I            |
+ | Monitorar o projeto                                                                             | R       | C                 | I            |
+ | Encerrar o projeto                                                                              | A       | R                 | A            |
+ | Realizar garantia da qualidade                                                                  | A       | R                 | C            |
+ | Realizar controle da qualidade                                                                  | A       | R                 | I            |
+ | Estudo de viabilidade                                                                           | R       | C                 | I            |
+ | Levantamento de requisitos                                                                      | R       | C                 | C            |
+ | Definição de Stakeholders                                                                       | R       | I                 | I            |
+ | Criação das interfaces de cadastro e autenticação dos usuários                                  | C       | R                 | I            |
+ | Criação da estrutura e rotas básicas do backend                                                 | C       | R                 | I            |
+ | Definição das paletas de cores, logo e padrão de estilização do site                            | C       | R                 | A            |
+ | Integração com a API do Spotify                                                                 | C       | R                 | I            |
+ | Criação da página de resultados da busca                                                        | C       | R                 | I            |
+ | Criação da página de detalhes da música                                                         | C       | R                 | I            |
+ | Desenvolvimento backend para avaliações dos usuários                                            | C       | R                 | I            |
+ | Criação do componente de avaliação no frontend                                                  | C       | R                 | I            |
+ | Criação da página de perfil do usuário                                                          | C       | R                 | I            |
+ | Criação de rotas para busca de perfil                                                           | C       | R                 | I            |
+ | Criação da página do perfil público                                                             | C       | R                 | I            |
+ | Garantir que o frontend exiba para a pessoa que está acessando outro perfil apenas o necessário | C       | R                 | I            |
+ | Fazer revisão de usabilidade e design                                                           | A       | R                 | A            |
+ | Preparar frontend e backend para o deploy                                                       | R       | R                 | I            |
+ | Realizar os testes finais                                                                       | A       | R                 | C            |
+ | Treinamento de utilização junto com um manual de instruções                                     | C       | R                 | A            |
+
+
+## Recursos Humanos
+
+ | Nome                   | Papel                   | Nível de Proficiência | Treimentos Necessários                                          |
+ | ----                   | -----                   | --------------------- | ----------------------                                          |
+ | Cauã Diniz Armani      | Product Owner           | Suficiente            | Aprender a escrever "Histórias de Usuário"                      |
+ | Cauã Diniz Armani      | QA/Testador             | Baixo                 | Aprender a usar as "Ferramentas de desenvolvedor" no navegador" |
+ | Bruna de Paula Anselmi | Desenvolvedor Front-end | Baixo                 | DIW                                                             |
+ | Bruna de Paula Anselmi | UX/UI Designer          | Suficiente            | Aprender o avançado do Figma                                    |
+ | Davd Nunes Ribeiro     | Scrum Master            | Bom                   | Arquitetura de Software e Padrões de Projeto                    |
+ | Davd Nunes Ribeiro     | Tech Lead               | Bom                   | Arquitetura de Software e Padrões de Projeto                    |
+ | Davd Nunes Ribeiro     | GP                      | Suficiente            | Habilidades de Liderança e Influência                           |
+ | Lucca Pellegrini       | Desenvolvedor Back-end  | Suficiente            | Treinamento de TypeScript                                       |
+
+![Matriz RACI (página 1)](images/raci-1.png)
+![Matriz RACI (página 2)](images/raci-2.png)
+![Matriz RACI (página 2)](images/raci-3.png)
+
+<!--
 ### Documento Editável
 
 > Você deve atualiza o seguinte link (ou link correspondente), como o arquivo editável da Matriz RACI:
 - [Matriz de Responsabilidades (RACI) - Editável](artefatos/matriz-raci.docx)
+-->
 
 ```diff
 + Tarefa 05:
