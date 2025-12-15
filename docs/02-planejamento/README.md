@@ -223,7 +223,7 @@ eficiente, e o cronograma visa otimizar recursos e antecipar possíveis atrasos.
 
 ### Documento Editável
 
-- [Cronograma e Orçamento do Projeto - Editável](artefatos/cronograma.pod)
+- [Cronograma do Projeto - Editável](artefatos/cronograma.pod)
 
 ```diff
 + Tarefa 07:
@@ -238,17 +238,12 @@ eficiente, e o cronograma visa otimizar recursos e antecipar possíveis atrasos.
 
 # Orçamento do Projeto
 
-......  DESCREVA EM LINHAS GERAIS O ORÇAMENTO DO SEU PROJETO AQUI ......
-
-> O orçamento do projeto envolve a estimativa e alocação de recursos financeiros necessários para a execução bem-sucedida do projeto, abrangendo custos diretos e indiretos, despesas operacionais, investimentos em equipamentos, pessoal, entre outros.
-> O desenvolvimento do orçamento deve considerar variáveis como riscos, imprevistos e mudanças no escopo.
-> Uma vez estabelecido, o orçamento serve como guia para a utilização eficiente dos recursos financeiros ao longo do projeto.
-> A gestão do orçamento não apenas ajuda a controlar os custos, mas também fornece transparência e prestação de contas, permitindo que gestores tomem decisões informadas e evitem surpresas financeiras ao longo do ciclo de vida do projeto.
-> Assim, o orçamento contribui para o sucesso do projeto, garantindo a viabilidade econômica e a entrega dentro das expectativas financeiras estabelecidas.
+![Orçamento (parte 1)](images/orçamento1.webp)
+![Orçamento (parte 2)](images/orçamento2.webp)
+![Orçamento (parte 3)](images/orçamento3.webp)
 
 ### Documento Editável
 
-> Você deve atualiza o seguinte link (ou link correspondente), como o arquivo editável do Orçamento do Projeto:
 - [Cronograma e Orçamento do Projeto - Editável](artefatos/cronograma_orcamento.pod)
 
 ```diff
