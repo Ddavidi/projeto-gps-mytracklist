@@ -309,51 +309,46 @@ PR) e Teste Funcional (verificação manual antes do commit).
 
 ### Artefatos a serem verificados
 
-| Artefato   | Tipo Verif. | Data        | Responsável | Métrica     | Data Correção | Ação Não Conform. | Resp. Avaliação | Resp. Correção |
-|------------|-------------|-------------|-------------|-------------|---------------|-------------------|-----------------|----------------|
-|            |             |             |             |             |               |                   |                 |                |
-|            |             |             |             |             |               |                   |                 |                |
-|            |             |             |             |             |               |                   |                 |                |
-|            |             |             |             |             |               |                   |                 |                |
-|            |             |             |             |             |               |                   |                 |                |
-|            |             |             |             |             |               |                   |                 |                |
+| Artefato                          | Tipo Verif.                  | Data                              | Responsável   | Métrica                                                                 | Data Correção                 | Ação Não Conform.                                | Resp. Avaliação              | Resp. Correção      |
+|-----------------------------------|------------------------------|-----------------------------------|---------------|-------------------------------------------------------------------------|-------------------------------|--------------------------------------------------|------------------------------|---------------------|
+| Pull Request (PR) de Funcionalidade (Ex: feature/backend-reviews-api) | 4 – Revisão Técnica         | Ao final de cada tarefa          | Lucca (DEV)  | 100% dos comentários de revisão resolvidos.                            | Antes do merge para a develop | PR bloqueado. Correção obrigatória.             | David (Tech Lead) ou Bruna (DEV) | Autor do PR (Lucca (DEV)) |
+| Cronograma / EAP                  | 2- Apresentação do projeto  | Início da Sprint 0               | David (GP)   | Aprovação da EAP e do cronograma pela equipa.                          | Fim da Semana 1               | Revisão e re-planeamento das Sprints.            | Equipa do Projeto + Cauã (PO) | David (GP)         |
+| Componente React (Ex: TrackDetailsPage.jsx) | 3- Revisão de Apresentação (Walkthrough) | Data a ser definida durante a implementação | Bruna (DEV)  | Antes do commit: Refatoração do componente.                            | Antes do commit              | Refatoração do componente.                       | David (Tech Lead) ou Lucca (DEV) | Autor do PR (Bruna (DEV)) |
+| Endpoint da API (Ex: POST /api/v1/reviews) | Teste Funcional (PMBOK 8.3) | Data a ser definida durante a implementação | Lucca (DEV)  | 100% de conformidade com o fluxo esperado. Renderiza corretamente nos estados de "loading", "error" e "success". 100% de conformidade com os requisitos. Endpoint responde 2xx (sucesso) ou 4xx (erro esperado). | Antes do commit              | Correção do(s) controller(s) ou serviço(s) relevante(s). | David (Tech Lead) ou Cauã (QA/Tester) | Autor do PR (Lucca (DEV)) |
 
 ### Padrões e Normas Utilizadas
 
 | Nome       | Descrição   |
 |------------|-------------|
-|            |             |
-|            |             |
-|            |             |
-|            |             |
-|            |             |
+| TypeScript (Strict Mode) | Garantia de tipagem estática para prevenir erros de runtime. O modo strict força a verificação de nulos e tipos. |
+| ESLint | Padronização automática do estilo de código (code style) e identificação de "code smells" ou potenciais bugs. |
+| Conventional Commits | Padronização das mensagens de commit (ex: feat:, fix:, chore:) para manter o histórico do Git limpo e legível. |
+| Gitflow (simplificado) | Uso de branches feature/ para novas funcionalidades, develop como ramo principal de integração e Pull Requests para revisão. |
 
 ### Ambiente das Atividades de Qualidade
 
 | Ambiente   | Descrição   |
 |------------|-------------|
-|            |             |
-|            |             |
-|            |             |
-|            |             |
+| GitHub Pull Requests | As atividades de qualidade (revisões de código, testes) são realizadas primariamente na plataforma GitHub através de Pull Requests (PRs). |
+| Ambiente de Desenvolvimento Local | Os testes funcionais e de integração são executados em ambiente de desenvolvimento local (localhost e 127.0.0.1) em ambos os servidores (backend e frontend) antes de cada push. |
+| SGBD (DB Browser for SQLite) | O SGBD (DB Browser for SQLite) é usado para verificar a integridade dos dados durante os testes do backend. |
 
 ### Equipe de Qualidade
 
 | Nome       | Responsabilidade |
 |------------|------------------|
-|            |                  |
-|            |                  |
-|            |                  |
-|            |                  |
-|            |                  |
+| David Nunes Ribeiro | Gerente do Projeto / Scrum Master (SM) / Tech Lead. Responsável pela revisão (PR) do código backend e frontend, testes de integração ponta-a-ponta (frontend + backend) e garantia da UI/UX. |
+| Lucca Mendes Alves Pellegrini | Dev. Backend. Responsável pela revisão (PR) do código backend, testes funcionais da API (via Postman/Insomnia ou testes automatizados) e manutenção da arquitetura do servidor. |
+| Cauã Diniz Armani | Product Owner (PO) + QA/Testador. Responsável por atuar como a voz do cliente e garantir que o desenvolvimento do projeto esteja alinhado aos seus objetivos principais. Além disso, exerce a função de Testador, analisando e assegurando que o projeto esteja de acordo com a proposta estabelecida. |
+| Bruna de Paula Anselmi | Dev Front-end / UX/UI Designer. Responsável pela revisão (PR) do código frontend, testes funcionais de componentes React, garantia da usabilidade e design, e participação em revisões de apresentação (walkthrough). |
 
 ### Metodologias de Qualidade Utilizadas
 
 | Nome       | Descrição   |
 |------------|-------------|
-|            |             |
-|            |             |
-|            |             |
+| Prevenção (Planejar Prevenção de defeitos - PMBOK 8.1) | Prevenção de defeitos através do uso de ferramentas estáticas (TypeScript, ESLint) e planejamento detalhado das Sprints (EAP e Cronograma), mantendo erros comuns fora do processo de desenvolvimento. |
+| Inspeção (Controlar a Qualidade - PMBOK 8.3) | Inspeção de todo o código novo através do processo de Pull Request (Revisão Técnica Formal). Nenhum código é integrado à develop sem a revisão e aprovação de, no mínimo, um outro membro da equipa. Foco em encontrar e corrigir defeitos antes que sejam integrados. |
+| Teste Funcional (Gerenciar a Qualidade - PMBOK 8.2) | Processo de verificação manual executado pelo próprio desenvolvedor para garantir que a funcionalidade implementada atende aos requisitos definidos na tarefa, antes de submeter o código para a Revisão Técnica (PR). |
 
 ```diff
 + Tarefa 09:
