@@ -27,22 +27,3 @@ Fases do Gerenciamento do Projeto:
 3. [Execução](docs/03-execucao)
 4. [Monitoramento](docs/04-monitoramento)
 5. [Encerramento](docs/05-encerramento)
-
-## Apresentação do Trabalho
-
-......  COLOQUE AQUI O SEU TEXTO ......
-
-> Adicione aqui o vídeo explicativo do trabalho.
-> Utilize a estrutura (link) abaixo para apresentação do vídeo.
-> O vídeo deve ser postado obrigatoriamente de forma pública no Youtube ou qualquer outra plataforma 
-
-> A imagem abaixo deve ser substituída por uma capa do vídeo de apresentação do trabalho.
-
-[![Imagem do Trabalho](images/pucminas-video-youtube.jpg)](https://www.youtube.com/watch?v=unq_cZ6NOwk)
-
-## Informações Adicionais
-
-......  COLOQUE AQUI O SEU TEXTO ......
-
-> Inclua aqui informações extra sobre o projeto.
-> Caso não existam informações extras, remova a seção.
