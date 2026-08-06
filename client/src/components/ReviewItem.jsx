@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { getTrackDetails } from '../services/spotify';
 import {
   ListItem,
   ListItemAvatar,
@@ -8,55 +7,21 @@ import {
   ListItemText,
   Typography,
   Box,
-  Skeleton
 } from '@mui/material';
 import RatingInput from './RatingInput';
 
 /**
- * Componente que exibe uma avaliação individual com dados enriquecidos do Spotify.
+ * Componente que exibe uma avaliação individual com dados do Spotify.
+ * Agora recebe os dados da track como prop (carregados em batch pela página pai).
+ * 
+ * @param {Object} props
+ * @param {Object} props.review - Dados da avaliação (id, trackId, rating, createdAt)
+ * @param {Object} props.track - Dados da música do Spotify (name, artist, album, imageUrl)
  */
-function ReviewItem({ review }) {
-  const [track, setTrack] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchTrack = async () => {
-      try {
-        // Busca os detalhes (Capa, Nome, Artista) usando o ID que está na review
-        const details = await getTrackDetails(review.trackId);
-        if (isMounted) setTrack(details);
-      } catch (error) {
-        console.error("Erro ao carregar detalhes da música:", error);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    fetchTrack();
-
-    return () => { isMounted = false; };
-  }, [review.trackId]);
-
-  // Estado de carregamento (Skeleton) enquanto busca no Spotify
-  if (loading) {
-    return (
-      <ListItem divider>
-        <ListItemAvatar>
-          <Skeleton variant="rectangular" width={64} height={64} sx={{ borderRadius: 1 }} />
-        </ListItemAvatar>
-        <ListItemText
-          primary={<Skeleton variant="text" width="60%" />}
-          secondary={<Skeleton variant="text" width="40%" />}
-        />
-      </ListItem>
-    );
-  }
-
-  // Se falhou ao carregar ou música não existe
+function ReviewItem({ review, track }) {
+  // Se não temos dados da track, não renderiza
   if (!track) {
-    return null; 
+    return null;
   }
 
   return (
@@ -88,7 +53,6 @@ function ReviewItem({ review }) {
             </Typography>
             
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-               {/* As estrelas agora aparecem pequenas e alinhadas */}
                <RatingInput value={review.rating} readOnly={true} size="small" />
                <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
                  • Avaliado em {new Date(review.createdAt).toLocaleDateString()}

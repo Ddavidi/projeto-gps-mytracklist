@@ -1,6 +1,17 @@
-# Ignorar dependências e arquivos de ambiente
+# Dependencies
 node_modules/
-.env
 
-# Arquivo do banco de dados SQLite
+# Environment
+.env
+.env.local
+
+# Database local
+*.sqlite
+*.sqlite3
 database.sqlite
+
+# Build output
+dist/
+
+# Logs
+*.log

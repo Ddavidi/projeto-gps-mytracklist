@@ -23,3 +23,22 @@ export const getTrackDetails = async (trackId) => {
   const response = await api.get(`/spotify/tracks/${trackId}`);
   return response.data;
 };
+
+/**
+ * Função para obter os detalhes de múltiplas músicas de uma só vez (batch).
+ * Resolve o problema N+1 ao listar avaliações.
+ * @param {string[]} trackIds Array de IDs de músicas do Spotify (máx. 50).
+ * @returns {Promise<Object>} Um mapa { trackId: trackData } para acesso rápido.
+ */
+export const getMultipleTrackDetails = async (trackIds) => {
+  if (!trackIds || trackIds.length === 0) return {};
+
+  const response = await api.post('/spotify/tracks/batch', { ids: trackIds });
+
+  // Converte o array em um mapa para acesso O(1) por ID
+  const trackMap = {};
+  response.data.forEach((track) => {
+    trackMap[track.id] = track;
+  });
+  return trackMap;
+};

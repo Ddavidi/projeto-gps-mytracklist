@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getMyReviews } from '../services/reviews';
+import { getMultipleTrackDetails } from '../services/spotify';
 import { useAuth } from '../context/AuthContext';
 import {
   Container,
@@ -11,11 +12,12 @@ import {
   Paper,
   Divider
 } from '@mui/material';
-import ReviewItem from '../components/ReviewItem'; // <-- Importar o novo componente
+import ReviewItem from '../components/ReviewItem';
 
 function ProfilePage() {
   const { user } = useAuth();
   const [reviews, setReviews] = useState([]);
+  const [trackMap, setTrackMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -24,8 +26,17 @@ function ProfilePage() {
       try {
         setLoading(true);
         setError('');
+
+        // 1. Buscar todas as avaliações do utilizador
         const myReviews = await getMyReviews();
         setReviews(myReviews);
+
+        // 2. Buscar dados de TODAS as músicas de uma vez (batch)
+        if (myReviews.length > 0) {
+          const trackIds = myReviews.map((r) => r.trackId);
+          const tracks = await getMultipleTrackDetails(trackIds);
+          setTrackMap(tracks);
+        }
       } catch (err) {
         setError('Falha ao carregar as suas avaliações.');
         console.error(err);
@@ -68,8 +79,11 @@ function ProfilePage() {
         {!loading && !error && reviews.length > 0 && (
           <List sx={{ width: '100%' }}>
             {reviews.map((review) => (
-              // <-- AQUI: Usamos o mesmo componente inteligente
-              <ReviewItem key={review.id} review={review} />
+              <ReviewItem
+                key={review.id}
+                review={review}
+                track={trackMap[review.trackId]}
+              />
             ))}
           </List>
         )}

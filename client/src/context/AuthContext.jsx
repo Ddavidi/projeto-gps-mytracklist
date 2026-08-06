@@ -10,14 +10,38 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Função para verificar se o utilizador já está logado ao carregar a página
+  // Ao carregar a página, verifica se há um token salvo e se é válido
   useEffect(() => {
     const checkAuth = async () => {
+      const token = localStorage.getItem('mtl_token');
+      const savedUser = localStorage.getItem('mtl_user');
+
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      // Se temos token e user salvos, usa-os imediatamente
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+        } catch {
+          // JSON inválido, ignora
+        }
+      }
+
+      // Valida o token com o backend
       try {
         const response = await api.get('/auth/me');
         setUser(response.data);
         setIsAuthenticated(true);
+        localStorage.setItem('mtl_user', JSON.stringify(response.data));
       } catch (error) {
+        // Token inválido/expirado — limpa tudo
+        localStorage.removeItem('mtl_token');
+        localStorage.removeItem('mtl_user');
         setUser(null);
         setIsAuthenticated(false);
       } finally {
@@ -28,35 +52,35 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Função de Login
+  // Função de Login — agora recebe e guarda o JWT
   const login = async (username, password) => {
     try {
-      await api.post('/auth/login', { username, password });
-      
-      // Após login com sucesso, buscamos os dados do utilizador IMEDIATAMENTE
-      // Isto garante que o estado é atualizado sem F5
-      const response = await api.get('/auth/me');
-      setUser(response.data);
+      const response = await api.post('/auth/login', { username, password });
+
+      const { token, user: userData } = response.data;
+
+      // Guardar token e user no localStorage
+      localStorage.setItem('mtl_token', token);
+      localStorage.setItem('mtl_user', JSON.stringify(userData));
+
+      setUser(userData);
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
       console.error('Erro no login:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.error || 'Falha no login' 
+      return {
+        success: false,
+        message: error.response?.data?.error || 'Falha no login'
       };
     }
   };
 
-  // Função de Logout
+  // Função de Logout — limpa token do localStorage
   const logout = async () => {
-    try {
-      await api.post('/auth/logout');
-      setUser(null);
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error('Erro no logout:', error);
-    }
+    localStorage.removeItem('mtl_token');
+    localStorage.removeItem('mtl_user');
+    setUser(null);
+    setIsAuthenticated(false);
   };
 
   return (

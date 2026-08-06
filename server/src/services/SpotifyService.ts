@@ -123,7 +123,6 @@ export class SpotifyService {
 
     const track = await response.json();
 
-    // Vamos formatar os dados para o front-end
     return {
       id: track.id,
       name: track.name,
@@ -135,5 +134,47 @@ export class SpotifyService {
       popularity: track.popularity,
       externalUrl: track.external_urls.spotify,
     };
+  }
+
+  /**
+   * Obtém detalhes de múltiplas músicas de uma só vez (batch).
+   * A API do Spotify suporta até 50 IDs por chamada.
+   * Resolve o problema N+1 ao listar avaliações.
+   */
+  public async getMultipleTracks(trackIds: string[]) {
+    if (trackIds.length === 0) return [];
+
+    const accessToken = await this.getAccessToken();
+
+    // Spotify API aceita até 50 IDs separados por vírgula
+    const ids = trackIds.slice(0, 50).join(',');
+
+    const response = await fetch(`https://api.spotify.com/v1/tracks?ids=${ids}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      console.error('Falha ao obter múltiplas músicas do Spotify:', await response.text());
+      throw new Error('Falha ao obter múltiplas músicas do Spotify.');
+    }
+
+    const data = await response.json();
+
+    // Formata os dados de cada track (filtra nulls para IDs inválidos)
+    return data.tracks
+      .filter((track: any) => track !== null)
+      .map((track: any) => ({
+        id: track.id,
+        name: track.name,
+        artist: track.artists.map((artist: any) => artist.name).join(', '),
+        album: track.album.name,
+        imageUrl: track.album.images[0]?.url,
+        durationMs: track.duration_ms,
+        previewUrl: track.preview_url,
+        popularity: track.popularity,
+        externalUrl: track.external_urls.spotify,
+      }));
   }
 }

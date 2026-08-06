@@ -1,19 +1,15 @@
 import { IDatabase, DatabaseConfig } from '../interfaces/IDatabase';
-import { SqliteDatabase } from './SqliteDatabase';
-import { SqliteMemoryDatabase } from './SqliteMemoryDatabase';
+import { PostgresDatabase } from './PostgresDatabase';
 
 export class DatabaseFactory {
   static create(config?: DatabaseConfig): IDatabase {
-    const dbType = config?.type || process.env.DB_TYPE || 'real';
+    const dbType = config?.type || process.env.DB_TYPE || 'postgres';
 
     switch (dbType) {
-      case 'memory':
-        return new SqliteMemoryDatabase();
-
-      case 'real':
+      case 'postgres':
       default:
-        const filename = config?.filename || process.env.DB_FILENAME || './database.sqlite';
-        return new SqliteDatabase(filename);
+        const connectionString = process.env.DATABASE_URL;
+        return new PostgresDatabase(connectionString);
     }
   }
 

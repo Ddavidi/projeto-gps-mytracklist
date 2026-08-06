@@ -8,6 +8,6 @@ export interface IDatabase {
 }
 
 export interface DatabaseConfig {
-  type: 'real' | 'memory' | 'mock';
+  type: 'postgres' | 'sqlite' | 'memory';
   filename?: string;
 }
