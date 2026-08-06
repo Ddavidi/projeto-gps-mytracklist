@@ -137,7 +137,7 @@ function LoginPage() {
               
               {!isLoginFlow && (
                 <TextField
-                  margin="normal" required fullWidth id="username" label="Nome de Utilizador" name="username"
+                  margin="normal" required fullWidth id="username" label="Username" name="username"
                   autoFocus value={username} onChange={(e) => setUsername(e.target.value)}
                 />
               )}

@@ -1,8 +1,8 @@
-import { Database } from 'bun:sqlite';
+import Database from 'better-sqlite3';
 import { IDatabase } from '../interfaces/IDatabase';
 
 export class SqliteDatabase implements IDatabase {
-  private db: Database | null = null;
+  private db: Database.Database | null = null;
   private filename: string;
 
   constructor(filename: string = './database.sqlite') {
@@ -22,7 +22,7 @@ export class SqliteDatabase implements IDatabase {
 
   async get(query: string, params?: any[]): Promise<any> {
     if (!this.db) throw new Error('Database not connected');
-    return this.db.prepare(query).get(params as any);
+    return this.db.prepare(query).get(params || []);
   }
 
   async run(query: string, params?: any[]): Promise<any> {
@@ -30,16 +30,20 @@ export class SqliteDatabase implements IDatabase {
       console.error('Database not connected in run method');
       throw new Error('Database not connected');
     }
-    return this.db.prepare(query).run(params as any);
+    const result = this.db.prepare(query).run(params || []);
+    return {
+      lastInsertRowid: result.lastInsertRowid,
+      changes: result.changes
+    };
   }
 
   async all(query: string, params?: any[]): Promise<any[]> {
     if (!this.db) throw new Error('Database not connected');
-    return this.db.prepare(query).all(params as any);
+    return this.db.prepare(query).all(params || []);
   }
 
   async exec(query: string): Promise<void> {
     if (!this.db) throw new Error('Database not connected');
-    this.db.run(query);
+    this.db.exec(query);
   }
 }

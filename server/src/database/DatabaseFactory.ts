@@ -1,11 +1,14 @@
 import { IDatabase, DatabaseConfig } from '../interfaces/IDatabase';
 import { PostgresDatabase } from './PostgresDatabase';
+import { SqliteDatabase } from './SqliteDatabase';
 
 export class DatabaseFactory {
   static create(config?: DatabaseConfig): IDatabase {
     const dbType = config?.type || process.env.DB_TYPE || 'postgres';
 
     switch (dbType) {
+      case 'sqlite':
+        return new SqliteDatabase();
       case 'postgres':
       default:
         const connectionString = process.env.DATABASE_URL;
