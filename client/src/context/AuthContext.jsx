@@ -52,19 +52,22 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Função de Login — agora recebe e guarda o JWT
-  const login = async (username, password) => {
+  // Função auxiliar para definir os dados manualmente após registro
+  const setAuth = (token, userData) => {
+    localStorage.setItem('mtl_token', token);
+    localStorage.setItem('mtl_user', JSON.stringify(userData));
+    setUser(userData);
+    setIsAuthenticated(true);
+  };
+
+  // Função de Login — agora recebe identifier (e-mail ou username)
+  const login = async (identifier, password) => {
     try {
-      const response = await api.post('/auth/login', { username, password });
+      const response = await api.post('/auth/login', { identifier, password });
 
       const { token, user: userData } = response.data;
-
-      // Guardar token e user no localStorage
-      localStorage.setItem('mtl_token', token);
-      localStorage.setItem('mtl_user', JSON.stringify(userData));
-
-      setUser(userData);
-      setIsAuthenticated(true);
+      setAuth(token, userData);
+      
       return { success: true };
     } catch (error) {
       console.error('Erro no login:', error);
@@ -84,7 +87,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, loading, setAuth }}>
       {children}
     </AuthContext.Provider>
   );

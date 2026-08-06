@@ -4,17 +4,22 @@ import bcrypt from 'bcryptjs';
 export class UserController {
   constructor(private db: IDatabase) {}
 
-  async registerUser(username: string, password: string) {
+  async registerUser(username: string, password: string, email: string) {
     try {
-      const existingUser = await this.db.get('SELECT * FROM users WHERE username = ?', [username]);
+      const existingUser = await this.db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, email]);
       if (existingUser) {
-        return { success: false, message: 'Nome de utilizador já existe' };
+        if (existingUser.username === username) {
+          return { success: false, message: 'Nome de utilizador já existe' };
+        }
+        if (existingUser.email === email) {
+          return { success: false, message: 'E-mail já está em uso' };
+        }
       }
 
       const passwordHash = await bcrypt.hash(password, 10);
       const result = await this.db.run(
-        'INSERT INTO users (username, password_hash) VALUES (?, ?)',
-        [username, passwordHash]
+        'INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)',
+        [username, passwordHash, email]
       );
 
       return { success: true, userId: result.lastInsertRowid };
@@ -24,9 +29,9 @@ export class UserController {
     }
   }
 
-  async authenticateUser(username: string, password: string) {
+  async authenticateUser(identifier: string, password: string) {
     try {
-      const user = await this.db.get('SELECT * FROM users WHERE username = ?', [username]);
+      const user = await this.db.get('SELECT * FROM users WHERE username = ? OR email = ?', [identifier, identifier]);
       if (!user) {
         return { success: false, message: 'Utilizador ou palavra-passe inválidos' };
       }
@@ -55,11 +60,34 @@ export class UserController {
 
   async getUserByUsername(username: string) {
     try {
-      const user = await this.db.get('SELECT id, username, created_at FROM users WHERE username = ?', [username]);
+      const user = await this.db.get('SELECT id, username, email, name, gender, birth_date, created_at FROM users WHERE username = ?', [username]);
       return user || null;
     } catch (error) {
       console.error('Erro ao buscar utilizador por nome:', error);
       return null;
+    }
+  }
+
+  async checkEmailExists(email: string) {
+    try {
+      const user = await this.db.get('SELECT id FROM users WHERE email = ?', [email]);
+      return { success: true, exists: !!user };
+    } catch (error) {
+      console.error('Erro ao verificar email:', error);
+      return { success: false, message: 'Falha ao verificar email' };
+    }
+  }
+
+  async updateUserProfile(userId: number, name: string, gender: string, birthDate: string) {
+    try {
+      await this.db.run(
+        'UPDATE users SET name = ?, gender = ?, birth_date = ? WHERE id = ?',
+        [name, gender, birthDate, userId]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao atualizar perfil do utilizador:', error);
+      return { success: false, message: 'Falha ao atualizar perfil' };
     }
   }
 
@@ -82,7 +110,7 @@ export class UserController {
   async getUserReviews(userId: number) {
     try {
       const reviews = await this.db.all(
-        'SELECT id, trackId, rating, createdAt, updatedAt FROM reviews WHERE userId = ? ORDER BY createdAt DESC',
+        'SELECT id, "trackId", rating, "createdAt", "updatedAt" FROM reviews WHERE "userId" = ? ORDER BY "createdAt" DESC',
         [userId]
       );
       return { success: true, reviews: reviews || [] };

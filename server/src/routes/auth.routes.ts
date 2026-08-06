@@ -11,14 +11,28 @@ export function createAuthRouter(userController: UserController): Router {
   const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 
   /**
+   * POST /auth/check-email
+   * Verifica se o e-mail já está em uso (Etapa 1).
+   */
+  router.post('/check-email', async (req: Request, res: Response) => {
+    const { email } = req.body;
+    if (!email) {
+      res.status(400).json({ error: 'E-mail é obrigatório.' });
+      return;
+    }
+    const result = await userController.checkEmailExists(email);
+    res.json(result);
+  });
+
+  /**
    * POST /auth/register
    * Cria uma nova conta de utilizador.
    */
   router.post('/register', async (req: Request, res: Response) => {
-    const { username, password } = req.body;
+    const { username, password, email } = req.body;
 
-    if (!username || !password) {
-      res.status(400).json({ error: 'Nome de utilizador e senha são obrigatórios.' });
+    if (!username || !password || !email) {
+      res.status(400).json({ error: 'E-mail, nome de utilizador e senha são obrigatórios.' });
       return;
     }
 
@@ -27,15 +41,18 @@ export function createAuthRouter(userController: UserController): Router {
       return;
     }
 
-    if (password.length < 6) {
-      res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres.' });
+    const passwordRegex = /^(?=.*[a-zA-Z])(?=.*[\d#?!&@$*^%-]).{10,}$/;
+    if (!passwordRegex.test(password)) {
+      res.status(400).json({ error: 'A senha deve ter pelo menos 10 caracteres, conter pelo menos 1 letra e 1 número ou caractere especial.' });
       return;
     }
 
-    const result = await userController.registerUser(username, password);
+    const result = await userController.registerUser(username, password, email);
 
     if (result.success) {
-      res.status(201).json({ message: 'Conta criada com sucesso!' });
+      // Auto-login after registration
+      const token = generateToken({ userId: result.userId!, username });
+      res.status(201).json({ message: 'Conta criada com sucesso!', token, user: { id: result.userId, username, email } });
     } else {
       res.status(400).json({ error: result.message });
     }
@@ -46,21 +63,23 @@ export function createAuthRouter(userController: UserController): Router {
    * Autentica o utilizador e retorna um JWT.
    */
   router.post('/login', authLimiter, async (req: Request, res: Response) => {
-    const { username, password } = req.body;
+    const { identifier, password } = req.body;
 
-    if (!username || !password) {
-      res.status(400).json({ error: 'Nome de utilizador e senha são obrigatórios.' });
+    if (!identifier || !password) {
+      res.status(400).json({ error: 'E-mail ou nome de utilizador e senha são obrigatórios.' });
       return;
     }
 
-    const result = await userController.authenticateUser(username, password);
+    const result = await userController.authenticateUser(identifier, password);
 
     if (result.success) {
-      const token = generateToken({ userId: result.userId!, username });
+      // Fetch full user data to include username if identifier was email
+      const user = await userController.getUserById(result.userId!);
+      const token = generateToken({ userId: result.userId!, username: user?.username || identifier });
       res.json({
         message: 'Login realizado com sucesso!',
         token,
-        user: { id: result.userId, username }
+        user: { id: result.userId, username: user?.username || identifier }
       });
     } else {
       res.status(401).json({ error: result.message });
@@ -75,9 +94,30 @@ export function createAuthRouter(userController: UserController): Router {
     const user = await userController.getUserById(req.user!.userId);
 
     if (user) {
-      res.json({ id: user.id, username: user.username });
+      res.json({ id: user.id, username: user.username, email: (user as any).email, name: (user as any).name, gender: (user as any).gender, birth_date: (user as any).birth_date });
     } else {
       res.status(404).json({ error: 'Utilizador não encontrado.' });
+    }
+  });
+
+  /**
+   * PUT /auth/profile
+   * Atualiza as informações de perfil (nome, gênero, data de nascimento).
+   */
+  router.put('/profile', requireAuth, async (req: Request, res: Response) => {
+    const { name, gender, birthDate } = req.body;
+    
+    if (!name || !gender || !birthDate) {
+      res.status(400).json({ error: 'Nome, gênero e data de nascimento são obrigatórios.' });
+      return;
+    }
+
+    const result = await userController.updateUserProfile(req.user!.userId, name, gender, birthDate);
+    
+    if (result.success) {
+      res.json({ message: 'Perfil atualizado com sucesso!' });
+    } else {
+      res.status(500).json({ error: result.message });
     }
   });
 

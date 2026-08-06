@@ -38,6 +38,14 @@ A arquitetura foi inteiramente refatorada para o padrão Cloud-Ready:
 - Criado endpoint `POST /api/v1/spotify/tracks/batch`.
 - As páginas `ProfilePage` e `PublicProfilePage` agora buscam todas as reviews, extraem os IDs das músicas e fazem **um único request** (O(1)) para o backend, resolvendo o gargalo N+1.
 
+### Reformulação do Cadastro e Correções no BD (Atualização Recente)
+- **Correção Postgres:** As colunas em *camelCase* (`userId`, `trackId`, `createdAt`, `updatedAt`) receberam aspas duplas nas queries SQL para evitar que o PostgreSQL as lesse como minúsculas e retornasse erro 500 nas listagens e criações de avaliação.
+- **Novas Colunas (Migrações):** Foram adicionadas colunas `email`, `name`, `gender` e `birth_date` à tabela `users` (via `ALTER TABLE` no startup da API) para suportar perfis mais completos.
+- **Fluxo de Login em Etapas:** A interface de Autenticação foi unificada em `LoginPage.jsx` utilizando um fluxo de *Steps*:
+  1. Input de Email (Verifica se já existe na base via endpoint `POST /auth/check-email`).
+  2. Input de Senha (se o e-mail existir) ou Criação de Username + Senha Forte (mínimo de 10 caracteres, 1 letra e 1 número/símbolo).
+  3. Preenchimento de perfil estendido (nome completo, gênero e data de nascimento via `PUT /auth/profile`).
+
 ## 3. Infraestrutura e Deploy (Current State)
 O projeto está 100% hospedado na nuvem gratuitamente, preparado para monetização futura.
 

@@ -9,7 +9,7 @@ export class ReviewController {
   async getReviewForTrack(userId: number, trackId: string) {
     try {
       const review = await this.db.get(
-        'SELECT * FROM reviews WHERE userId = ? AND trackId = ?',
+        'SELECT * FROM reviews WHERE "userId" = ? AND "trackId" = ?',
         [userId, trackId]
       );
       return { success: true, review: review || null };
@@ -28,7 +28,7 @@ export class ReviewController {
     }
     try {
       const result = await this.db.run(
-        'INSERT INTO reviews (userId, trackId, rating, createdAt, updatedAt) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+        'INSERT INTO reviews ("userId", "trackId", rating, "createdAt", "updatedAt") VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
         [userId, trackId, rating]
       );
       return { success: true, reviewId: result.lastInsertRowid };
@@ -50,7 +50,7 @@ export class ReviewController {
     }
     try {
       const result = await this.db.run(
-        'UPDATE reviews SET rating = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND userId = ?',
+        'UPDATE reviews SET rating = ?, "updatedAt" = CURRENT_TIMESTAMP WHERE id = ? AND "userId" = ?',
         [rating, reviewId, userId]
       );
       
@@ -70,7 +70,7 @@ export class ReviewController {
   async deleteReview(reviewId: number, userId: number) {
     try {
       const result = await this.db.run(
-        'DELETE FROM reviews WHERE id = ? AND userId = ?',
+        'DELETE FROM reviews WHERE id = ? AND "userId" = ?',
         [reviewId, userId]
       );
 

@@ -45,9 +45,25 @@ export class ControllerFactory {
           id SERIAL PRIMARY KEY,
           username TEXT NOT NULL UNIQUE,
           password_hash TEXT NOT NULL,
+          email TEXT UNIQUE,
+          name TEXT,
+          gender TEXT,
+          birth_date DATE,
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `);
+      
+      // Migrations for existing tables
+      try {
+        await database.exec(`
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT UNIQUE;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE;
+        `);
+      } catch (e) {
+        console.log('Postgres migration info (columns might already exist):', e);
+      }
 
       await database.exec(`
         CREATE TABLE IF NOT EXISTS reviews (
@@ -79,9 +95,29 @@ export class ControllerFactory {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           username TEXT NOT NULL UNIQUE,
           password_hash TEXT NOT NULL,
+          email TEXT UNIQUE,
+          name TEXT,
+          gender TEXT,
+          birth_date TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+      `);
 
+      // Migrations for existing SQLite tables
+      try {
+        await database.exec('ALTER TABLE users ADD COLUMN email TEXT;');
+      } catch (e) {}
+      try {
+        await database.exec('ALTER TABLE users ADD COLUMN name TEXT;');
+      } catch (e) {}
+      try {
+        await database.exec('ALTER TABLE users ADD COLUMN gender TEXT;');
+      } catch (e) {}
+      try {
+        await database.exec('ALTER TABLE users ADD COLUMN birth_date TEXT;');
+      } catch (e) {}
+
+      await database.exec(`
         CREATE TABLE IF NOT EXISTS reviews (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           userId INTEGER NOT NULL,
