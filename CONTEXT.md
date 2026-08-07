@@ -46,6 +46,10 @@ A arquitetura foi inteiramente refatorada para o padrão Cloud-Ready:
   2. Input de Senha (se o e-mail existir) ou Criação de Username + Senha Forte (mínimo de 10 caracteres, 1 letra e 1 número/símbolo).
   3. Preenchimento de perfil estendido (nome completo, gênero e data de nascimento via `PUT /auth/profile`).
 
+### Fluxo de Testes Locais (Atualização Recente)
+- **Suporte a SQLite Local:** Para possibilitar o desenvolvimento sem afetar o banco Supabase (produção), o suporte ao SQLite foi reintroduzido no Node.js através da biblioteca `better-sqlite3`. Ao configurar `DB_TYPE=sqlite` no `.env`, a API gera um arquivo `database.sqlite` em vez de conectar-se remotamente.
+- **Branch de Desenvolvimento:** Criada uma branch `development` para realizar e testar alterações localmente antes de realizar o merge para a branch `master` e acionar o deploy automático.
+
 ## 3. Infraestrutura e Deploy (Current State)
 O projeto está 100% hospedado na nuvem gratuitamente, preparado para monetização futura.
 
