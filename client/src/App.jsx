@@ -6,9 +6,12 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import TrackDetailsPage from './pages/TrackDetailsPage';
+import AlbumDetailsPage from './pages/AlbumDetailsPage';
+import ArtistDetailsPage from './pages/ArtistDetailsPage';
 import ProfilePage from './pages/ProfilePage';
 import PublicProfilePage from './pages/PublicProfilePage';
 import UserSearchPage from './pages/UserSearchPage';
+import FeedPage from './pages/FeedPage';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -40,6 +43,9 @@ function App() {
             <>
              <Button component={Link} to="/profile" sx={{ mr: 2 }}>
                 Meu Perfil
+             </Button>
+             <Button component={Link} to="/feed" sx={{ mr: 2 }}>
+                Feed
              </Button>
              <Button component={Link} to="/search-users" sx={{ mr: 2 }}>
                 Comunidade
@@ -76,9 +82,12 @@ function App() {
         <Route path="/register" element={<LoginPage />} />
         <Route path="/search" element={<ProtectedRoute><SearchResultsPage /></ProtectedRoute>} />
         <Route path="/music/:id" element={<ProtectedRoute><TrackDetailsPage /></ProtectedRoute>} />
+        <Route path="/album/:id" element={<ProtectedRoute><AlbumDetailsPage /></ProtectedRoute>} />
+        <Route path="/artist/:id" element={<ProtectedRoute><ArtistDetailsPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/user/:username" element={<ProtectedRoute><PublicProfilePage /></ProtectedRoute>} />
         <Route path="/search-users" element={<ProtectedRoute><UserSearchPage /></ProtectedRoute>} />
+        <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
       </Routes>
     </Container>
   );

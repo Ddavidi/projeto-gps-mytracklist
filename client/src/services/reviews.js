@@ -1,43 +1,57 @@
 import api from './api';
 
 /**
- * Obtém a avaliação de um utilizador para uma música específica.
- * @param {string} trackId O ID da música no Spotify.
- * @returns {Promise<Object | null>} Uma promessa que resolve para o objeto da avaliação ou null.
+ * Obtém a avaliação do utilizador para um item (track, album ou artist).
+ * @param {string} itemType - 'track', 'album' ou 'artist'
+ * @param {string} itemId - ID do item no Spotify
  */
-export const getUserReviewForTrack = async (trackId) => {
+export const getUserReviewForItem = async (itemType, itemId) => {
   try {
-    const response = await api.get(`/reviews/${trackId}`);
-    return response.data; // Retorna a avaliação ou null se não houver
+    const response = await api.get(`/reviews/${itemType}/${itemId}`);
+    return response.data;
   } catch (error) {
-    // Se der 404 (não encontrado) ou outro erro, assumimos que não há avaliação
     console.error('Erro ao buscar avaliação existente:', error);
     return null;
   }
 };
 
 /**
- * Cria ou atualiza uma avaliação para uma música.
- * @param {string} trackId O ID da música no Spotify.
- * @param {number} rating A nota (0-10).
- * @param {number | null} [existingReviewId=null] O ID da avaliação existente, se houver.
- * @returns {Promise<Object>} A resposta da API.
+ * @deprecated Use getUserReviewForItem instead.
+ * Mantido para compatibilidade com componentes ainda não migrados.
  */
-export const saveReview = async (trackId, rating, existingReviewId = null) => {
+export const getUserReviewForTrack = async (trackId) => {
+  return getUserReviewForItem('track', trackId);
+};
+
+/**
+ * Cria ou atualiza uma avaliação para qualquer tipo de item.
+ * @param {string} itemType - 'track', 'album' ou 'artist'
+ * @param {string} itemId - ID do item no Spotify
+ * @param {number} rating - Nota (0-10)
+ * @param {string|null} reviewText - Texto da review (opcional)
+ * @param {number|null} existingReviewId - ID da avaliação existente (para update)
+ */
+export const saveReview = async (itemType, itemId, rating, reviewText = null, existingReviewId = null) => {
   if (existingReviewId) {
-    // Atualiza a avaliação existente
-    const response = await api.put(`/reviews/${existingReviewId}`, { rating });
+    const response = await api.put(`/reviews/${existingReviewId}`, { rating, reviewText });
     return response.data;
   } else {
-    // Cria uma nova avaliação
-    const response = await api.post('/reviews', { trackId, rating });
+    const response = await api.post('/reviews', { itemType, itemId, rating, reviewText });
     return response.data;
   }
 };
 
 /**
+ * Apaga uma avaliação.
+ * @param {number} reviewId - ID da avaliação
+ */
+export const deleteReview = async (reviewId) => {
+  const response = await api.delete(`/reviews/${reviewId}`);
+  return response.data;
+};
+
+/**
  * Obtém todas as avaliações do utilizador autenticado.
- * @returns {Promise<Array>} Uma promessa que resolve para um array de avaliações.
  */
 export const getMyReviews = async () => {
   const response = await api.get('/users/me/reviews');
@@ -45,9 +59,8 @@ export const getMyReviews = async () => {
 };
 
 /**
- * Obtém as avaliações de um utilizador específico pelo seu nome de utilizador.
- * @param {string} username O nome de utilizador.
- * @returns {Promise<Object>} Um objeto contendo { user, reviews }.
+ * Obtém as avaliações de um utilizador específico pelo nome.
+ * @param {string} username
  */
 export const getUserReviewsByUsername = async (username) => {
   const response = await api.get(`/users/${username}/reviews`);
