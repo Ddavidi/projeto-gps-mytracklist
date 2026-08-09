@@ -2,6 +2,9 @@ import { Router, Request, Response } from 'express';
 import { ReviewController } from '../controllers/ReviewController';
 import { requireAuth } from '../middleware/auth';
 
+type ItemType = 'track' | 'album' | 'artist';
+const VALID_ITEM_TYPES: ItemType[] = ['track', 'album', 'artist'];
+
 export function createReviewRouter(reviewController: ReviewController): Router {
   const router = Router();
 
@@ -9,11 +12,22 @@ export function createReviewRouter(reviewController: ReviewController): Router {
   router.use(requireAuth);
 
   /**
-   * GET /reviews/:trackId
-   * Obtém a avaliação do utilizador autenticado para uma música.
+   * GET /reviews/:itemType/:itemId
+   * Obtém a avaliação do utilizador autenticado para um item (track, album ou artist).
    */
-  router.get('/:trackId', async (req: Request, res: Response) => {
-    const result = await reviewController.getReviewForTrack(req.user!.userId, req.params.trackId!);
+  router.get('/:itemType/:itemId', async (req: Request, res: Response) => {
+    const { itemType, itemId } = req.params as { itemType: string; itemId: string };
+
+    if (!VALID_ITEM_TYPES.includes(itemType as ItemType)) {
+      res.status(400).json({ error: 'Tipo de item inválido. Use: track, album ou artist.' });
+      return;
+    }
+
+    const result = await reviewController.getReviewForItem(
+      req.user!.userId,
+      itemType as ItemType,
+      itemId
+    );
 
     if (result.success) {
       res.json(result.review);
@@ -25,16 +39,27 @@ export function createReviewRouter(reviewController: ReviewController): Router {
   /**
    * POST /reviews
    * Cria uma nova avaliação.
+   * Body: { itemId, itemType, rating, reviewText? }
    */
   router.post('/', async (req: Request, res: Response) => {
-    const { trackId, rating } = req.body;
+    const { itemId, itemType, rating, reviewText } = req.body;
 
-    if (!trackId) {
-      res.status(400).json({ error: 'ID da música é obrigatório.' });
+    if (!itemId) {
+      res.status(400).json({ error: 'ID do item é obrigatório.' });
+      return;
+    }
+    if (!itemType || !VALID_ITEM_TYPES.includes(itemType as ItemType)) {
+      res.status(400).json({ error: 'Tipo de item inválido. Use: track, album ou artist.' });
       return;
     }
 
-    const result = await reviewController.createReview(req.user!.userId, trackId, Number(rating));
+    const result = await reviewController.createReview(
+      req.user!.userId,
+      itemType as ItemType,
+      itemId,
+      Number(rating),
+      reviewText
+    );
 
     if (result.success) {
       res.status(201).json(result);
@@ -46,12 +71,14 @@ export function createReviewRouter(reviewController: ReviewController): Router {
   /**
    * PUT /reviews/:reviewId
    * Atualiza uma avaliação existente.
+   * Body: { rating, reviewText? }
    */
   router.put('/:reviewId', async (req: Request, res: Response) => {
     const result = await reviewController.updateReview(
       Number(req.params.reviewId!),
       req.user!.userId,
-      Number(req.body.rating)
+      Number(req.body.rating),
+      req.body.reviewText
     );
 
     if (result.success) {

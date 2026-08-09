@@ -11,6 +11,7 @@ import { createAuthRouter } from './routes/auth.routes';
 import { createReviewRouter } from './routes/review.routes';
 import { createSpotifyRouter } from './routes/spotify.routes';
 import { createUserRouter } from './routes/user.routes';
+import { createSocialRouter } from './routes/social.routes';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -67,6 +68,7 @@ async function startServer() {
     // Criar controllers
     const userController = ControllerFactory.createUserController();
     const reviewController = ControllerFactory.createReviewController();
+    const socialController = ControllerFactory.createSocialController();
     const spotifyService = new SpotifyService();
 
     // Montar rotas
@@ -74,6 +76,7 @@ async function startServer() {
     app.use('/api/v1/reviews', createReviewRouter(reviewController));
     app.use('/api/v1/spotify', createSpotifyRouter(spotifyService));
     app.use('/api/v1/users', createUserRouter(userController));
+    app.use('/api/v1/social', createSocialRouter(socialController));
 
     // Iniciar servidor
     app.listen(PORT, '0.0.0.0', () => {

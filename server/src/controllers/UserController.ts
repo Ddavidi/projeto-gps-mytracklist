@@ -110,7 +110,7 @@ export class UserController {
   async getUserReviews(userId: number) {
     try {
       const reviews = await this.db.all(
-        'SELECT id, "trackId", rating, "createdAt", "updatedAt" FROM reviews WHERE "userId" = ? ORDER BY "createdAt" DESC',
+        'SELECT id, item_id, item_type, rating, review_text, "createdAt", "updatedAt" FROM reviews WHERE "userId" = ? ORDER BY "createdAt" DESC',
         [userId]
       );
       return { success: true, reviews: reviews || [] };
