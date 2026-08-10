@@ -104,17 +104,7 @@ export class ControllerFactory {
         // Drop old unique constraint and add new one
         await database.exec(`ALTER TABLE reviews DROP CONSTRAINT IF EXISTS reviews_userId_trackId_key`);
         await database.exec(`ALTER TABLE reviews DROP CONSTRAINT IF EXISTS "reviews_userId_trackId_key"`);
-        await database.exec(`
-          DO $$
-          BEGIN
-            IF NOT EXISTS (
-              SELECT 1 FROM pg_constraint WHERE conname = 'reviews_userid_itemid_itemtype_unique'
-            ) THEN
-              ALTER TABLE reviews ADD CONSTRAINT reviews_userid_itemid_itemtype_unique
-                UNIQUE ("userId", item_id, item_type);
-            END IF;
-          END $$
-        `);
+        await database.exec(`ALTER TABLE reviews ADD CONSTRAINT reviews_userid_itemid_itemtype_unique UNIQUE ("userId", item_id, item_type)`);
       } catch (e) {
         console.log('Postgres migration info (unique constraint update):', e);
       }

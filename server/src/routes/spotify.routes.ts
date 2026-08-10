@@ -98,5 +98,59 @@ export function createSpotifyRouter(spotifyService: SpotifyService): Router {
     }
   });
 
+  /**
+   * POST /spotify/albums/batch
+   * Obtém detalhes de múltiplos álbuns de uma vez.
+   * Body: { ids: ["id1", "id2", ...] }
+   */
+  router.post('/albums/batch', async (req: Request, res: Response) => {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: 'Array de IDs é obrigatório.' });
+      return;
+    }
+
+    if (ids.length > 20) {
+      res.status(400).json({ error: 'Máximo de 20 IDs por requisição.' });
+      return;
+    }
+
+    try {
+      const albums = await spotifyService.getMultipleAlbums(ids);
+      res.json(albums);
+    } catch (err) {
+      console.error('Erro ao obter múltiplos álbuns:', err);
+      res.status(500).json({ error: 'Falha ao obter detalhes dos álbuns.' });
+    }
+  });
+
+  /**
+   * POST /spotify/artists/batch
+   * Obtém detalhes de múltiplos artistas de uma vez.
+   * Body: { ids: ["id1", "id2", ...] }
+   */
+  router.post('/artists/batch', async (req: Request, res: Response) => {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: 'Array de IDs é obrigatório.' });
+      return;
+    }
+
+    if (ids.length > 50) {
+      res.status(400).json({ error: 'Máximo de 50 IDs por requisição.' });
+      return;
+    }
+
+    try {
+      const artists = await spotifyService.getMultipleArtists(ids);
+      res.json(artists);
+    } catch (err) {
+      console.error('Erro ao obter múltiplos artistas:', err);
+      res.status(500).json({ error: 'Falha ao obter detalhes dos artistas.' });
+    }
+  });
+
   return router;
 }

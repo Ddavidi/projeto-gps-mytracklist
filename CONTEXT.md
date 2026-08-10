@@ -62,12 +62,15 @@ O projeto está 100% hospedado na nuvem gratuitamente, preparado para monetizaç
   - Configuração de CORS no backend permitindo a origem do Cloudflare.
 
 ## 4. Funcionalidades Sociais e de Catálogo (Fase Recente)
-- **Catálogo Expandido:** O backend e frontend agora suportam nativamente Músicas, Álbuns e Artistas (através do campo `item_type` e das novas rotas do SpotifyService).
+- **Catálogo Expandido & Busca Avançada:** O backend e frontend agora suportam nativamente Músicas, Álbuns e Artistas (através do campo `item_type` e das novas rotas do SpotifyService).
+  - A barra de pesquisa foi totalmente reformulada seguindo o estilo do AniList (menu dropdown em 3 colunas simultâneas: Músicas, Álbuns e Artistas) com links diretos para as novas páginas de Detalhes de Álbum e Artista.
+  - Correção implementada nos endpoints em lote (`/batch`) para que a página de perfil exiba adequadamente álbuns e artistas.
 - **Rede Social (AniList-style):**
   - Utilizadores podem seguir-se uns aos outros (`/social/follow`).
   - Feed social (`/feed`) que agrega as avaliações recentes das pessoas seguidas, com enriquecimento de dados em batch via Spotify API.
   - Seção "Following" nas páginas de detalhe (Música, Álbum, Artista), mostrando quais amigos já avaliaram aquele mesmo item e o que disseram.
   - Avaliações agora suportam campo de texto (`review_text`).
+  - Atualização do banco Supabase/PostgreSQL com `try/catch` nativo para garantir compatibilidade com `pg` nas constraints únicas (resolvendo bug de *dollar-quoted string*).
 
 ## 5. Próximos Passos Atuais (Aguardando Design)
 - **Redesign do Frontend (Figma):** O próximo grande passo é a reformulação total do design do frontend (estética premium, dark mode, animações dinâmicas). **[AGUARDANDO AÇÃO DO USER]**: O user deve fornecer os *prints/telas do Figma* no chat para que a implementação do CSS/UI possa começar.

@@ -67,3 +67,37 @@ export const getMultipleTrackDetails = async (trackIds) => {
   });
   return trackMap;
 };
+
+/**
+ * Função para obter os detalhes de múltiplos álbuns de uma só vez (batch).
+ * @param {string[]} albumIds Array de IDs de álbuns do Spotify.
+ * @returns {Promise<Object>} Um mapa { albumId: albumData }.
+ */
+export const getMultipleAlbumDetails = async (albumIds) => {
+  if (!albumIds || albumIds.length === 0) return {};
+
+  const response = await api.post('/spotify/albums/batch', { ids: albumIds });
+
+  const map = {};
+  response.data.forEach((album) => {
+    map[album.id] = album;
+  });
+  return map;
+};
+
+/**
+ * Função para obter os detalhes de múltiplos artistas de uma só vez (batch).
+ * @param {string[]} artistIds Array de IDs de artistas do Spotify.
+ * @returns {Promise<Object>} Um mapa { artistId: artistData }.
+ */
+export const getMultipleArtistDetails = async (artistIds) => {
+  if (!artistIds || artistIds.length === 0) return {};
+
+  const response = await api.post('/spotify/artists/batch', { ids: artistIds });
+
+  const map = {};
+  response.data.forEach((artist) => {
+    map[artist.id] = artist;
+  });
+  return map;
+};
