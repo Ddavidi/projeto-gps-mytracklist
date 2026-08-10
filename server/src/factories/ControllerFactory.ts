@@ -195,7 +195,7 @@ export class ControllerFactory {
       `);
 
       // Migrations for existing SQLite reviews (trackId -> item_id)
-      // SQLite does not support RENAME COLUMN in older versions; we handle gracefully
+      try { await database.exec('ALTER TABLE reviews RENAME COLUMN trackId TO item_id;'); } catch (e) {}
       try { await database.exec('ALTER TABLE reviews ADD COLUMN item_type TEXT NOT NULL DEFAULT \'track\';'); } catch (e) {}
       try { await database.exec('ALTER TABLE reviews ADD COLUMN review_text TEXT;'); } catch (e) {}
 

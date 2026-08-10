@@ -142,10 +142,11 @@ export class SpotifyService {
    * Resolve o problema N+1 ao listar avaliações.
    */
   public async getMultipleTracks(trackIds: string[]) {
-    if (trackIds.length === 0) return [];
+    const validIds = trackIds.filter(id => id && id.trim() !== '');
+    if (validIds.length === 0) return [];
 
     const accessToken = await this.getAccessToken();
-    const ids = trackIds.slice(0, 50).join(',');
+    const ids = validIds.slice(0, 50).join(',');
 
     const response = await fetch(`https://api.spotify.com/v1/tracks?ids=${ids}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -218,10 +219,11 @@ export class SpotifyService {
    * A API do Spotify suporta até 20 IDs por chamada.
    */
   public async getMultipleAlbums(albumIds: string[]) {
-    if (albumIds.length === 0) return [];
+    const validIds = albumIds.filter(id => id && id.trim() !== '');
+    if (validIds.length === 0) return [];
 
     const accessToken = await this.getAccessToken();
-    const ids = albumIds.slice(0, 20).join(',');
+    const ids = validIds.slice(0, 20).join(',');
 
     const response = await fetch(`https://api.spotify.com/v1/albums?ids=${ids}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -298,10 +300,11 @@ export class SpotifyService {
    * A API do Spotify suporta até 50 IDs por chamada.
    */
   public async getMultipleArtists(artistIds: string[]) {
-    if (artistIds.length === 0) return [];
+    const validIds = artistIds.filter(id => id && id.trim() !== '');
+    if (validIds.length === 0) return [];
 
     const accessToken = await this.getAccessToken();
-    const ids = artistIds.slice(0, 50).join(',');
+    const ids = validIds.slice(0, 50).join(',');
 
     const response = await fetch(`https://api.spotify.com/v1/artists?ids=${ids}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
