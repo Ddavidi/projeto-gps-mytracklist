@@ -7,7 +7,7 @@ export function createFavoriteRouter(favoriteController: FavoriteController): Ro
 
   // GET /favorites/:userId -> Retorna favoritos de um usuário (rota pública, não precisa de auth)
   router.get('/:userId', async (req: Request, res: Response) => {
-    const userId = parseInt(req.params.userId, 10);
+    const userId = parseInt(req.params.userId as string, 10);
     if (isNaN(userId)) {
       res.status(400).json({ error: 'ID de utilizador inválido.' });
       return;
@@ -47,7 +47,7 @@ export function createFavoriteRouter(favoriteController: FavoriteController): Ro
     const { itemType, itemId } = req.params;
     const userId = req.user!.userId;
 
-    const result = await favoriteController.removeFavorite(userId, itemType, itemId);
+    const result = await favoriteController.removeFavorite(userId, itemType as string, itemId as string);
 
     if (result.success) {
       res.json({ success: true });
