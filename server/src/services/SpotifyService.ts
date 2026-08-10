@@ -75,26 +75,30 @@ export class SpotifyService {
   public async searchMulti(query: string, limit: number = 6) {
     const accessToken = await this.getAccessToken();
 
-    const searchParams = new URLSearchParams({
-      q: query,
-      type: 'track,album,artist',
-      limit: limit.toString(),
-    });
-
-    const response = await fetch(`https://api.spotify.com/v1/search?${searchParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
+    const fetchSearch = async (type: string, qPrefix: string) => {
+      // Add wildcard or just the exact word, but usually just prefixing works well
+      const searchParams = new URLSearchParams({
+        q: `${qPrefix}:${query}`,
+        type,
+        limit: limit.toString(),
+      });
+      const response = await fetch(`https://api.spotify.com/v1/search?${searchParams.toString()}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (!response.ok) {
+        console.error(`Falha ao pesquisar ${type} no Spotify:`, await response.text());
+        return null;
       }
-    });
+      return response.json();
+    };
 
-    if (!response.ok) {
-      console.error('Falha ao pesquisar no Spotify:', await response.text());
-      throw new Error('Falha ao pesquisar no Spotify.');
-    }
+    const [trackData, albumData, artistData] = await Promise.all([
+      fetchSearch('track', 'track'),
+      fetchSearch('album', 'album'),
+      fetchSearch('artist', 'artist')
+    ]);
 
-    const data = await response.json();
-
-    const tracks = (data.tracks?.items || []).map((track: any) => ({
+    const tracks = (trackData?.tracks?.items || []).map((track: any) => ({
       id: track.id,
       name: track.name,
       artist: track.artists?.map((a: any) => a.name).join(', ') || '',
@@ -104,7 +108,7 @@ export class SpotifyService {
       previewUrl: track.preview_url,
     }));
 
-    const albums = (data.albums?.items || []).map((album: any) => ({
+    const albums = (albumData?.albums?.items || []).map((album: any) => ({
       id: album.id,
       name: album.name,
       artist: album.artists?.map((a: any) => a.name).join(', ') || '',
@@ -114,7 +118,7 @@ export class SpotifyService {
       albumType: album.album_type,
     }));
 
-    const artists = (data.artists?.items || []).map((artist: any) => ({
+    const artists = (artistData?.artists?.items || []).map((artist: any) => ({
       id: artist.id,
       name: artist.name,
       imageUrl: artist.images[0]?.url || '',
@@ -146,11 +150,29 @@ export class SpotifyService {
     }
 
     const album = await response.json();
+    const artistId = album.artists?.[0]?.id;
+    let artistImageUrl = '';
+    
+    if (artistId) {
+      try {
+        const artistRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        if (artistRes.ok) {
+          const artistData = await artistRes.json();
+          artistImageUrl = artistData.images?.[0]?.url || '';
+        }
+      } catch (err) {
+        console.error('Erro ao buscar foto do artista:', err);
+      }
+    }
 
     return {
       id: album.id,
       name: album.name,
       artist: album.artists?.map((a: any) => a.name).join(', ') || '',
+      artistId: artistId,
+      artistImageUrl: artistImageUrl,
       imageUrl: album.images[0]?.url || '',
       releaseDate: album.release_date || '',
       totalTracks: album.total_tracks,
@@ -180,7 +202,7 @@ export class SpotifyService {
       fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       }),
-      fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=10&include_groups=album,single`, {
+      fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=50&include_groups=album,single`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       })
     ]);
@@ -238,13 +260,33 @@ export class SpotifyService {
     }
 
     const track = await response.json();
+    const artistId = track.artists?.[0]?.id;
+    let artistImageUrl = '';
+    
+    if (artistId) {
+      try {
+        const artistRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        if (artistRes.ok) {
+          const artistData = await artistRes.json();
+          artistImageUrl = artistData.images?.[0]?.url || '';
+        }
+      } catch (err) {
+        console.error('Erro ao buscar foto do artista:', err);
+      }
+    }
 
     return {
       id: track.id,
       name: track.name,
       artist: track.artists.map((artist: any) => artist.name).join(', '),
+      artistId: artistId,
+      artistImageUrl: artistImageUrl,
       album: track.album.name,
+      albumId: track.album.id,
       imageUrl: track.album.images[0]?.url,
+      releaseDate: track.album.release_date,
       durationMs: track.duration_ms,
       previewUrl: track.preview_url,
       popularity: track.popularity,
@@ -293,42 +335,7 @@ export class SpotifyService {
   // Albums
   // =====================
 
-  /**
-   * Obtém detalhes de um álbum específico.
-   */
-  public async getAlbumDetails(albumId: string) {
-    const accessToken = await this.getAccessToken();
 
-    const response = await fetch(`https://api.spotify.com/v1/albums/${albumId}`, {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
-
-    if (!response.ok) {
-      console.error(`Falha ao obter detalhes do álbum ${albumId}:`, await response.text());
-      throw new Error('Falha ao obter detalhes do álbum do Spotify.');
-    }
-
-    const album = await response.json();
-    return {
-      id: album.id,
-      name: album.name,
-      artist: album.artists.map((a: any) => a.name).join(', '),
-      artistIds: album.artists.map((a: any) => a.id),
-      imageUrl: album.images[0]?.url,
-      releaseDate: album.release_date,
-      totalTracks: album.total_tracks,
-      albumType: album.album_type,
-      popularity: album.popularity,
-      externalUrl: album.external_urls.spotify,
-      tracks: album.tracks?.items?.map((t: any) => ({
-        id: t.id,
-        name: t.name,
-        trackNumber: t.track_number,
-        durationMs: t.duration_ms,
-        previewUrl: t.preview_url,
-      })) || [],
-    };
-  }
 
   /**
    * Obtém detalhes de múltiplos álbuns de uma só vez (batch).
@@ -369,47 +376,7 @@ export class SpotifyService {
   // Artists
   // =====================
 
-  /**
-   * Obtém detalhes de um artista específico.
-   */
-  public async getArtistDetails(artistId: string) {
-    const accessToken = await this.getAccessToken();
 
-    const [artistRes, topTracksRes] = await Promise.all([
-      fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      }),
-      fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=BR`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      }),
-    ]);
-
-    if (!artistRes.ok) {
-      console.error(`Falha ao obter detalhes do artista ${artistId}:`, await artistRes.text());
-      throw new Error('Falha ao obter detalhes do artista do Spotify.');
-    }
-
-    const artist = await artistRes.json();
-    const topTracksData = topTracksRes.ok ? await topTracksRes.json() : { tracks: [] };
-
-    return {
-      id: artist.id,
-      name: artist.name,
-      imageUrl: artist.images[0]?.url,
-      genres: artist.genres,
-      popularity: artist.popularity,
-      followers: artist.followers?.total,
-      externalUrl: artist.external_urls.spotify,
-      topTracks: topTracksData.tracks.slice(0, 5).map((t: any) => ({
-        id: t.id,
-        name: t.name,
-        album: t.album.name,
-        imageUrl: t.album.images[0]?.url,
-        durationMs: t.duration_ms,
-        previewUrl: t.preview_url,
-      })),
-    };
-  }
 
   /**
    * Obtém detalhes de múltiplos artistas de uma só vez (batch).
@@ -452,26 +419,34 @@ export class SpotifyService {
   public async searchAll(query: string, types: string = 'track,album,artist', limit: number = 10) {
     const accessToken = await this.getAccessToken();
 
-    const searchParams = new URLSearchParams({
-      q: query,
-      type: types,
-      limit: limit.toString(),
-      market: 'BR',
-    });
+    const fetchSearch = async (type: string, qPrefix: string) => {
+      const searchParams = new URLSearchParams({
+        q: `${qPrefix}:${query}`,
+        type,
+        limit: limit.toString(),
+        market: 'BR',
+      });
+      const response = await fetch(`https://api.spotify.com/v1/search?${searchParams.toString()}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (!response.ok) {
+        console.error(`Falha ao pesquisar ${type} no Spotify:`, await response.text());
+        return null;
+      }
+      return response.json();
+    };
 
-    const response = await fetch(`https://api.spotify.com/v1/search?${searchParams.toString()}`, {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
+    const typeArr = types.split(',');
+    const promises = [];
+    
+    if (typeArr.includes('track')) promises.push(fetchSearch('track', 'track')); else promises.push(Promise.resolve(null));
+    if (typeArr.includes('album')) promises.push(fetchSearch('album', 'album')); else promises.push(Promise.resolve(null));
+    if (typeArr.includes('artist')) promises.push(fetchSearch('artist', 'artist')); else promises.push(Promise.resolve(null));
 
-    if (!response.ok) {
-      console.error('Falha ao pesquisar no Spotify:', await response.text());
-      throw new Error('Falha ao pesquisar no Spotify.');
-    }
-
-    const data = await response.json();
+    const [trackData, albumData, artistData] = await Promise.all(promises);
 
     return {
-      tracks: (data.tracks?.items || []).map((track: any) => ({
+      tracks: (trackData?.tracks?.items || []).map((track: any) => ({
         id: track.id,
         name: track.name,
         artist: track.artists.map((a: any) => a.name).join(', '),
@@ -480,7 +455,7 @@ export class SpotifyService {
         durationMs: track.duration_ms,
         previewUrl: track.preview_url,
       })),
-      albums: (data.albums?.items || []).map((album: any) => ({
+      albums: (albumData?.albums?.items || []).map((album: any) => ({
         id: album.id,
         name: album.name,
         artist: album.artists.map((a: any) => a.name).join(', '),
@@ -489,7 +464,7 @@ export class SpotifyService {
         totalTracks: album.total_tracks,
         albumType: album.album_type,
       })),
-      artists: (data.artists?.items || []).map((artist: any) => ({
+      artists: (artistData?.artists?.items || []).map((artist: any) => ({
         id: artist.id,
         name: artist.name,
         imageUrl: artist.images[0]?.url,

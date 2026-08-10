@@ -101,4 +101,41 @@ export class ReviewController {
       return { success: false, message: 'Falha ao apagar avaliação.' };
     }
   }
+
+  /**
+   * Obtém estatísticas de um item (média de notas, total de avaliações e distribuição).
+   */
+  async getItemStats(itemType: ItemType, itemId: string) {
+    try {
+      const stats = await this.db.get(
+        'SELECT AVG(rating) as averageScore, COUNT(id) as totalReviews FROM reviews WHERE item_type = ? AND item_id = ? AND rating IS NOT NULL',
+        [itemType, itemId]
+      );
+      
+      const distributionRows = await this.db.all(
+        'SELECT rating, COUNT(id) as count FROM reviews WHERE item_type = ? AND item_id = ? AND rating IS NOT NULL GROUP BY rating',
+        [itemType, itemId]
+      );
+      
+      const distribution: Record<number, number> = {
+        0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0
+      };
+      
+      for (const row of distributionRows) {
+        distribution[row.rating] = row.count;
+      }
+
+      return { 
+        success: true, 
+        stats: {
+          averageScore: stats?.averageScore ? parseFloat(stats.averageScore.toFixed(1)) : 0,
+          totalReviews: stats?.totalReviews || 0,
+          distribution
+        }
+      };
+    } catch (error) {
+      console.error('Falha ao obter estatísticas:', error);
+      return { success: false, message: 'Falha ao obter estatísticas.' };
+    }
+  }
 }

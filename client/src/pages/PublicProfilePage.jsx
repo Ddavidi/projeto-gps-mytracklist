@@ -1,23 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { getUserReviewsByUsername } from '../services/reviews';
+import { getUserFavorites } from '../services/favorites';
 import { followUser, unfollowUser, checkIsFollowing, getFollowers, getFollowing } from '../services/social';
 import { getMultipleTrackDetails, getMultipleAlbumDetails, getMultipleArtistDetails } from '../services/spotify';
-import {
-  Container,
-  Typography,
-  Box,
-  List,
-  CircularProgress,
-  Alert,
-  Paper,
-  Divider,
-  Button,
-  Tabs,
-  Tab
-} from '@mui/material';
-import ReviewItem from '../components/ReviewItem';
+import { Container, Box, CircularProgress, Alert } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
+
+import ProfileHeader from '../components/profile/ProfileHeader';
+import ProfileTabs from '../components/profile/ProfileTabs';
+import ProfileOverview from '../components/profile/ProfileOverview';
+import ProfileMediaGrid from '../components/profile/ProfileMediaGrid';
+import ProfileSocial from '../components/profile/ProfileSocial';
+import ProfileStatus from '../components/profile/ProfileStatus';
 
 function PublicProfilePage() {
   const { username } = useParams();
@@ -25,7 +20,10 @@ function PublicProfilePage() {
   
   const [targetUser, setTargetUser] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [favorites, setFavorites] = useState([]);
   const [itemDetails, setItemDetails] = useState({});
+  const [favoriteDetails, setFavoriteDetails] = useState({});
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -38,10 +36,10 @@ function PublicProfilePage() {
   // Aba ativa
   const [tabIndex, setTabIndex] = useState(0);
 
-  const enrichReviewsWithSpotifyData = useCallback(async (reviewList) => {
-    const trackIds = [...new Set(reviewList.filter(r => r.item_type === 'track').map(r => r.item_id))];
-    const albumIds = [...new Set(reviewList.filter(r => r.item_type === 'album').map(r => r.item_id))];
-    const artistIds = [...new Set(reviewList.filter(r => r.item_type === 'artist').map(r => r.item_id))];
+  const enrichDataWithSpotify = useCallback(async (items, isFavorites = false) => {
+    const trackIds = [...new Set(items.filter(i => i.item_type === 'track').map(i => i.item_id))];
+    const albumIds = [...new Set(items.filter(i => i.item_type === 'album').map(i => i.item_id))];
+    const artistIds = [...new Set(items.filter(i => i.item_type === 'artist').map(i => i.item_id))];
 
     const [tracks, albums, artists] = await Promise.all([
       getMultipleTrackDetails(trackIds),
@@ -49,7 +47,13 @@ function PublicProfilePage() {
       getMultipleArtistDetails(artistIds),
     ]);
 
-    return { ...tracks, ...albums, ...artists };
+    const details = { ...tracks, ...albums, ...artists };
+    
+    if (isFavorites) {
+      setFavoriteDetails(details);
+    } else {
+      setItemDetails(details);
+    }
   }, []);
 
   useEffect(() => {
@@ -62,21 +66,25 @@ function PublicProfilePage() {
         setTargetUser(response.user);
         setReviews(response.reviews || []);
 
-        if (response.reviews && response.reviews.length > 0) {
-          const details = await enrichReviewsWithSpotifyData(response.reviews);
-          setItemDetails(details);
-        }
-
-        // Buscar dados sociais se o user for encontrado
         if (response.user) {
-          const [followers, following, followingStatus] = await Promise.all([
+          const [myFavs, followers, following, followingStatus] = await Promise.all([
+            getUserFavorites(response.user.id),
             getFollowers(response.user.id),
             getFollowing(response.user.id),
             currentUser ? checkIsFollowing(response.user.id) : Promise.resolve(false)
           ]);
+
+          setFavorites(myFavs || []);
           setFollowersCount(followers.length);
           setFollowingCount(following.length);
           setIsFollowing(followingStatus);
+
+          if (response.reviews && response.reviews.length > 0) {
+            await enrichDataWithSpotify(response.reviews, false);
+          }
+          if (myFavs && myFavs.length > 0) {
+            await enrichDataWithSpotify(myFavs, true);
+          }
         }
 
       } catch (err) {
@@ -92,7 +100,7 @@ function PublicProfilePage() {
     };
 
     fetchData();
-  }, [username, enrichReviewsWithSpotifyData, currentUser]);
+  }, [username, enrichDataWithSpotify, currentUser]);
 
   const handleToggleFollow = async () => {
     if (!targetUser) return;
@@ -114,74 +122,49 @@ function PublicProfilePage() {
     }
   };
 
-  const handleTabChange = (event, newValue) => {
-    setTabIndex(newValue);
-  };
-
   if (loading) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>;
+    return <Box sx={{ display: 'flex', justifyContent: 'center', my: 8 }}><CircularProgress /></Box>;
   }
   if (error) {
-    return <Container maxWidth="md" sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Container>;
+    return <Container maxWidth="lg" sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Container>;
   }
 
-  const currentType = tabIndex === 0 ? 'track' : tabIndex === 1 ? 'album' : 'artist';
-  const filteredReviews = reviews.filter(r => (r.item_type || 'track') === currentType);
+  const renderTabContent = () => {
+    switch (tabIndex) {
+      case 0:
+        return <ProfileOverview reviews={reviews} favorites={favorites} favoriteDetails={favoriteDetails} itemDetails={itemDetails} />;
+      case 1:
+        return <ProfileMediaGrid type="track" reviews={reviews} itemDetails={itemDetails} />;
+      case 2:
+        return <ProfileMediaGrid type="album" reviews={reviews} itemDetails={itemDetails} />;
+      case 3:
+        return <ProfileMediaGrid type="artist" reviews={reviews} itemDetails={itemDetails} />;
+      case 4:
+        return <ProfileSocial userId={targetUser?.id} />;
+      case 5:
+        return <ProfileStatus reviews={reviews} />;
+      default:
+        return null;
+    }
+  };
 
   return (
-    <Container maxWidth="md">
-      <Paper sx={{ p: 4, mt: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h4" component="h1" gutterBottom>
-              Perfil de {targetUser.name || targetUser.username}
-            </Typography>
-            <Typography variant="h6" component="h2" color="text.secondary" gutterBottom>
-              @{targetUser.username}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {followersCount} Seguidores • {followingCount} Seguindo
-            </Typography>
-          </Box>
-          
-          {currentUser && currentUser.username !== targetUser.username && (
-            <Button
-              variant={isFollowing ? "outlined" : "contained"}
-              color="primary"
-              onClick={handleToggleFollow}
-              disabled={socialLoading}
-            >
-              {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
-            </Button>
-          )}
+    <Container maxWidth="lg" sx={{ pb: 8 }}>
+      <Box sx={{ bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1, overflow: 'hidden', mt: 4, pb: 4 }}>
+        <ProfileHeader 
+          user={targetUser} 
+          isOwner={false}
+          followersCount={followersCount}
+          followingCount={followingCount}
+          isFollowing={isFollowing}
+          onFollowToggle={handleToggleFollow}
+        />
+        
+        <Box sx={{ px: 4 }}>
+          <ProfileTabs value={tabIndex} onChange={(e, val) => setTabIndex(val)} />
+          {renderTabContent()}
         </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs value={tabIndex} onChange={handleTabChange} aria-label="Abas de avaliações">
-            <Tab label="Músicas" />
-            <Tab label="Álbuns" />
-            <Tab label="Artistas" />
-          </Tabs>
-        </Box>
-
-        {filteredReviews.length === 0 ? (
-          <Typography sx={{ mt: 2, color: 'text.secondary' }}>
-            Este utilizador ainda não avaliou {currentType === 'track' ? 'nenhuma música' : currentType === 'album' ? 'nenhum álbum' : 'nenhum artista'}.
-          </Typography>
-        ) : (
-          <List sx={{ width: '100%' }}>
-            {filteredReviews.map((review) => (
-              <ReviewItem
-                key={review.id}
-                review={review}
-                itemData={itemDetails[review.item_id]}
-              />
-            ))}
-          </List>
-        )}
-      </Paper>
+      </Box>
     </Container>
   );
 }

@@ -15,11 +15,15 @@ import {
   ListItemButton,
   Button,
   Divider,
-  Chip
+  Chip,
+  Grid
 } from '@mui/material';
 import AlbumIcon from '@mui/icons-material/Album';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ReviewSection from '../components/ReviewSection';
+import FriendsReviews from '../components/FriendsReviews';
+import ScoreDistribution from '../components/ScoreDistribution';
 
 function AlbumDetailsPage() {
   const { id } = useParams();
@@ -71,90 +75,151 @@ function AlbumDetailsPage() {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
       <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mb: 3 }}>
         Voltar
       </Button>
 
-      {/* Album Header */}
-      <Paper 
-        elevation={3} 
-        sx={{ 
-          p: 3, 
-          borderRadius: 3, 
-          display: 'flex', 
-          flexDirection: { xs: 'column', sm: 'row' }, 
-          alignItems: 'center', 
-          gap: 3,
-          mb: 4,
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)',
-        }}
-      >
-        <Avatar
-          variant="square"
-          src={album.imageUrl}
-          alt={album.name}
-          sx={{ width: 180, height: 180, borderRadius: 2, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}
-        />
-        <Box sx={{ flex: 1, textAlign: { xs: 'center', sm: 'left' } }}>
-          <Chip label="ÁLBUM" color="secondary" size="small" sx={{ fontWeight: 'bold', mb: 1 }} />
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
-            {album.name}
-          </Typography>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
+      <Grid container spacing={4}>
+        {/* Sidebar (Esquerda) */}
+        <Grid size={{ xs: 12, md: 3 }}>
+          <Box
+            component="img"
+            sx={{ width: '100%', height: 'auto', borderRadius: 2, boxShadow: 3 }}
+            alt={album.name}
+            src={album.imageUrl}
+          />
+          
+          <ScoreDistribution itemType="album" itemId={id} />
+
+          <Paper elevation={0} sx={{ p: 2, mt: 2, borderRadius: 2, bgcolor: 'background.paper' }}>
+            <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
+              Informação
+            </Typography>
+            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">Tipo</Typography>
+                <Typography variant="body2" fontWeight="bold" sx={{ textTransform: 'capitalize' }}>{album.albumType || 'Álbum'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">Total de Faixas</Typography>
+                <Typography variant="body2">{album.totalTracks}</Typography>
+              </Box>
+              {album.releaseDate && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">Lançamento</Typography>
+                  <Typography variant="body2">{album.releaseDate}</Typography>
+                </Box>
+              )}
+              {album.label && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">Gravadora</Typography>
+                  <Typography variant="body2">{album.label}</Typography>
+                </Box>
+              )}
+              {album.popularity > 0 && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">Popularidade</Typography>
+                  <Typography variant="body2">{album.popularity}%</Typography>
+                </Box>
+              )}
+            </Box>
+          </Paper>
+
+
+        </Grid>
+
+        {/* Main Content (Direita) */}
+        <Grid size={{ xs: 12, md: 9 }}>
+          <Typography variant="h3" component="h1" fontWeight="bold" gutterBottom>{album.name}</Typography>
+          <Typography variant="h6" color="text.secondary" gutterBottom sx={{ mb: 4 }}>
             {album.artist}
           </Typography>
-          <Typography variant="body2" color="text.disabled">
-            {album.releaseDate ? `Lançamento: ${album.releaseDate} • ` : ''}{album.totalTracks} faixas
-          </Typography>
-        </Box>
-      </Paper>
 
-      {/* Tracklist Section */}
-      <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
-        Faixas do Álbum
-      </Typography>
+          <Typography variant="h6" fontWeight="bold" gutterBottom>Avalie este Álbum</Typography>
+          <ReviewSection itemType="album" itemId={id} />
 
-      <Paper elevation={1} sx={{ borderRadius: 3, overflow: 'hidden' }}>
-        <List disablePadding>
-          {album.tracks?.map((track, index) => (
-            <React.Fragment key={track.id}>
-              {index > 0 && <Divider component="li" />}
-              <ListItem
-                secondaryAction={
-                  <Button 
-                    variant="outlined" 
-                    size="small" 
-                    component={RouterLink} 
-                    to={`/music/${track.id}`}
-                    startIcon={<MusicNoteIcon />}
-                    sx={{ borderRadius: 2 }}
+          <Divider sx={{ my: 4 }} />
+
+          {/* Relações (Artist) */}
+          {album.artistId && (
+            <>
+              <Typography variant="h6" fontWeight="bold" gutterBottom>Relações</Typography>
+              <Grid container spacing={2} sx={{ mb: 4 }}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Paper
+                    component={RouterLink}
+                    to={`/artist/${album.artistId}`}
+                    elevation={1}
+                    sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 2, textDecoration: 'none', color: 'inherit', borderRadius: 2, transition: '0.2s', '&:hover': { bgcolor: 'action.hover' } }}
                   >
-                    Avaliar
-                  </Button>
-                }
-                sx={{
-                  py: 1.5,
-                  px: 2,
-                  '&:hover': { backgroundColor: 'action.hover' }
-                }}
-              >
-                <Typography variant="body2" color="text.secondary" sx={{ width: 32, fontWeight: 600 }}>
-                  {track.trackNumber || index + 1}
-                </Typography>
-                <ListItemText
-                  primary={track.name}
-                  secondary={track.artist !== album.artist ? track.artist : null}
-                  primaryTypographyProps={{ fontWeight: 600 }}
-                />
-                <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
-                  {formatDuration(track.durationMs)}
-                </Typography>
-              </ListItem>
-            </React.Fragment>
-          ))}
-        </List>
-      </Paper>
+                    {album.artistImageUrl ? (
+                      <Avatar src={album.artistImageUrl} alt={album.artist} sx={{ width: 48, height: 48 }} />
+                    ) : (
+                      <Avatar sx={{ width: 48, height: 48 }}>A</Avatar>
+                    )}
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" color="primary" fontWeight="bold" display="block">ARTISTA</Typography>
+                      <Typography variant="body1" fontWeight="bold" noWrap>{album.artist}</Typography>
+                    </Box>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </>
+          )}
+
+          <Divider sx={{ my: 4 }} />
+
+          {/* Tracklist Section */}
+          <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
+            Faixas do Álbum
+          </Typography>
+          <Paper elevation={1} sx={{ borderRadius: 3, overflow: 'hidden', mb: 4 }}>
+            <List disablePadding>
+              {album.tracks?.map((track, index) => (
+                <React.Fragment key={track.id}>
+                  {index > 0 && <Divider component="li" />}
+                  <ListItem
+                    secondaryAction={
+                      <Button 
+                        variant="outlined" 
+                        size="small" 
+                        component={RouterLink} 
+                        to={`/music/${track.id}`}
+                        startIcon={<MusicNoteIcon />}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        Ver
+                      </Button>
+                    }
+                    sx={{
+                      py: 1.5,
+                      px: 2,
+                      '&:hover': { backgroundColor: 'action.hover' }
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" sx={{ width: 32, fontWeight: 600 }}>
+                      {track.trackNumber || index + 1}
+                    </Typography>
+                    <ListItemText
+                      primary={track.name}
+                      secondary={track.artist !== album.artist && track.artist ? track.artist : null}
+                      primaryTypographyProps={{ fontWeight: 600 }}
+                    />
+                    <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+                      {formatDuration(track.durationMs)}
+                    </Typography>
+                  </ListItem>
+                </React.Fragment>
+              ))}
+            </List>
+          </Paper>
+          
+          <Box sx={{ mt: 6 }}>
+            <FriendsReviews itemType="album" itemId={id} />
+          </Box>
+        </Grid>
+      </Grid>
     </Container>
   );
 }

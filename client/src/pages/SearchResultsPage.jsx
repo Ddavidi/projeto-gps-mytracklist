@@ -90,7 +90,7 @@ function SearchResultsPage() {
       {!loading && !error && hasData && (
         <Grid container spacing={3}>
           {/* Column 1: Músicas */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <PaperCardHeader icon={<MusicNoteIcon color="primary" />} title="MÚSICAS" />
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {results.tracks?.map((track) => (
@@ -137,7 +137,7 @@ function SearchResultsPage() {
           </Grid>
 
           {/* Column 2: Álbuns */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <PaperCardHeader icon={<AlbumIcon color="secondary" />} title="ÁLBUNS" />
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {results.albums?.map((album) => (
@@ -182,7 +182,7 @@ function SearchResultsPage() {
           </Grid>
 
           {/* Column 3: Artistas */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <PaperCardHeader icon={<PersonIcon color="success" />} title="ARTISTAS" />
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {results.artists?.map((artist) => (

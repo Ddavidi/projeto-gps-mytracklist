@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { getTrackDetails } from '../services/spotify';
-import { getUserReviewForItem, saveReview } from '../services/reviews';
+
 import {
   Container,
   Typography,
@@ -13,9 +13,13 @@ import {
   Snackbar,
   TextField,
   Button,
+  Divider,
+  Avatar,
 } from '@mui/material';
-import RatingInput from '../components/RatingInput';
+import ReviewSection from '../components/ReviewSection';
 import FriendsReviews from '../components/FriendsReviews';
+import ScoreDistribution from '../components/ScoreDistribution';
+import { Link as RouterLink } from 'react-router-dom';
 
 function TrackDetailsPage() {
   const { id: trackId } = useParams();
@@ -23,88 +27,23 @@ function TrackDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Estados para a avaliação
-  const [currentReview, setCurrentReview] = useState(null);
-  const [reviewText, setReviewText] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Estado para o Snackbar de feedback
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchTrack = async () => {
       try {
         setLoading(true);
         setError('');
-        const [details, review] = await Promise.all([
-          getTrackDetails(trackId),
-          getUserReviewForItem('track', trackId)
-        ]);
+        const details = await getTrackDetails(trackId);
         setTrack(details);
-        setCurrentReview(review);
-        if (review?.review_text) setReviewText(review.review_text);
       } catch (err) {
-        setError('Falha ao carregar os dados da música ou avaliação.');
+        setError('Falha ao carregar os dados da música.');
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchTrack();
   }, [trackId]);
-
-  const handleRatingChange = async (newRating) => {
-    setIsSubmitting(true);
-    try {
-      const existingReviewId = currentReview ? currentReview.id : null;
-      const response = await saveReview('track', trackId, newRating, reviewText, existingReviewId);
-
-      setCurrentReview({
-        ...currentReview,
-        id: existingReviewId || response.reviewId,
-        rating: newRating,
-        review_text: reviewText,
-      });
-
-      setSnackbarMessage('Avaliação salva com sucesso!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    } catch (err) {
-      console.error('Falha ao salvar avaliação:', err);
-      const errorMessage = err.response?.data?.error || 'Falha ao salvar avaliação. Tente novamente.';
-      setSnackbarMessage(errorMessage);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSaveText = async () => {
-    if (!currentReview) return;
-    setIsSubmitting(true);
-    try {
-      await saveReview('track', trackId, currentReview.rating, reviewText, currentReview.id);
-      setCurrentReview({ ...currentReview, review_text: reviewText });
-      setSnackbarMessage('Texto da review atualizado!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    } catch (err) {
-      setSnackbarMessage('Falha ao salvar texto da review.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCloseSnackbar = (event, reason) => {
-    if (reason === 'clickaway') return;
-    setSnackbarOpen(false);
-  };
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>;
@@ -118,75 +57,126 @@ function TrackDetailsPage() {
     return <Typography>Música não encontrada.</Typography>;
   }
 
-  const displayRating = currentReview ? currentReview.rating : null;
+  const formatDuration = (ms) => {
+    if (!ms) return '';
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
 
   return (
-    <Container>
-      <Paper sx={{ p: 4, mt: 4 }}>
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={4}>
-            <Box
-              component="img"
-              sx={{ width: '100%', height: 'auto', borderRadius: 2 }}
-              alt={track.name}
-              src={track.imageUrl}
-            />
-          </Grid>
-          <Grid item xs={12} md={8}>
-            <Typography variant="h3" component="h1" gutterBottom>{track.name}</Typography>
-            <Typography variant="h5" component="h2" color="text.secondary" gutterBottom>{track.artist}</Typography>
-            <Typography variant="body1" color="text.secondary">Álbum: {track.album}</Typography>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Grid container spacing={4}>
+        {/* Sidebar (Esquerda) */}
+        <Grid size={{ xs: 12, md: 3 }}>
+          <Box
+            component="img"
+            sx={{ width: '100%', height: 'auto', borderRadius: 2, boxShadow: 3 }}
+            alt={track.name}
+            src={track.imageUrl}
+          />
+          
+          <ScoreDistribution itemType="track" itemId={trackId} />
 
-            {/* Componente de Avaliação */}
-            <RatingInput
-              value={displayRating}
-              onChange={handleRatingChange}
-              readOnly={isSubmitting}
-            />
-            {isSubmitting && <CircularProgress size={24} sx={{ ml: 2 }} />}
-
-            {/* Campo de Texto da Review */}
-            {currentReview && (
-              <Box sx={{ mt: 2 }}>
-                <TextField
-                  label="Sua review (opcional)"
-                  multiline
-                  rows={3}
-                  fullWidth
-                  value={reviewText}
-                  onChange={(e) => setReviewText(e.target.value)}
-                  placeholder="O que você achou dessa música?"
-                  variant="outlined"
-                  sx={{ mb: 1 }}
-                />
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleSaveText}
-                  disabled={isSubmitting || reviewText === (currentReview.review_text || '')}
-                >
-                  Salvar texto
-                </Button>
+          <Paper elevation={0} sx={{ p: 2, mt: 2, borderRadius: 2, bgcolor: 'background.paper' }}>
+            <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
+              Informação
+            </Typography>
+            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">Tipo</Typography>
+                <Typography variant="body2" fontWeight="bold">Música</Typography>
               </Box>
-            )}
-          </Grid>
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">Duração</Typography>
+                <Typography variant="body2">{formatDuration(track.durationMs)}</Typography>
+              </Box>
+              {track.releaseDate && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">Lançamento</Typography>
+                  <Typography variant="body2">{track.releaseDate}</Typography>
+                </Box>
+              )}
+              {track.popularity > 0 && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">Popularidade</Typography>
+                  <Typography variant="body2">{track.popularity}%</Typography>
+                </Box>
+              )}
+            </Box>
+          </Paper>
+
+
         </Grid>
-      </Paper>
 
-      {/* Seção "Following" estilo AniList */}
-      <FriendsReviews itemType="track" itemId={trackId} />
+        {/* Main Content (Direita) */}
+        <Grid size={{ xs: 12, md: 9 }}>
+          <Typography variant="h3" component="h1" fontWeight="bold" gutterBottom>{track.name}</Typography>
+          <Typography variant="h6" color="text.secondary" gutterBottom sx={{ mb: 4 }}>
+            {track.artist}
+          </Typography>
 
-      {/* Snackbar para feedback */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+          <Typography variant="h6" fontWeight="bold" gutterBottom>Avalie esta Música</Typography>
+          <ReviewSection itemType="track" itemId={trackId} />
+
+          <Divider sx={{ my: 4 }} />
+
+          {/* Relações (Artist / Album) */}
+          {(track.artistId || track.albumId) && (
+            <>
+              <Typography variant="h6" fontWeight="bold" gutterBottom>Relações</Typography>
+              <Grid container spacing={2} sx={{ mb: 4 }}>
+                {track.artistId && (
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Paper
+                      component={RouterLink}
+                      to={`/artist/${track.artistId}`}
+                      elevation={1}
+                      sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 2, textDecoration: 'none', color: 'inherit', borderRadius: 2, transition: '0.2s', '&:hover': { bgcolor: 'action.hover' } }}
+                    >
+                      {track.artistImageUrl ? (
+                        <Avatar src={track.artistImageUrl} alt={track.artist} sx={{ width: 48, height: 48 }} />
+                      ) : (
+                        <Avatar sx={{ width: 48, height: 48 }}>A</Avatar>
+                      )}
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="caption" color="primary" fontWeight="bold" display="block">ARTISTA</Typography>
+                        <Typography variant="body1" fontWeight="bold" noWrap>{track.artist}</Typography>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                )}
+                {track.albumId && (
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Paper
+                      component={RouterLink}
+                      to={`/album/${track.albumId}`}
+                      elevation={1}
+                      sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 2, textDecoration: 'none', color: 'inherit', borderRadius: 2, transition: '0.2s', '&:hover': { bgcolor: 'action.hover' } }}
+                    >
+                      {track.imageUrl ? (
+                        <Avatar variant="square" src={track.imageUrl} alt={track.album} sx={{ width: 48, height: 48, borderRadius: 1 }} />
+                      ) : (
+                        <Avatar variant="square" sx={{ width: 48, height: 48, borderRadius: 1 }}>AL</Avatar>
+                      )}
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="caption" color="secondary" fontWeight="bold" display="block">ÁLBUM</Typography>
+                        <Typography variant="body1" fontWeight="bold" noWrap>{track.album}</Typography>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                )}
+              </Grid>
+            </>
+          )}
+
+          <Divider sx={{ my: 4 }} />
+          
+          <Box sx={{ mt: 2 }}>
+            <FriendsReviews itemType="track" itemId={trackId} />
+          </Box>
+        </Grid>
+      </Grid>
     </Container>
   );
 }

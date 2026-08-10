@@ -57,6 +57,7 @@ function ReviewItem({ review, itemData }) {
             </Typography>
           </Link>
         }
+        secondaryTypographyProps={{ component: 'div' }}
         secondary={
           <Box component="span" sx={{ display: 'flex', flexDirection: 'column', mt: 0.5 }}>
             <Typography variant="body2" color="text.secondary">

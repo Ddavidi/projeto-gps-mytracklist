@@ -94,7 +94,7 @@ export function createAuthRouter(userController: UserController): Router {
     const user = await userController.getUserById(req.user!.userId);
 
     if (user) {
-      res.json({ id: user.id, username: user.username, email: (user as any).email, name: (user as any).name, gender: (user as any).gender, birth_date: (user as any).birth_date });
+      res.json({ id: user.id, username: user.username, email: (user as any).email, name: (user as any).name, gender: (user as any).gender, birth_date: (user as any).birth_date, avatar_url: user.avatar_url, cover_url: user.cover_url });
     } else {
       res.status(404).json({ error: 'Utilizador não encontrado.' });
     }

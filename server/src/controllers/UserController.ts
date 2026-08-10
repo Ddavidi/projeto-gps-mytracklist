@@ -50,7 +50,7 @@ export class UserController {
 
   async getUserById(userId: number) {
     try {
-      const user = await this.db.get('SELECT id, username, created_at FROM users WHERE id = ?', [userId]);
+      const user = await this.db.get('SELECT id, username, avatar_url, cover_url, created_at FROM users WHERE id = ?', [userId]);
       return user || null;
     } catch (error) {
       console.error('Erro ao buscar utilizador:', error);
@@ -60,7 +60,7 @@ export class UserController {
 
   async getUserByUsername(username: string) {
     try {
-      const user = await this.db.get('SELECT id, username, email, name, gender, birth_date, created_at FROM users WHERE username = ?', [username]);
+      const user = await this.db.get('SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, created_at FROM users WHERE username = ?', [username]);
       return user || null;
     } catch (error) {
       console.error('Erro ao buscar utilizador por nome:', error);
@@ -91,13 +91,33 @@ export class UserController {
     }
   }
 
+  async updateAvatar(userId: number, avatarUrl: string) {
+    try {
+      await this.db.run('UPDATE users SET avatar_url = ? WHERE id = ?', [avatarUrl, userId]);
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao atualizar avatar:', error);
+      return { success: false, message: 'Falha ao atualizar avatar' };
+    }
+  }
+
+  async updateCover(userId: number, coverUrl: string) {
+    try {
+      await this.db.run('UPDATE users SET cover_url = ? WHERE id = ?', [coverUrl, userId]);
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao atualizar capa:', error);
+      return { success: false, message: 'Falha ao atualizar capa' };
+    }
+  }
+
   // --- NOVO MÉTODO: Pesquisar utilizadores (parcial) ---
   async searchUsers(query: string) {
     try {
       // Busca utilizadores cujo nome contenha a query (LIKE %query%)
       // Limitamos a 20 resultados para não sobrecarregar
       const users = await this.db.all(
-        'SELECT id, username, created_at FROM users WHERE username LIKE ? LIMIT 20',
+        'SELECT id, username, avatar_url, created_at FROM users WHERE username LIKE ? LIMIT 20',
         [`%${query}%`]
       );
       return { success: true, users: users || [] };

@@ -175,7 +175,7 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
             ) : (
               <Grid container spacing={2}>
                 {/* Column 1: Músicas */}
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, px: 1 }}>
                     <MusicNoteIcon color="primary" sx={{ mr: 1, fontSize: 20 }} />
                     <Typography variant="subtitle2" fontWeight="bold" color="text.primary">
@@ -220,7 +220,7 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
                 </Grid>
 
                 {/* Column 2: Álbuns */}
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, px: 1 }}>
                     <AlbumIcon color="secondary" sx={{ mr: 1, fontSize: 20 }} />
                     <Typography variant="subtitle2" fontWeight="bold" color="text.primary">
@@ -265,7 +265,7 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
                 </Grid>
 
                 {/* Column 3: Artistas */}
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, px: 1 }}>
                     <PersonIcon color="success" sx={{ mr: 1, fontSize: 20 }} />
                     <Typography variant="subtitle2" fontWeight="bold" color="text.primary">

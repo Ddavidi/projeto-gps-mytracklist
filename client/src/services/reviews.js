@@ -66,3 +66,18 @@ export const getUserReviewsByUsername = async (username) => {
   const response = await api.get(`/users/${username}/reviews`);
   return response.data;
 };
+
+/**
+ * Obtém as estatísticas de um item (média e distribuição).
+ * @param {string} itemType - 'track', 'album' ou 'artist'
+ * @param {string} itemId - ID do item no Spotify
+ */
+export const getItemStats = async (itemType, itemId) => {
+  try {
+    const response = await api.get(`/reviews/stats/${itemType}/${itemId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas do item:', error);
+    return null;
+  }
+};

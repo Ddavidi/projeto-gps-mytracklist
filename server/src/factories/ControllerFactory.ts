@@ -3,6 +3,7 @@ import { DatabaseFactory } from '../database/DatabaseFactory';
 import { UserController } from '../controllers/UserController';
 import { ReviewController } from '../controllers/ReviewController';
 import { SocialController } from '../controllers/SocialController';
+import { FavoriteController } from '../controllers/FavoriteController';
 
 export class ControllerFactory {
   private static db: IDatabase | null = null;
@@ -33,6 +34,11 @@ export class ControllerFactory {
     return new SocialController(database);
   }
 
+  static createFavoriteController(db?: IDatabase): FavoriteController {
+    const database = db || this.getDatabase();
+    return new FavoriteController(database);
+  }
+
   /**
    * Inicializa o banco de dados e cria as tabelas.
    * SQL compatível com PostgreSQL (SERIAL, TIMESTAMPTZ, etc.)
@@ -55,6 +61,8 @@ export class ControllerFactory {
           name TEXT,
           gender TEXT,
           birth_date DATE,
+          avatar_url TEXT,
+          cover_url TEXT,
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `);
@@ -66,6 +74,8 @@ export class ControllerFactory {
           ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_url TEXT;
         `);
       } catch (e) {
         console.log('Postgres migration info (user columns might already exist):', e);
@@ -147,6 +157,19 @@ export class ControllerFactory {
         )
       `);
 
+      // PostgreSQL schema — user_favorites
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS user_favorites (
+          id SERIAL PRIMARY KEY,
+          "userId" INTEGER NOT NULL,
+          item_id TEXT NOT NULL,
+          item_type TEXT NOT NULL,
+          "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY ("userId") REFERENCES users (id) ON DELETE CASCADE,
+          UNIQUE ("userId", item_id, item_type)
+        )
+      `);
+
     } else {
       // SQLite schema (for local dev / testing)
       await database.exec(`
@@ -158,6 +181,8 @@ export class ControllerFactory {
           name TEXT,
           gender TEXT,
           birth_date TEXT,
+          avatar_url TEXT,
+          cover_url TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
       `);
@@ -167,6 +192,8 @@ export class ControllerFactory {
       try { await database.exec('ALTER TABLE users ADD COLUMN name TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN gender TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN birth_date TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN avatar_url TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN cover_url TEXT;'); } catch (e) {}
 
       // SQLite schema — reviews (generic: track, album, artist)
       await database.exec(`
@@ -224,6 +251,19 @@ export class ControllerFactory {
           FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE,
           FOREIGN KEY (reviewId) REFERENCES reviews (id) ON DELETE CASCADE,
           UNIQUE (userId, reviewId)
+        );
+      `);
+
+      // SQLite schema — user_favorites
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS user_favorites (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER NOT NULL,
+          item_id TEXT NOT NULL,
+          item_type TEXT NOT NULL,
+          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE,
+          UNIQUE (userId, item_id, item_type)
         );
       `);
     }

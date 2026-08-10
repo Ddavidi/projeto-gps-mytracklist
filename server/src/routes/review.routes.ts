@@ -9,7 +9,31 @@ export function createReviewRouter(reviewController: ReviewController): Router {
   const router = Router();
 
   // Todas as rotas de reviews requerem autenticação
+  // Caso deseje tornar a rota de stats pública, ela deve vir ANTES do requireAuth.
+  // router.get('/stats/:itemType/:itemId', async (req, res) => { ... })
+  
   router.use(requireAuth);
+
+  /**
+   * GET /reviews/stats/:itemType/:itemId
+   * Obtém as estatísticas de um item (média de notas e distribuição).
+   */
+  router.get('/stats/:itemType/:itemId', async (req: Request, res: Response) => {
+    const { itemType, itemId } = req.params as { itemType: string; itemId: string };
+
+    if (!VALID_ITEM_TYPES.includes(itemType as ItemType)) {
+      res.status(400).json({ error: 'Tipo de item inválido. Use: track, album ou artist.' });
+      return;
+    }
+
+    const result = await reviewController.getItemStats(itemType as ItemType, itemId);
+
+    if (result.success) {
+      res.json(result.stats);
+    } else {
+      res.status(500).json({ error: result.message });
+    }
+  });
 
   /**
    * GET /reviews/:itemType/:itemId

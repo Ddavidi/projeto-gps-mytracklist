@@ -37,7 +37,7 @@ export const checkIsFollowing = async (targetUserId) => {
  */
 export const getFollowers = async (userId) => {
   const response = await api.get(`/social/followers/${userId}`);
-  return response.data;
+  return response.data.followers || [];
 };
 
 /**
@@ -45,7 +45,7 @@ export const getFollowers = async (userId) => {
  */
 export const getFollowing = async (userId) => {
   const response = await api.get(`/social/following/${userId}`);
-  return response.data;
+  return response.data.following || [];
 };
 
 // =====================
