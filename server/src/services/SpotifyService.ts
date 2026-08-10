@@ -72,13 +72,12 @@ export class SpotifyService {
   // Cole este método dentro da classe SpotifyService,
 // por exemplo, a seguir ao método getAccessToken()
 
-  public async searchTracks(query: string, limit: number = 20) {
+  public async searchMulti(query: string, limit: number = 6) {
     const accessToken = await this.getAccessToken();
-    
-    // Constrói os parâmetros da URL de forma segura
+
     const searchParams = new URLSearchParams({
       q: query,
-      type: 'track',
+      type: 'track,album,artist',
       limit: limit.toString(),
     });
 
@@ -89,22 +88,139 @@ export class SpotifyService {
     });
 
     if (!response.ok) {
-      console.error('Falha ao procurar músicas no Spotify:', await response.text());
-      throw new Error('Falha ao procurar músicas no Spotify.');
+      console.error('Falha ao pesquisar no Spotify:', await response.text());
+      throw new Error('Falha ao pesquisar no Spotify.');
     }
 
     const data = await response.json();
-    
-    // Vamos simplificar os dados antes de os enviar para o front-end
-    return data.tracks.items.map((track: any) => ({
+
+    const tracks = (data.tracks?.items || []).map((track: any) => ({
       id: track.id,
       name: track.name,
-      artist: track.artists.map((artist: any) => artist.name).join(', '),
-      album: track.album.name,
-      imageUrl: track.album.images[0]?.url, // Pega a primeira imagem (maior) se existir
+      artist: track.artists?.map((a: any) => a.name).join(', ') || '',
+      album: track.album?.name || '',
+      imageUrl: track.album?.images[0]?.url || '',
       durationMs: track.duration_ms,
       previewUrl: track.preview_url,
     }));
+
+    const albums = (data.albums?.items || []).map((album: any) => ({
+      id: album.id,
+      name: album.name,
+      artist: album.artists?.map((a: any) => a.name).join(', ') || '',
+      imageUrl: album.images[0]?.url || '',
+      releaseDate: album.release_date ? album.release_date.substring(0, 4) : '',
+      totalTracks: album.total_tracks,
+      albumType: album.album_type,
+    }));
+
+    const artists = (data.artists?.items || []).map((artist: any) => ({
+      id: artist.id,
+      name: artist.name,
+      imageUrl: artist.images[0]?.url || '',
+      genres: artist.genres && artist.genres.length > 0 ? artist.genres.slice(0, 2).join(', ') : 'Artista',
+      followers: artist.followers?.total || 0,
+      popularity: artist.popularity,
+    }));
+
+    return { tracks, albums, artists };
+  }
+
+  public async searchTracks(query: string, limit: number = 20) {
+    const multi = await this.searchMulti(query, limit);
+    return multi.tracks;
+  }
+
+  public async getAlbumDetails(albumId: string) {
+    const accessToken = await this.getAccessToken();
+
+    const response = await fetch(`https://api.spotify.com/v1/albums/${albumId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      console.error(`Falha ao obter detalhes do álbum ${albumId}:`, await response.text());
+      throw new Error('Falha ao obter detalhes do álbum do Spotify.');
+    }
+
+    const album = await response.json();
+
+    return {
+      id: album.id,
+      name: album.name,
+      artist: album.artists?.map((a: any) => a.name).join(', ') || '',
+      imageUrl: album.images[0]?.url || '',
+      releaseDate: album.release_date || '',
+      totalTracks: album.total_tracks,
+      genres: album.genres || [],
+      label: album.label,
+      popularity: album.popularity,
+      externalUrl: album.external_urls?.spotify,
+      tracks: album.tracks?.items?.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        artist: t.artists?.map((a: any) => a.name).join(', ') || album.artists?.map((a: any) => a.name).join(', '),
+        durationMs: t.duration_ms,
+        trackNumber: t.track_number,
+        previewUrl: t.preview_url,
+      })) || [],
+    };
+  }
+
+  public async getArtistDetails(artistId: string) {
+    const accessToken = await this.getAccessToken();
+
+    // Fetch artist profile, top tracks, and albums in parallel
+    const [artistRes, topTracksRes, albumsRes] = await Promise.all([
+      fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      }),
+      fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      }),
+      fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=10&include_groups=album,single`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      })
+    ]);
+
+    if (!artistRes.ok) {
+      console.error(`Falha ao obter detalhes do artista ${artistId}:`, await artistRes.text());
+      throw new Error('Falha ao obter detalhes do artista no Spotify.');
+    }
+
+    const artist = await artistRes.json();
+    const topTracksData = topTracksRes.ok ? await topTracksRes.json() : { tracks: [] };
+    const albumsData = albumsRes.ok ? await albumsRes.json() : { items: [] };
+
+    return {
+      id: artist.id,
+      name: artist.name,
+      imageUrl: artist.images[0]?.url || '',
+      genres: artist.genres || [],
+      followers: artist.followers?.total || 0,
+      popularity: artist.popularity,
+      externalUrl: artist.external_urls?.spotify,
+      topTracks: (topTracksData.tracks || []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        artist: t.artists?.map((a: any) => a.name).join(', ') || artist.name,
+        album: t.album?.name || '',
+        imageUrl: t.album?.images[0]?.url || '',
+        durationMs: t.duration_ms,
+        previewUrl: t.preview_url,
+      })),
+      albums: (albumsData.items || []).map((al: any) => ({
+        id: al.id,
+        name: al.name,
+        artist: artist.name,
+        imageUrl: al.images[0]?.url || '',
+        releaseDate: al.release_date ? al.release_date.substring(0, 4) : '',
+        totalTracks: al.total_tracks,
+        albumType: al.album_type,
+      })),
+    };
   }
 
   public async getTrackDetails(trackId: string) {

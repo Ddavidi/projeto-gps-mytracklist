@@ -1,8 +1,7 @@
-import Database from 'better-sqlite3';
 import { IDatabase } from '../interfaces/IDatabase';
 
 export class SqliteDatabase implements IDatabase {
-  private db: Database.Database | null = null;
+  private db: any = null;
   private filename: string;
 
   constructor(filename: string = './database.sqlite') {
@@ -10,7 +9,13 @@ export class SqliteDatabase implements IDatabase {
   }
 
   async connect(): Promise<void> {
-    this.db = new Database(this.filename);
+    try {
+      const Database = require('better-sqlite3');
+      this.db = new Database(this.filename);
+    } catch (e) {
+      console.error('Falha ao carregar better-sqlite3:', e);
+      throw new Error('Driver better-sqlite3 não disponível.');
+    }
   }
 
   async disconnect(): Promise<void> {

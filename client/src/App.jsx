@@ -11,7 +11,6 @@ import ArtistDetailsPage from './pages/ArtistDetailsPage';
 import ProfilePage from './pages/ProfilePage';
 import PublicProfilePage from './pages/PublicProfilePage';
 import UserSearchPage from './pages/UserSearchPage';
-import FeedPage from './pages/FeedPage';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -43,9 +42,6 @@ function App() {
             <>
              <Button component={Link} to="/profile" sx={{ mr: 2 }}>
                 Meu Perfil
-             </Button>
-             <Button component={Link} to="/feed" sx={{ mr: 2 }}>
-                Feed
              </Button>
              <Button component={Link} to="/search-users" sx={{ mr: 2 }}>
                 Comunidade
@@ -87,7 +83,6 @@ function App() {
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/user/:username" element={<ProtectedRoute><PublicProfilePage /></ProtectedRoute>} />
         <Route path="/search-users" element={<ProtectedRoute><UserSearchPage /></ProtectedRoute>} />
-        <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
       </Routes>
     </Container>
   );

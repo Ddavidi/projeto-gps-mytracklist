@@ -1,235 +1,202 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import { getArtistDetails } from '../services/spotify';
-import { getUserReviewForItem, saveReview } from '../services/reviews';
-import {
-  Container,
-  Typography,
-  Box,
-  CircularProgress,
-  Alert,
-  Paper,
+import { 
+  Container, 
+  Typography, 
+  Box, 
+  Paper, 
+  Avatar, 
+  CircularProgress, 
+  Alert, 
   Grid,
-  Snackbar,
-  TextField,
+  Card,
+  CardActionArea,
   Button,
   Chip,
-  Card,
-  CardMedia,
-  CardContent,
-  CardActionArea,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Divider
 } from '@mui/material';
-import RatingInput from '../components/RatingInput';
-import FriendsReviews from '../components/FriendsReviews';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import AlbumIcon from '@mui/icons-material/Album';
+import PersonIcon from '@mui/icons-material/Person';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 function ArtistDetailsPage() {
-  const { id: artistId } = useParams();
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [artist, setArtist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [currentReview, setCurrentReview] = useState(null);
-  const [reviewText, setReviewText] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchArtist = async () => {
+      setLoading(true);
+      setError('');
       try {
-        setLoading(true);
-        setError('');
-        const [details, review] = await Promise.all([
-          getArtistDetails(artistId),
-          getUserReviewForItem('artist', artistId)
-        ]);
-        setArtist(details);
-        setCurrentReview(review);
-        if (review?.review_text) setReviewText(review.review_text);
+        const data = await getArtistDetails(id);
+        setArtist(data);
       } catch (err) {
-        setError('Falha ao carregar os dados do artista.');
         console.error(err);
+        setError('Falha ao carregar os detalhes do artista.');
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-  }, [artistId]);
 
-  const handleRatingChange = async (newRating) => {
-    setIsSubmitting(true);
-    try {
-      const existingReviewId = currentReview ? currentReview.id : null;
-      const response = await saveReview('artist', artistId, newRating, reviewText, existingReviewId);
-      setCurrentReview({
-        ...currentReview,
-        id: existingReviewId || response.reviewId,
-        rating: newRating,
-        review_text: reviewText,
-      });
-      setSnackbarMessage('Avaliação salva com sucesso!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Falha ao salvar avaliação.';
-      setSnackbarMessage(errorMessage);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSaveText = async () => {
-    if (!currentReview) return;
-    setIsSubmitting(true);
-    try {
-      await saveReview('artist', artistId, currentReview.rating, reviewText, currentReview.id);
-      setCurrentReview({ ...currentReview, review_text: reviewText });
-      setSnackbarMessage('Texto da review atualizado!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    } catch {
-      setSnackbarMessage('Falha ao salvar texto.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCloseSnackbar = (_, reason) => {
-    if (reason === 'clickaway') return;
-    setSnackbarOpen(false);
-  };
-
-  const formatFollowers = (count) => {
-    if (!count) return '';
-    if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M seguidores`;
-    if (count >= 1_000) return `${(count / 1_000).toFixed(0)}K seguidores`;
-    return `${count} seguidores`;
-  };
+    fetchArtist();
+  }, [id]);
 
   if (loading) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <CircularProgress size={48} />
+      </Box>
+    );
   }
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (!artist) return <Typography>Artista não encontrado.</Typography>;
+
+  if (error || !artist) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>{error || 'Artista não encontrado.'}</Alert>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>Voltar</Button>
+      </Container>
+    );
+  }
 
   return (
-    <Container>
-      <Paper sx={{ p: 4, mt: 4 }}>
-        <Grid container spacing={4}>
-          {/* Foto do artista */}
-          <Grid item xs={12} md={4}>
-            <Box
-              component="img"
-              sx={{ width: '100%', height: 'auto', borderRadius: '50%', aspectRatio: '1/1', objectFit: 'cover' }}
-              alt={artist.name}
-              src={artist.imageUrl}
-            />
-          </Grid>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mb: 3 }}>
+        Voltar
+      </Button>
 
-          {/* Informações e avaliação */}
-          <Grid item xs={12} md={8}>
-            <Typography variant="overline" color="text.secondary">Artista</Typography>
-            <Typography variant="h3" component="h1" gutterBottom>{artist.name}</Typography>
-
-            {artist.followers && (
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                {formatFollowers(artist.followers)}
-              </Typography>
-            )}
-
-            {/* Gêneros */}
-            {artist.genres && artist.genres.length > 0 && (
-              <Box sx={{ mt: 1, mb: 2, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {artist.genres.slice(0, 5).map((genre) => (
-                  <Chip key={genre} label={genre} size="small" variant="outlined" />
-                ))}
-              </Box>
-            )}
-
-            {/* Avaliação */}
-            <RatingInput
-              value={currentReview ? currentReview.rating : null}
-              onChange={handleRatingChange}
-              readOnly={isSubmitting}
-            />
-            {isSubmitting && <CircularProgress size={24} sx={{ ml: 2 }} />}
-
-            {/* Texto da review */}
-            {currentReview && (
-              <Box sx={{ mt: 2 }}>
-                <TextField
-                  label="Sua review (opcional)"
-                  multiline
-                  rows={3}
-                  fullWidth
-                  value={reviewText}
-                  onChange={(e) => setReviewText(e.target.value)}
-                  placeholder="O que você acha desse artista?"
-                  variant="outlined"
-                  sx={{ mb: 1 }}
-                />
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleSaveText}
-                  disabled={isSubmitting || reviewText === (currentReview.review_text || '')}
-                >
-                  Salvar texto
-                </Button>
-              </Box>
-            )}
-          </Grid>
-        </Grid>
-
-        {/* Top Tracks */}
-        {artist.topTracks && artist.topTracks.length > 0 && (
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" gutterBottom>Músicas Populares</Typography>
-            <Grid container spacing={2}>
-              {artist.topTracks.map((track) => (
-                <Grid item xs={12} sm={6} md={4} key={track.id}>
-                  <Card>
-                    <CardActionArea component={Link} to={`/music/${track.id}`}>
-                      <CardMedia
-                        component="img"
-                        height="120"
-                        image={track.imageUrl}
-                        alt={track.name}
-                      />
-                      <CardContent sx={{ py: 1 }}>
-                        <Typography variant="body2" noWrap>{track.name}</Typography>
-                        <Typography variant="caption" color="text.secondary" noWrap>
-                          {track.album}
-                        </Typography>
-                      </CardContent>
-                    </CardActionArea>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+      {/* Artist Profile Header */}
+      <Paper 
+        elevation={3} 
+        sx={{ 
+          p: 4, 
+          borderRadius: 3, 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' }, 
+          alignItems: 'center', 
+          gap: 4,
+          mb: 4,
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)',
+        }}
+      >
+        <Avatar
+          src={artist.imageUrl}
+          alt={artist.name}
+          sx={{ width: 160, height: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}
+        />
+        <Box sx={{ flex: 1, textAlign: { xs: 'center', sm: 'left' } }}>
+          <Chip label="ARTISTA" color="success" size="small" sx={{ fontWeight: 'bold', mb: 1 }} />
+          <Typography variant="h3" fontWeight="bold" gutterBottom>
+            {artist.name}
+          </Typography>
+          
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'flex-start' }, mb: 2 }}>
+            {artist.genres?.map((genre, idx) => (
+              <Chip key={idx} label={genre} variant="outlined" size="small" sx={{ textTransform: 'capitalize' }} />
+            ))}
           </Box>
-        )}
+
+          {artist.followers > 0 && (
+            <Typography variant="body2" color="text.secondary">
+              {artist.followers.toLocaleString('pt-BR')} seguidores no Spotify
+            </Typography>
+          )}
+        </Box>
       </Paper>
 
-      {/* Seção "Following" estilo AniList */}
-      <FriendsReviews itemType="artist" itemId={artistId} />
+      <Grid container spacing={4}>
+        {/* Top Tracks */}
+        <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <MusicNoteIcon color="primary" sx={{ mr: 1 }} />
+            <Typography variant="h5" fontWeight="bold">
+              Músicas Mais Populares
+            </Typography>
+          </Box>
+          <Paper elevation={1} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+            <List disablePadding>
+              {artist.topTracks?.slice(0, 8).map((track, index) => (
+                <React.Fragment key={track.id}>
+                  {index > 0 && <Divider component="li" />}
+                  <ListItem
+                    secondaryAction={
+                      <Button 
+                        variant="outlined" 
+                        size="small" 
+                        component={RouterLink} 
+                        to={`/music/${track.id}`}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        Avaliar
+                      </Button>
+                    }
+                    sx={{ py: 1.5, px: 2, '&:hover': { backgroundColor: 'action.hover' } }}
+                  >
+                    <ListItemAvatar>
+                      <Avatar variant="square" src={track.imageUrl} alt={track.name} sx={{ width: 44, height: 44, borderRadius: 1.5 }} />
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={track.name}
+                      secondary={track.album}
+                      primaryTypographyProps={{ fontWeight: 600, noWrap: true }}
+                      secondaryTypographyProps={{ noWrap: true }}
+                    />
+                  </ListItem>
+                </React.Fragment>
+              ))}
+            </List>
+          </Paper>
+        </Grid>
 
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+        {/* Albums & Singles */}
+        <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <AlbumIcon color="secondary" sx={{ mr: 1 }} />
+            <Typography variant="h5" fontWeight="bold">
+              Álbuns e Singles
+            </Typography>
+          </Box>
+          <Grid container spacing={2}>
+            {artist.albums?.map((album) => (
+              <Grid item xs={6} sm={4} key={album.id}>
+                <Card 
+                  elevation={2}
+                  sx={{ 
+                    borderRadius: 2.5,
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    '&:hover': { transform: 'translateY(-3px)', boxShadow: 4 }
+                  }}
+                >
+                  <CardActionArea component={RouterLink} to={`/album/${album.id}`}>
+                    <Avatar
+                      variant="square"
+                      src={album.imageUrl}
+                      alt={album.name}
+                      sx={{ width: '100%', height: 130, borderRadius: '10px 10px 0 0' }}
+                    />
+                    <Box sx={{ p: 1.5 }}>
+                      <Typography variant="subtitle2" fontWeight="bold" noWrap>
+                        {album.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {album.releaseDate} • {album.totalTracks} faixas
+                      </Typography>
+                    </Box>
+                  </CardActionArea>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Grid>
+      </Grid>
     </Container>
   );
 }
