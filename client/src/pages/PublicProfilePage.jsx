@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { getUserReviewsByUsername } from '../services/reviews';
-import { getMultipleTrackDetails } from '../services/spotify';
+import { followUser, unfollowUser, checkIsFollowing, getFollowers, getFollowing } from '../services/social';
+import { getMultipleTrackDetails, getMultipleAlbumDetails, getMultipleArtistDetails } from '../services/spotify';
 import {
   Container,
   Typography,
@@ -11,94 +12,171 @@ import {
   Alert,
   Paper,
   Divider,
-  Button
+  Button,
+  Tabs,
+  Tab
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReviewItem from '../components/ReviewItem';
+import { useAuth } from '../context/AuthContext';
 
 function PublicProfilePage() {
   const { username } = useParams();
-  const [profileData, setProfileData] = useState(null);
-  const [trackMap, setTrackMap] = useState({});
+  const { user: currentUser } = useAuth();
+  
+  const [targetUser, setTargetUser] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [itemDetails, setItemDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Estados Sociais
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [socialLoading, setSocialLoading] = useState(false);
+
+  // Aba ativa
+  const [tabIndex, setTabIndex] = useState(0);
+
+  const enrichReviewsWithSpotifyData = useCallback(async (reviewList) => {
+    const trackIds = [...new Set(reviewList.filter(r => r.item_type === 'track').map(r => r.item_id))];
+    const albumIds = [...new Set(reviewList.filter(r => r.item_type === 'album').map(r => r.item_id))];
+    const artistIds = [...new Set(reviewList.filter(r => r.item_type === 'artist').map(r => r.item_id))];
+
+    const [tracks, albums, artists] = await Promise.all([
+      getMultipleTrackDetails(trackIds),
+      getMultipleAlbumDetails(albumIds),
+      getMultipleArtistDetails(artistIds),
+    ]);
+
+    return { ...tracks, ...albums, ...artists };
+  }, []);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError('');
 
-        // 1. Buscar dados do perfil e avaliações
-        const data = await getUserReviewsByUsername(username);
-        setProfileData(data);
+        const response = await getUserReviewsByUsername(username);
+        setTargetUser(response.user);
+        setReviews(response.reviews || []);
 
-        // 2. Buscar dados de TODAS as músicas de uma vez (batch)
-        if (data.reviews && data.reviews.length > 0) {
-          const trackIds = data.reviews.map((r) => r.trackId);
-          const tracks = await getMultipleTrackDetails(trackIds);
-          setTrackMap(tracks);
+        if (response.reviews && response.reviews.length > 0) {
+          const details = await enrichReviewsWithSpotifyData(response.reviews);
+          setItemDetails(details);
         }
+
+        // Buscar dados sociais se o user for encontrado
+        if (response.user) {
+          const [followers, following, followingStatus] = await Promise.all([
+            getFollowers(response.user.id),
+            getFollowing(response.user.id),
+            currentUser ? checkIsFollowing(response.user.id) : Promise.resolve(false)
+          ]);
+          setFollowersCount(followers.length);
+          setFollowingCount(following.length);
+          setIsFollowing(followingStatus);
+        }
+
       } catch (err) {
-        console.error(err);
-        if (err.response && err.response.status === 404) {
-             setError('Utilizador não encontrado.');
+        if (err.response?.status === 404) {
+          setError('Utilizador não encontrado.');
         } else {
-             setError('Falha ao carregar o perfil.');
+          setError('Falha ao carregar perfil.');
         }
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
 
-    if (username) {
-      fetchProfile();
+    fetchData();
+  }, [username, enrichReviewsWithSpotifyData, currentUser]);
+
+  const handleToggleFollow = async () => {
+    if (!targetUser) return;
+    setSocialLoading(true);
+    try {
+      if (isFollowing) {
+        await unfollowUser(targetUser.id);
+        setIsFollowing(false);
+        setFollowersCount(prev => prev - 1);
+      } else {
+        await followUser(targetUser.id);
+        setIsFollowing(true);
+        setFollowersCount(prev => prev + 1);
+      }
+    } catch (err) {
+      console.error('Erro ao seguir/deixar de seguir:', err);
+    } finally {
+      setSocialLoading(false);
     }
-  }, [username]);
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
+  };
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>;
   }
-
   if (error) {
-    return (
-        <Container maxWidth="md" sx={{ mt: 4 }}>
-            <Alert severity="error">{error}</Alert>
-            <Button component={Link} to="/" startIcon={<ArrowBackIcon />} sx={{ mt: 2 }}>
-                Voltar ao Início
-            </Button>
-        </Container>
-    );
+    return <Container maxWidth="md" sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Container>;
   }
+
+  const currentType = tabIndex === 0 ? 'track' : tabIndex === 1 ? 'album' : 'artist';
+  const filteredReviews = reviews.filter(r => (r.item_type || 'track') === currentType);
 
   return (
     <Container maxWidth="md">
-      <Button component={Link} to="/" startIcon={<ArrowBackIcon />} sx={{ mt: 2, mb: 2 }}>
-        Voltar
-      </Button>
-      
-      <Paper sx={{ p: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Perfil de {profileData?.user.username}
-        </Typography>
-        
+      <Paper sx={{ p: 4, mt: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Perfil de {targetUser.name || targetUser.username}
+            </Typography>
+            <Typography variant="h6" component="h2" color="text.secondary" gutterBottom>
+              @{targetUser.username}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {followersCount} Seguidores • {followingCount} Seguindo
+            </Typography>
+          </Box>
+          
+          {currentUser && currentUser.username !== targetUser.username && (
+            <Button
+              variant={isFollowing ? "outlined" : "contained"}
+              color="primary"
+              onClick={handleToggleFollow}
+              disabled={socialLoading}
+            >
+              {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
+            </Button>
+          )}
+        </Box>
+
         <Divider sx={{ my: 3 }} />
 
-        <Typography variant="h5" gutterBottom>
-          Avaliações Recentes
-        </Typography>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+          <Tabs value={tabIndex} onChange={handleTabChange} aria-label="Abas de avaliações">
+            <Tab label="Músicas" />
+            <Tab label="Álbuns" />
+            <Tab label="Artistas" />
+          </Tabs>
+        </Box>
 
-        {profileData?.reviews.length === 0 ? (
-          <Typography sx={{ mt: 2, fontStyle: 'italic', color: 'text.secondary' }}>
-            Este utilizador ainda não avaliou nenhuma música.
+        {filteredReviews.length === 0 ? (
+          <Typography sx={{ mt: 2, color: 'text.secondary' }}>
+            Este utilizador ainda não avaliou {currentType === 'track' ? 'nenhuma música' : currentType === 'album' ? 'nenhum álbum' : 'nenhum artista'}.
           </Typography>
         ) : (
           <List sx={{ width: '100%' }}>
-            {profileData?.reviews.map((review) => (
+            {filteredReviews.map((review) => (
               <ReviewItem
                 key={review.id}
                 review={review}
-                track={trackMap[review.trackId]}
+                itemData={itemDetails[review.item_id]}
               />
             ))}
           </List>

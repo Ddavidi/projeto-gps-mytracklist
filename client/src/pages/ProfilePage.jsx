@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getMyReviews } from '../services/reviews';
-import { getMultipleTrackDetails } from '../services/spotify';
+import { getMultipleTrackDetails, getMultipleAlbumDetails, getMultipleArtistDetails } from '../services/spotify';
 import { useAuth } from '../context/AuthContext';
 import {
   Container,
@@ -10,16 +10,35 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  Divider
+  Divider,
+  Tabs,
+  Tab
 } from '@mui/material';
 import ReviewItem from '../components/ReviewItem';
 
 function ProfilePage() {
   const { user } = useAuth();
   const [reviews, setReviews] = useState([]);
-  const [trackMap, setTrackMap] = useState({});
+  const [itemDetails, setItemDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Aba ativa: 0 = Músicas, 1 = Álbuns, 2 = Artistas
+  const [tabIndex, setTabIndex] = useState(0);
+
+  const enrichReviewsWithSpotifyData = useCallback(async (reviewList) => {
+    const trackIds = [...new Set(reviewList.filter(r => r.item_type === 'track').map(r => r.item_id))];
+    const albumIds = [...new Set(reviewList.filter(r => r.item_type === 'album').map(r => r.item_id))];
+    const artistIds = [...new Set(reviewList.filter(r => r.item_type === 'artist').map(r => r.item_id))];
+
+    const [tracks, albums, artists] = await Promise.all([
+      getMultipleTrackDetails(trackIds),
+      getMultipleAlbumDetails(albumIds),
+      getMultipleArtistDetails(artistIds),
+    ]);
+
+    return { ...tracks, ...albums, ...artists };
+  }, []);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -27,15 +46,12 @@ function ProfilePage() {
         setLoading(true);
         setError('');
 
-        // 1. Buscar todas as avaliações do utilizador
         const myReviews = await getMyReviews();
         setReviews(myReviews);
 
-        // 2. Buscar dados de TODAS as músicas de uma vez (batch)
         if (myReviews.length > 0) {
-          const trackIds = myReviews.map((r) => r.trackId);
-          const tracks = await getMultipleTrackDetails(trackIds);
-          setTrackMap(tracks);
+          const details = await enrichReviewsWithSpotifyData(myReviews);
+          setItemDetails(details);
         }
       } catch (err) {
         setError('Falha ao carregar as suas avaliações.');
@@ -46,7 +62,14 @@ function ProfilePage() {
     };
 
     fetchReviews();
-  }, []);
+  }, [enrichReviewsWithSpotifyData]);
+
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
+  };
+
+  const currentType = tabIndex === 0 ? 'track' : tabIndex === 1 ? 'album' : 'artist';
+  const filteredReviews = reviews.filter(r => (r.item_type || 'track') === currentType);
 
   return (
     <Container maxWidth="md">
@@ -60,9 +83,13 @@ function ProfilePage() {
 
         <Divider sx={{ my: 3 }} />
 
-        <Typography variant="h5" gutterBottom>
-          Minhas Avaliações
-        </Typography>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+          <Tabs value={tabIndex} onChange={handleTabChange} aria-label="Abas de avaliações">
+            <Tab label="Músicas" />
+            <Tab label="Álbuns" />
+            <Tab label="Artistas" />
+          </Tabs>
+        </Box>
 
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -72,17 +99,19 @@ function ProfilePage() {
 
         {error && <Alert severity="error">{error}</Alert>}
 
-        {!loading && !error && reviews.length === 0 && (
-          <Typography sx={{ mt: 2 }}>Você ainda não avaliou nenhuma música.</Typography>
+        {!loading && !error && filteredReviews.length === 0 && (
+          <Typography sx={{ mt: 2, color: 'text.secondary' }}>
+            Você ainda não avaliou {currentType === 'track' ? 'nenhuma música' : currentType === 'album' ? 'nenhum álbum' : 'nenhum artista'}.
+          </Typography>
         )}
 
-        {!loading && !error && reviews.length > 0 && (
+        {!loading && !error && filteredReviews.length > 0 && (
           <List sx={{ width: '100%' }}>
-            {reviews.map((review) => (
+            {filteredReviews.map((review) => (
               <ReviewItem
                 key={review.id}
                 review={review}
-                track={trackMap[review.trackId]}
+                itemData={itemDetails[review.item_id]}
               />
             ))}
           </List>
