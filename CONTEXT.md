@@ -61,7 +61,15 @@ O projeto está 100% hospedado na nuvem gratuitamente, preparado para monetizaç
   - Variável `VITE_API_URL` apontando para o Render + `/api/v1`.
   - Configuração de CORS no backend permitindo a origem do Cloudflare.
 
-## 4. Próximos Passos Possíveis (Para Continuar)
-- **Painel de Admin:** O `AdminController.ts` antigo foi temporariamente deletado durante a migração para simplificar o foco. Retomar a criação do painel de administração e sistema de logs (`activity_logs` já existe no banco).
-- **Domínio Próprio e Monetização:** Comprar um domínio `.com.br` e configurar no Cloudflare Pages para aplicar no Google AdSense.
-- **Funcionalidades Sociais:** Seguir amigos, curtir avaliações de terceiros, listas temáticas.
+## 4. Funcionalidades Sociais e de Catálogo (Fase Recente)
+- **Catálogo Expandido:** O backend e frontend agora suportam nativamente Músicas, Álbuns e Artistas (através do campo `item_type` e das novas rotas do SpotifyService).
+- **Rede Social (AniList-style):**
+  - Utilizadores podem seguir-se uns aos outros (`/social/follow`).
+  - Feed social (`/feed`) que agrega as avaliações recentes das pessoas seguidas, com enriquecimento de dados em batch via Spotify API.
+  - Seção "Following" nas páginas de detalhe (Música, Álbum, Artista), mostrando quais amigos já avaliaram aquele mesmo item e o que disseram.
+  - Avaliações agora suportam campo de texto (`review_text`).
+
+## 5. Próximos Passos Atuais (Aguardando Design)
+- **Redesign do Frontend (Figma):** O próximo grande passo é a reformulação total do design do frontend (estética premium, dark mode, animações dinâmicas). **[AGUARDANDO AÇÃO DO USER]**: O user deve fornecer os *prints/telas do Figma* no chat para que a implementação do CSS/UI possa começar.
+- **Painel de Admin:** Retomar a criação do painel de administração e sistema de logs (`activity_logs` já existe no banco) futuramente.
+- **Deploy de Produção:** Fazer merge da branch `development` para a `master` para refletir as novas funcionalidades (sociais, álbuns, artistas) nos servidores (Supabase/Render/Cloudflare) após o redesign estar concluído.
