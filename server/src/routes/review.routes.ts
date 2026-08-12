@@ -15,6 +15,16 @@ export function createReviewRouter(reviewController: ReviewController): Router {
   router.use(requireAuth);
 
   /**
+   * GET /reviews/feed
+   * Obtém as avaliações mais recentes de toda a rede social.
+   */
+  router.get('/feed', async (req: Request, res: Response) => {
+    const result = await reviewController.getRecentReviews(req.user!.userId);
+    if (result.success) res.json(result.reviews);
+    else res.status(500).json({ error: result.message });
+  });
+
+  /**
    * GET /reviews/stats/:itemType/:itemId
    * Obtém as estatísticas de um item (média de notas e distribuição).
    */
@@ -66,7 +76,7 @@ export function createReviewRouter(reviewController: ReviewController): Router {
    * Body: { itemId, itemType, rating, reviewText? }
    */
   router.post('/', async (req: Request, res: Response) => {
-    const { itemId, itemType, rating, reviewText } = req.body;
+    const { itemId, itemType, rating, reviewText, itemName, itemImageUrl, itemPreviewUrl } = req.body;
 
     if (!itemId) {
       res.status(400).json({ error: 'ID do item é obrigatório.' });
@@ -82,7 +92,10 @@ export function createReviewRouter(reviewController: ReviewController): Router {
       itemType as ItemType,
       itemId,
       Number(rating),
-      reviewText
+      reviewText,
+      itemName,
+      itemImageUrl,
+      itemPreviewUrl
     );
 
     if (result.success) {
@@ -127,6 +140,27 @@ export function createReviewRouter(reviewController: ReviewController): Router {
     } else {
       res.status(400).json({ error: result.message });
     }
+  });
+
+
+
+  // ==========================
+  // COMENTÁRIOS
+  // ==========================
+
+  router.get('/:reviewId/comments', async (req: Request, res: Response) => {
+    const result = await reviewController.getReviewComments(Number(req.params.reviewId));
+    if (result.success) res.json(result.comments);
+    else res.status(500).json({ error: result.message });
+  });
+
+  router.post('/:reviewId/comments', async (req: Request, res: Response) => {
+    const { content } = req.body;
+    if (!content) return res.status(400).json({ error: 'O comentário é obrigatório.' });
+
+    const result = await reviewController.addComment(Number(req.params.reviewId), req.user!.userId, content);
+    if (result.success) res.status(201).json({ success: true, message: 'Comentário adicionado.' });
+    else res.status(400).json({ error: result.message });
   });
 
   return router;

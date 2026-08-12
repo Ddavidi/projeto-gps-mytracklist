@@ -3,7 +3,7 @@ import { Box, Typography, TextField, Button, CircularProgress, Snackbar, Alert }
 import RatingInput from './RatingInput';
 import { getUserReviewForItem, saveReview } from '../services/reviews';
 
-function ReviewSection({ itemType, itemId }) {
+function ReviewSection({ itemType, itemId, itemData = {} }) {
   const [currentReview, setCurrentReview] = useState(null);
   const [reviewText, setReviewText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,7 +33,14 @@ function ReviewSection({ itemType, itemId }) {
     setIsSubmitting(true);
     try {
       const existingReviewId = currentReview ? currentReview.id : null;
-      const response = await saveReview(itemType, itemId, newRating, reviewText, existingReviewId);
+      
+      const metadata = {
+        itemName: itemData.name,
+        itemImageUrl: itemData.imageUrl,
+        itemPreviewUrl: itemData.previewUrl,
+      };
+
+      const response = await saveReview(itemType, itemId, newRating, reviewText, existingReviewId, metadata);
 
       setCurrentReview({
         ...currentReview,
@@ -60,7 +67,12 @@ function ReviewSection({ itemType, itemId }) {
     if (!currentReview) return;
     setIsSubmitting(true);
     try {
-      await saveReview(itemType, itemId, currentReview.rating, reviewText, currentReview.id);
+      const metadata = {
+        itemName: itemData.name,
+        itemImageUrl: itemData.imageUrl,
+        itemPreviewUrl: itemData.previewUrl,
+      };
+      await saveReview(itemType, itemId, currentReview.rating, reviewText, currentReview.id, metadata);
       setCurrentReview({ ...currentReview, review_text: reviewText });
       setSnackbarMessage('Texto da review atualizado!');
       setSnackbarSeverity('success');

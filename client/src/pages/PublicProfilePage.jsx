@@ -13,6 +13,8 @@ import ProfileOverview from '../components/profile/ProfileOverview';
 import ProfileMediaGrid from '../components/profile/ProfileMediaGrid';
 import ProfileSocial from '../components/profile/ProfileSocial';
 import ProfileStatus from '../components/profile/ProfileStatus';
+import ProfilePlaylists from '../components/profile/ProfilePlaylists';
+import ProfileSpotifyStats from '../components/profile/ProfileSpotifyStats';
 
 function PublicProfilePage() {
   const { username } = useParams();
@@ -143,6 +145,10 @@ function PublicProfilePage() {
         return <ProfileSocial userId={targetUser?.id} />;
       case 5:
         return <ProfileStatus reviews={reviews} />;
+      case 6:
+        return <ProfilePlaylists userId={targetUser?.id} />;
+      case 7:
+        return <ProfileSpotifyStats userId={targetUser?.id} />;
       default:
         return null;
     }

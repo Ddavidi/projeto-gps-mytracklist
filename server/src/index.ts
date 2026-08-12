@@ -12,8 +12,11 @@ import { createReviewRouter } from './routes/review.routes';
 import { createSpotifyRouter } from './routes/spotify.routes';
 import { createUserRouter } from './routes/user.routes';
 import { createSocialRouter } from './routes/social.routes';
+import { createSpotifyAuthRouter } from './routes/spotify.auth.routes';
 import { createUploadRouter } from './routes/upload.routes';
 import { createFavoriteRouter } from './routes/favorites.routes';
+import { createAdminRouter } from './routes/admin.routes';
+import { AdminController } from './controllers/AdminController';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -73,19 +76,22 @@ async function startServer() {
     const reviewController = ControllerFactory.createReviewController();
     const socialController = ControllerFactory.createSocialController();
     const favoriteController = ControllerFactory.createFavoriteController();
+    const adminController = new AdminController(ControllerFactory.getDatabase());
     const spotifyService = new SpotifyService();
 
     // Montar rotas
     app.use('/api/v1/auth', createAuthRouter(userController));
+    app.use('/api/v1/auth/spotify', createSpotifyAuthRouter(spotifyService, userController));
     app.use('/api/v1/reviews', createReviewRouter(reviewController));
-    app.use('/api/v1/spotify', createSpotifyRouter(spotifyService));
+    app.use('/api/v1/spotify', createSpotifyRouter(spotifyService, userController));
     app.use('/api/v1/users', createUserRouter(userController));
     app.use('/api/v1/social', createSocialRouter(socialController));
     app.use('/api/v1/upload', createUploadRouter(userController));
     app.use('/api/v1/favorites', createFavoriteRouter(favoriteController));
+    app.use('/api/v1/admin', createAdminRouter(adminController));
 
     // Iniciar servidor
-    app.listen(PORT, '0.0.0.0', () => {
+    app.listen(PORT, () => {
       console.log(`🚀 Servidor MyTrackList rodando na porta ${PORT}`);
       console.log(`   Ambiente: ${process.env.NODE_ENV || 'development'}`);
     });

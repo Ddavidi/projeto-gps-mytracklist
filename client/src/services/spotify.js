@@ -101,3 +101,8 @@ export const getMultipleArtistDetails = async (artistIds) => {
   });
   return map;
 };
+
+export const getTrending = async () => {
+  const response = await api.get('/spotify/trending');
+  return response.data;
+};

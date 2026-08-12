@@ -21,7 +21,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import AlbumIcon from '@mui/icons-material/Album';
 import PersonIcon from '@mui/icons-material/Person';
+import PeopleIcon from '@mui/icons-material/People';
 import { searchMulti } from '../services/spotify';
+import api from '../services/api';
 
 function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou artistas..." }) {
   const [query, setQuery] = useState('');
@@ -49,8 +51,18 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
 
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        const res = await searchMulti(query.trim());
-        setResults(res || { tracks: [], albums: [], artists: [] });
+        const q = query.trim();
+        const [spotifyRes, usersRes] = await Promise.all([
+          searchMulti(q).catch(() => ({ tracks: [], albums: [], artists: [] })),
+          api.get(`/users/search?q=${encodeURIComponent(q)}`).catch(() => ({ data: [] }))
+        ]);
+        
+        setResults({
+          tracks: spotifyRes.tracks || [],
+          albums: spotifyRes.albums || [],
+          artists: spotifyRes.artists || [],
+          users: usersRes.data || []
+        });
       } catch (err) {
         console.error('Erro na busca ao vivo:', err);
       } finally {
@@ -101,7 +113,8 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
   const hasResults = 
     (results.tracks && results.tracks.length > 0) ||
     (results.albums && results.albums.length > 0) ||
-    (results.artists && results.artists.length > 0);
+    (results.artists && results.artists.length > 0) ||
+    (results.users && results.users.length > 0);
 
   return (
     <ClickAwayListener onClickAway={() => setOpen(false)}>
@@ -144,17 +157,14 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
           </IconButton>
         </Paper>
 
-        {/* AniList-Style 3-Column Overlay Dropdown */}
+        {/* Resultados da Pesquisa */}
         {open && (
           <Paper
-            elevation={8}
+            elevation={0}
             sx={{
-              position: 'absolute',
-              top: 'calc(100% + 8px)',
-              left: 0,
-              right: 0,
-              zIndex: 1300,
-              maxHeight: '480px',
+              mt: 1,
+              width: '100%',
+              maxHeight: '70vh',
               overflowY: 'auto',
               borderRadius: 3,
               p: 2,
@@ -175,7 +185,7 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
             ) : (
               <Grid container spacing={2}>
                 {/* Column 1: Músicas */}
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, px: 1 }}>
                     <MusicNoteIcon color="primary" sx={{ mr: 1, fontSize: 20 }} />
                     <Typography variant="subtitle2" fontWeight="bold" color="text.primary">
@@ -220,7 +230,7 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
                 </Grid>
 
                 {/* Column 2: Álbuns */}
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, px: 1 }}>
                     <AlbumIcon color="secondary" sx={{ mr: 1, fontSize: 20 }} />
                     <Typography variant="subtitle2" fontWeight="bold" color="text.primary">
@@ -265,7 +275,7 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
                 </Grid>
 
                 {/* Column 3: Artistas */}
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, px: 1 }}>
                     <PersonIcon color="success" sx={{ mr: 1, fontSize: 20 }} />
                     <Typography variant="subtitle2" fontWeight="bold" color="text.primary">
@@ -303,6 +313,44 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
                     {(!results.artists || results.artists.length === 0) && (
                       <Typography variant="caption" color="text.secondary" sx={{ px: 1 }}>
                         Nenhum artista
+                      </Typography>
+                    )}
+                  </List>
+                </Grid>
+
+                {/* Column 4: Usuários */}
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, px: 1 }}>
+                    <PeopleIcon color="info" sx={{ mr: 1, fontSize: 20 }} />
+                    <Typography variant="subtitle2" fontWeight="bold" color="text.primary">
+                      USUÁRIOS
+                    </Typography>
+                  </Box>
+                  <Divider sx={{ mb: 1 }} />
+                  <List disablePadding>
+                    {results.users?.slice(0, 5).map((u) => (
+                      <ListItemButton
+                        key={u.id}
+                        onClick={() => { setOpen(false); navigate(`/user/${u.username}`); }}
+                        sx={{
+                          borderRadius: 2,
+                          mb: 0.5,
+                          p: 0.8,
+                          '&:hover': { backgroundColor: 'action.hover' },
+                        }}
+                      >
+                        <ListItemAvatar sx={{ minWidth: 46 }}>
+                          <Avatar src={u.avatar_url} alt={u.username} sx={{ width: 38, height: 38 }} />
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={u.username}
+                          primaryTypographyProps={{ variant: 'body2', fontWeight: 600, noWrap: true }}
+                        />
+                      </ListItemButton>
+                    ))}
+                    {(!results.users || results.users.length === 0) && (
+                      <Typography variant="caption" color="text.secondary" sx={{ px: 1 }}>
+                        Nenhum usuário
                       </Typography>
                     )}
                   </List>

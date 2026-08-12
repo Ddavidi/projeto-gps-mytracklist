@@ -1,12 +1,24 @@
 import { Router, Request, Response } from 'express';
 import { SpotifyService } from '../services/SpotifyService';
+import { UserController } from '../controllers/UserController';
 import { requireAuth } from '../middleware/auth';
 
-export function createSpotifyRouter(spotifyService: SpotifyService): Router {
+export function createSpotifyRouter(spotifyService: SpotifyService, userController: UserController): Router {
   const router = Router();
 
-  // Todas as rotas do Spotify requerem autenticação
-  router.use(requireAuth);
+  /**
+   * GET /spotify/trending
+   * Obtém os "Em Alta" (Trending). Não requer autenticação (para a Home deslogada).
+   */
+  router.get('/trending', async (req: Request, res: Response) => {
+    try {
+      const trending = await spotifyService.getTrending();
+      res.json(trending);
+    } catch (err) {
+      console.error('Erro ao obter trending:', err);
+      res.status(500).json({ error: 'Falha ao obter os lançamentos do Spotify.' });
+    }
+  });
 
   /**
    * GET /spotify/search?q=query
@@ -28,6 +40,9 @@ export function createSpotifyRouter(spotifyService: SpotifyService): Router {
       res.status(500).json({ error: 'Falha ao buscar no Spotify.' });
     }
   });
+
+  // Todas as demais rotas do Spotify requerem autenticação
+  router.use(requireAuth);
 
   /**
    * GET /spotify/albums/:id
@@ -149,6 +164,62 @@ export function createSpotifyRouter(spotifyService: SpotifyService): Router {
     } catch (err) {
       console.error('Erro ao obter múltiplos artistas:', err);
       res.status(500).json({ error: 'Falha ao obter detalhes dos artistas.' });
+    }
+  });
+
+  // ==========================================
+  // ROTAS ESPECÍFICAS DE USUÁRIO (OAUTH)
+  // ==========================================
+
+  router.get('/user/:userId/playlists', async (req: Request, res: Response) => {
+    try {
+      const accessToken = await spotifyService.getValidUserAccessToken(Number(req.params.userId), userController);
+      const playlists = await spotifyService.getUserPlaylists(accessToken);
+      res.json(playlists);
+    } catch (err: any) {
+      console.error('Erro ao obter playlists do usuário:', err.message);
+      res.status(500).json({ error: err.message || 'Falha ao obter playlists.' });
+    }
+  });
+
+  router.get('/user/:userId/playlists/:playlistId/tracks', async (req: Request, res: Response) => {
+    try {
+      const accessToken = await spotifyService.getValidUserAccessToken(Number(req.params.userId), userController);
+      const tracks = await spotifyService.getPlaylistTracks(accessToken, req.params.playlistId);
+      res.json(tracks);
+    } catch (err: any) {
+      console.error('Erro ao obter faixas da playlist:', err.message);
+      res.status(500).json({ error: err.message || 'Falha ao obter faixas da playlist.' });
+    }
+  });
+
+  router.get('/user/:userId/recent', async (req: Request, res: Response) => {
+    try {
+      const accessToken = await spotifyService.getValidUserAccessToken(Number(req.params.userId), userController);
+      const recent = await spotifyService.getUserRecentlyPlayed(accessToken);
+      res.json(recent);
+    } catch (err: any) {
+      console.error('Erro ao obter músicas recentes do usuário:', err.message);
+      res.status(500).json({ error: err.message || 'Falha ao obter músicas recentes.' });
+    }
+  });
+
+  router.get('/user/:userId/top/:type', async (req: Request, res: Response) => {
+    const { type } = req.params;
+    const timeRange = (req.query.time_range as string) || 'short_term';
+
+    if (type !== 'tracks' && type !== 'artists') {
+      res.status(400).json({ error: 'O tipo deve ser tracks ou artists.' });
+      return;
+    }
+
+    try {
+      const accessToken = await spotifyService.getValidUserAccessToken(Number(req.params.userId), userController);
+      const topItems = await spotifyService.getUserTopItems(accessToken, type, timeRange as 'short_term'|'medium_term'|'long_term');
+      res.json(topItems);
+    } catch (err: any) {
+      console.error(`Erro ao obter top ${type} do usuário:`, err.message);
+      res.status(500).json({ error: err.message || `Falha ao obter top ${type}.` });
     }
   });
 

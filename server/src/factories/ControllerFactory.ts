@@ -63,6 +63,11 @@ export class ControllerFactory {
           birth_date DATE,
           avatar_url TEXT,
           cover_url TEXT,
+          bio TEXT,
+          is_admin BOOLEAN DEFAULT FALSE,
+          spotify_access_token TEXT,
+          spotify_refresh_token TEXT,
+          spotify_token_expires_at TIMESTAMPTZ,
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `);
@@ -76,6 +81,11 @@ export class ControllerFactory {
           ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_url TEXT;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS spotify_access_token TEXT;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS spotify_refresh_token TEXT;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS spotify_token_expires_at TIMESTAMPTZ;
         `);
       } catch (e) {
         console.log('Postgres migration info (user columns might already exist):', e);
@@ -88,6 +98,9 @@ export class ControllerFactory {
           "userId" INTEGER NOT NULL,
           item_id TEXT NOT NULL,
           item_type TEXT NOT NULL DEFAULT 'track',
+          item_name TEXT,
+          item_image_url TEXT,
+          item_preview_url TEXT,
           rating INTEGER NOT NULL CHECK (rating >= 0 AND rating <= 10),
           review_text TEXT,
           "createdAt" TIMESTAMPTZ DEFAULT NOW(),
@@ -109,6 +122,11 @@ export class ControllerFactory {
       } catch (e) {}
       try {
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS review_text TEXT`);
+      } catch (e) {}
+      try {
+        await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS item_name TEXT`);
+        await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS item_image_url TEXT`);
+        await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS item_preview_url TEXT`);
       } catch (e) {}
       try {
         // Drop old unique constraint and add new one
@@ -144,6 +162,21 @@ export class ControllerFactory {
         )
       `);
 
+      // PostgreSQL schema — notifications
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          actor_id INTEGER NOT NULL,
+          type TEXT NOT NULL,
+          reference_id INTEGER,
+          is_read BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+          FOREIGN KEY (actor_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      `);
+
       // PostgreSQL schema — review_likes
       await database.exec(`
         CREATE TABLE IF NOT EXISTS review_likes (
@@ -170,6 +203,19 @@ export class ControllerFactory {
         )
       `);
 
+      // PostgreSQL schema — review_comments
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS review_comments (
+          id SERIAL PRIMARY KEY,
+          review_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
+          content TEXT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (review_id) REFERENCES reviews (id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      `);
+
     } else {
       // SQLite schema (for local dev / testing)
       await database.exec(`
@@ -183,6 +229,11 @@ export class ControllerFactory {
           birth_date TEXT,
           avatar_url TEXT,
           cover_url TEXT,
+          bio TEXT,
+          is_admin BOOLEAN DEFAULT FALSE,
+          spotify_access_token TEXT,
+          spotify_refresh_token TEXT,
+          spotify_token_expires_at TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
       `);
@@ -194,6 +245,11 @@ export class ControllerFactory {
       try { await database.exec('ALTER TABLE users ADD COLUMN birth_date TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN avatar_url TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN cover_url TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN bio TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN spotify_access_token TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN spotify_refresh_token TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN spotify_token_expires_at TEXT;'); } catch (e) {}
 
       // SQLite schema — reviews (generic: track, album, artist)
       await database.exec(`
@@ -202,6 +258,9 @@ export class ControllerFactory {
           userId INTEGER NOT NULL,
           item_id TEXT NOT NULL,
           item_type TEXT NOT NULL DEFAULT 'track',
+          item_name TEXT,
+          item_image_url TEXT,
+          item_preview_url TEXT,
           rating INTEGER NOT NULL CHECK (rating >= 0 AND rating <= 10),
           review_text TEXT,
           createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -215,6 +274,9 @@ export class ControllerFactory {
       try { await database.exec('ALTER TABLE reviews RENAME COLUMN trackId TO item_id;'); } catch (e) {}
       try { await database.exec('ALTER TABLE reviews ADD COLUMN item_type TEXT NOT NULL DEFAULT \'track\';'); } catch (e) {}
       try { await database.exec('ALTER TABLE reviews ADD COLUMN review_text TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_name TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_image_url TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_preview_url TEXT;'); } catch (e) {}
 
       // SQLite schema — activity_logs
       await database.exec(`
@@ -241,6 +303,21 @@ export class ControllerFactory {
         );
       `);
 
+      // SQLite schema — notifications
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          actor_id INTEGER NOT NULL,
+          type TEXT NOT NULL,
+          reference_id INTEGER,
+          is_read BOOLEAN DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+          FOREIGN KEY (actor_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+      `);
+
       // SQLite schema — review_likes
       await database.exec(`
         CREATE TABLE IF NOT EXISTS review_likes (
@@ -264,6 +341,19 @@ export class ControllerFactory {
           createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE,
           UNIQUE (userId, item_id, item_type)
+        );
+      `);
+
+      // SQLite schema — review_comments
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS review_comments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          review_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
+          content TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (review_id) REFERENCES reviews (id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
       `);
     }

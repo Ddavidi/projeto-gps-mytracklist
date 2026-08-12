@@ -117,7 +117,7 @@ function TrackDetailsPage() {
           </Typography>
 
           <Typography variant="h6" fontWeight="bold" gutterBottom>Avalie esta Música</Typography>
-          <ReviewSection itemType="track" itemId={trackId} />
+          <ReviewSection itemType="track" itemId={trackId} itemData={{ name: track.name, imageUrl: track.imageUrl, previewUrl: track.previewUrl }} />
 
           <Divider sx={{ my: 4 }} />
 

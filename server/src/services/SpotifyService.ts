@@ -7,17 +7,193 @@ interface SpotifyToken {
 export class SpotifyService {
   private clientId: string;
   private clientSecret: string;
+  private redirectUri: string;
   private token: SpotifyToken | null = null;
 
   constructor() {
     this.clientId = process.env.SPOTIFY_CLIENT_ID || '';
     this.clientSecret = process.env.SPOTIFY_CLIENT_SECRET || '';
+    this.redirectUri = process.env.SPOTIFY_REDIRECT_URI || '';
 
     if (!this.clientId || !this.clientSecret) {
       console.error('ERRO CRÍTICO: As credenciais do Spotify (CLIENT_ID e CLIENT_SECRET) não estão definidas!');
       throw new Error('Credenciais do Spotify não configuradas.');
     }
   }
+
+  // ==========================================
+  // OAUTH 2.0 METHODS (User Authentication)
+  // ==========================================
+
+  public getAuthorizationUrl(state: string): string {
+    const scope = 'playlist-read-private playlist-read-collaborative user-read-recently-played user-top-read';
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: this.clientId,
+      scope,
+      redirect_uri: this.redirectUri,
+      state
+    });
+    return `https://accounts.spotify.com/authorize?${params.toString()}`;
+  }
+
+  public async exchangeCodeForToken(code: string) {
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + Buffer.from(this.clientId + ':' + this.clientSecret).toString('base64')
+      },
+      body: new URLSearchParams({
+        code,
+        redirect_uri: this.redirectUri,
+        grant_type: 'authorization_code'
+      }).toString()
+    });
+
+    if (!response.ok) {
+      throw new Error('Falha ao trocar código por token no Spotify.');
+    }
+
+    return response.json();
+  }
+
+  public async refreshUserToken(refreshToken: string) {
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + Buffer.from(this.clientId + ':' + this.clientSecret).toString('base64')
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+      }).toString()
+    });
+
+    if (!response.ok) {
+      throw new Error('Falha ao atualizar token do usuário.');
+    }
+
+    return response.json();
+  }
+
+  public async getValidUserAccessToken(userId: number, userController: any): Promise<string> {
+    const userTokens = await userController.getSpotifyTokens(userId);
+    if (!userTokens || !userTokens.spotify_access_token) {
+      throw new Error('Usuário não possui conta Spotify vinculada.');
+    }
+
+    const expiresAt = new Date(userTokens.spotify_token_expires_at).getTime();
+    
+    // Se o token expira em menos de 1 minuto, renova
+    if (Date.now() > expiresAt - 60000) {
+      if (!userTokens.spotify_refresh_token) {
+        throw new Error('Refresh token não encontrado. Necessário refazer o login no Spotify.');
+      }
+
+      console.log(`Renovando token do Spotify para o usuário ${userId}...`);
+      const tokenData = await this.refreshUserToken(userTokens.spotify_refresh_token);
+      
+      const newAccessToken = tokenData.access_token;
+      const newRefreshToken = tokenData.refresh_token || userTokens.spotify_refresh_token; // Às vezes a API não retorna novo refresh token
+      const newExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+
+      await userController.updateSpotifyTokens(userId, newAccessToken, newRefreshToken, newExpiresAt);
+      return newAccessToken;
+    }
+
+    return userTokens.spotify_access_token;
+  }
+
+  // ==========================================
+  // USER SPECIFIC API CALLS
+  // ==========================================
+
+  public async getUserPlaylists(accessToken: string) {
+    const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) throw new Error('Falha ao buscar playlists');
+    const data = await response.json();
+    return data.items.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      imageUrl: item.images?.[0]?.url || '',
+      tracksTotal: item.tracks?.total,
+      owner: item.owner?.display_name,
+      externalUrl: item.external_urls?.spotify
+    }));
+  }
+
+  public async getPlaylistTracks(accessToken: string, playlistId: string) {
+    const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) throw new Error('Falha ao buscar músicas da playlist');
+    const data = await response.json();
+    return data.items
+      .filter((item: any) => item.track)
+      .map((item: any) => ({
+        id: item.track.id,
+        name: item.track.name,
+        artist: item.track.artists?.map((a: any) => a.name).join(', '),
+        album: item.track.album?.name,
+        imageUrl: item.track.album?.images?.[0]?.url || '',
+        durationMs: item.track.duration_ms,
+        previewUrl: item.track.preview_url,
+      }));
+  }
+
+  public async getUserRecentlyPlayed(accessToken: string) {
+    const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=20', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) throw new Error('Falha ao buscar músicas recentes');
+    const data = await response.json();
+    return data.items.map((item: any) => ({
+      id: item.track.id,
+      name: item.track.name,
+      artist: item.track.artists?.map((a: any) => a.name).join(', '),
+      album: item.track.album?.name,
+      imageUrl: item.track.album?.images?.[0]?.url || '',
+      playedAt: item.played_at,
+      durationMs: item.track.duration_ms,
+      previewUrl: item.track.preview_url,
+    }));
+  }
+
+  public async getUserTopItems(accessToken: string, type: 'tracks' | 'artists', timeRange: 'short_term' | 'medium_term' | 'long_term') {
+    const response = await fetch(`https://api.spotify.com/v1/me/top/${type}?time_range=${timeRange}&limit=20`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) throw new Error(`Falha ao buscar top ${type}`);
+    const data = await response.json();
+
+    if (type === 'tracks') {
+      return data.items.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        artist: item.artists?.map((a: any) => a.name).join(', '),
+        album: item.album?.name,
+        imageUrl: item.album?.images?.[0]?.url || '',
+        durationMs: item.duration_ms,
+        previewUrl: item.preview_url,
+      }));
+    } else {
+      return data.items.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        imageUrl: item.images?.[0]?.url || '',
+        genres: item.genres,
+        popularity: item.popularity,
+      }));
+    }
+  }
+
+  // ==========================================
+  // CLIENT CREDENTIALS API CALLS (Generic)
+  // ==========================================
 
   /**
    * Verifica se o token atual ainda é válido.
@@ -473,5 +649,34 @@ export class SpotifyService {
         followers: artist.followers?.total,
       })),
     };
+  }
+
+  /**
+   * Obtém os "Em Alta" (Trending).
+   * Neste caso, estamos usando os "New Releases" (lançamentos) do Brasil.
+   */
+  public async getTrending() {
+    const accessToken = await this.getAccessToken();
+
+    const response = await fetch(`https://api.spotify.com/v1/browse/new-releases?limit=10&country=BR`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+
+    if (!response.ok) {
+      console.error('Falha ao obter lançamentos (trending):', await response.text());
+      return { albums: [] };
+    }
+
+    const data = await response.json();
+    const albums = (data.albums?.items || []).map((album: any) => ({
+      id: album.id,
+      name: album.name,
+      artist: album.artists?.map((a: any) => a.name).join(', ') || '',
+      imageUrl: album.images?.[0]?.url || '',
+      releaseDate: album.release_date ? album.release_date.substring(0, 4) : '',
+      albumType: album.album_type,
+    }));
+
+    return { albums };
   }
 }

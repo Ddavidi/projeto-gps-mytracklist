@@ -130,7 +130,7 @@ function ArtistDetailsPage() {
           <Typography variant="h3" component="h1" fontWeight="bold" gutterBottom>{artist.name}</Typography>
 
           <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mt: 3 }}>Avalie este Artista</Typography>
-          <ReviewSection itemType="artist" itemId={id} />
+          <ReviewSection itemType="artist" itemId={id} itemData={{ name: artist.name, imageUrl: artist.imageUrl, previewUrl: null }} />
 
           <Divider sx={{ my: 4 }} />
 

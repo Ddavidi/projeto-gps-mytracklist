@@ -30,13 +30,20 @@ export const getUserReviewForTrack = async (trackId) => {
  * @param {number} rating - Nota (0-10)
  * @param {string|null} reviewText - Texto da review (opcional)
  * @param {number|null} existingReviewId - ID da avaliação existente (para update)
+ * @param {Object} metadata - Dados do item (itemName, itemImageUrl, itemPreviewUrl)
  */
-export const saveReview = async (itemType, itemId, rating, reviewText = null, existingReviewId = null) => {
+export const saveReview = async (itemType, itemId, rating, reviewText = null, existingReviewId = null, metadata = {}) => {
   if (existingReviewId) {
     const response = await api.put(`/reviews/${existingReviewId}`, { rating, reviewText });
     return response.data;
   } else {
-    const response = await api.post('/reviews', { itemType, itemId, rating, reviewText });
+    const response = await api.post('/reviews', { 
+      itemType, 
+      itemId, 
+      rating, 
+      reviewText,
+      ...metadata
+    });
     return response.data;
   }
 };
@@ -80,4 +87,20 @@ export const getItemStats = async (itemType, itemId) => {
     console.error('Erro ao buscar estatísticas do item:', error);
     return null;
   }
+};
+
+/**
+ * Obtém os comentários de uma avaliação.
+ */
+export const getReviewComments = async (reviewId) => {
+  const response = await api.get(`/reviews/${reviewId}/comments`);
+  return response.data;
+};
+
+/**
+ * Adiciona um comentário em uma avaliação.
+ */
+export const addReviewComment = async (reviewId, content) => {
+  const response = await api.post(`/reviews/${reviewId}/comments`, { content });
+  return response.data;
 };

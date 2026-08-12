@@ -11,16 +11,16 @@ export function createAuthRouter(userController: UserController): Router {
   const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 
   /**
-   * POST /auth/check-email
-   * Verifica se o e-mail já está em uso (Etapa 1).
+   * POST /auth/check
+   * Verifica se o identificador (e-mail ou username) já está em uso (Etapa 1).
    */
-  router.post('/check-email', async (req: Request, res: Response) => {
-    const { email } = req.body;
-    if (!email) {
-      res.status(400).json({ error: 'E-mail é obrigatório.' });
+  router.post('/check', async (req: Request, res: Response) => {
+    const { identifier } = req.body;
+    if (!identifier) {
+      res.status(400).json({ error: 'Identificador (e-mail ou username) é obrigatório.' });
       return;
     }
-    const result = await userController.checkEmailExists(email);
+    const result = await userController.checkIdentifierExists(identifier);
     res.json(result);
   });
 
@@ -73,13 +73,19 @@ export function createAuthRouter(userController: UserController): Router {
     const result = await userController.authenticateUser(identifier, password);
 
     if (result.success) {
-      // Fetch full user data to include username if identifier was email
+      // Fetch full user data to include username se o identifier foi email
       const user = await userController.getUserById(result.userId!);
       const token = generateToken({ userId: result.userId!, username: user?.username || identifier });
       res.json({
         message: 'Login realizado com sucesso!',
         token,
-        user: { id: result.userId, username: user?.username || identifier }
+        user: { 
+          id: result.userId, 
+          username: user?.username || identifier,
+          avatar_url: user?.avatar_url,
+          cover_url: user?.cover_url,
+          is_admin: user?.is_admin
+        }
       });
     } else {
       res.status(401).json({ error: result.message });
@@ -94,7 +100,7 @@ export function createAuthRouter(userController: UserController): Router {
     const user = await userController.getUserById(req.user!.userId);
 
     if (user) {
-      res.json({ id: user.id, username: user.username, email: (user as any).email, name: (user as any).name, gender: (user as any).gender, birth_date: (user as any).birth_date, avatar_url: user.avatar_url, cover_url: user.cover_url });
+      res.json({ id: user.id, username: user.username, email: (user as any).email, name: (user as any).name, gender: (user as any).gender, birth_date: (user as any).birth_date, avatar_url: user.avatar_url, cover_url: user.cover_url, bio: (user as any).bio, is_admin: (user as any).is_admin, spotify_connected: (user as any).spotify_connected === 1 });
     } else {
       res.status(404).json({ error: 'Utilizador não encontrado.' });
     }
@@ -105,14 +111,14 @@ export function createAuthRouter(userController: UserController): Router {
    * Atualiza as informações de perfil (nome, gênero, data de nascimento).
    */
   router.put('/profile', requireAuth, async (req: Request, res: Response) => {
-    const { name, gender, birthDate } = req.body;
+    const { name, gender, birthDate, bio } = req.body;
     
     if (!name || !gender || !birthDate) {
       res.status(400).json({ error: 'Nome, gênero e data de nascimento são obrigatórios.' });
       return;
     }
 
-    const result = await userController.updateUserProfile(req.user!.userId, name, gender, birthDate);
+    const result = await userController.updateUserProfile(req.user!.userId, name, gender, birthDate, bio || '');
     
     if (result.success) {
       res.json({ message: 'Perfil atualizado com sucesso!' });

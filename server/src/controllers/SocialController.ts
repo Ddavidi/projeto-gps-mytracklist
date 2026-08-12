@@ -60,7 +60,7 @@ export class SocialController {
   async getFollowers(userId: number) {
     try {
       const followers = await this.db.all(
-        `SELECT u.id, u.username, u.name, f."createdAt" as followed_at
+        `SELECT u.id, u.username, u.name, u.avatar_url as user_avatar, f."createdAt" as followed_at
          FROM follows f
          JOIN users u ON u.id = f."followerId"
          WHERE f."followingId" = ?
@@ -80,7 +80,7 @@ export class SocialController {
   async getFollowing(userId: number) {
     try {
       const following = await this.db.all(
-        `SELECT u.id, u.username, u.name, f."createdAt" as followed_at
+        `SELECT u.id, u.username, u.name, u.avatar_url as user_avatar, f."createdAt" as followed_at
          FROM follows f
          JOIN users u ON u.id = f."followingId"
          WHERE f."followerId" = ?
@@ -198,7 +198,8 @@ export class SocialController {
            u.id as author_id,
            u.username as author_username,
            u.name as author_name,
-           (SELECT COUNT(*) FROM review_likes rl WHERE rl."reviewId" = r.id) as likes_count
+           (SELECT COUNT(*) FROM review_likes rl WHERE rl."reviewId" = r.id) as likes_count,
+           (SELECT 1 FROM review_likes rl2 WHERE rl2."reviewId" = r.id AND rl2."userId" = ?) as is_liked
          FROM reviews r
          JOIN users u ON u.id = r."userId"
          WHERE r."userId" IN (
@@ -206,7 +207,7 @@ export class SocialController {
          )
          ORDER BY r."createdAt" DESC
          LIMIT ? OFFSET ?`,
-        [userId, limit, offset]
+        [userId, userId, limit, offset]
       );
       return { success: true, feed, hasMore: feed.length === limit };
     } catch (error) {
@@ -234,7 +235,8 @@ export class SocialController {
            u.id as author_id,
            u.username as author_username,
            u.name as author_name,
-           (SELECT COUNT(*) FROM review_likes rl WHERE rl."reviewId" = r.id) as likes_count
+           (SELECT COUNT(*) FROM review_likes rl WHERE rl."reviewId" = r.id) as likes_count,
+           (SELECT 1 FROM review_likes rl2 WHERE rl2."reviewId" = r.id AND rl2."userId" = ?) as is_liked
          FROM reviews r
          JOIN users u ON u.id = r."userId"
          WHERE r."userId" IN (
@@ -243,7 +245,7 @@ export class SocialController {
          AND r.item_id = ?
          AND r.item_type = ?
          ORDER BY r."createdAt" DESC`,
-        [userId, itemId, itemType]
+        [userId, userId, itemId, itemType]
       );
       return { success: true, friendsReviews };
     } catch (error) {

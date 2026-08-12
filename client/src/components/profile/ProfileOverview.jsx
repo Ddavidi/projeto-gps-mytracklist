@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography, Grid } from '@mui/material';
-import { Link } from 'react-router-dom';
-import ReviewItem from '../ReviewItem';
+import { Link, useParams } from 'react-router-dom';
+import ReviewCard from '../ReviewCard';
 
 export default function ProfileOverview({ reviews, favorites, favoriteDetails, itemDetails }) {
   // Pegar as 5 últimas avaliações
@@ -80,14 +80,17 @@ export default function ProfileOverview({ reviews, favorites, favoriteDetails, i
           Últimas Avaliações
         </Typography>
         {recentReviews.length > 0 ? (
-          <Box sx={{ bgcolor: 'background.default', borderRadius: 2, p: 2, boxShadow: 1 }}>
-            {recentReviews.map(review => (
-              <ReviewItem
-                key={review.id}
-                review={review}
-                itemData={itemDetails[review.item_id]}
-              />
-            ))}
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            {recentReviews.map(review => {
+              const details = itemDetails[review.item_id];
+              const enrichedReview = {
+                ...review,
+                item_name: review.item_name || details?.name,
+                item_image_url: review.item_image_url || details?.imageUrl,
+                user_username: window.location.pathname.split('/').pop(), // Hack to get username from URL in this context, or we can just pass it as prop
+              };
+              return <ReviewCard key={review.id} review={enrichedReview} />;
+            })}
           </Box>
         ) : (
           <Typography color="text.secondary">Nenhuma avaliação recente.</Typography>

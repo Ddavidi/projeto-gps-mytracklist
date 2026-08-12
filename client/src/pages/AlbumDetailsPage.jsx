@@ -137,7 +137,7 @@ function AlbumDetailsPage() {
           </Typography>
 
           <Typography variant="h6" fontWeight="bold" gutterBottom>Avalie este Álbum</Typography>
-          <ReviewSection itemType="album" itemId={id} />
+          <ReviewSection itemType="album" itemId={id} itemData={{ name: album.name, imageUrl: album.imageUrl, previewUrl: null }} />
 
           <Divider sx={{ my: 4 }} />
 

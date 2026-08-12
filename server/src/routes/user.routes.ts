@@ -60,12 +60,41 @@ export function createUserRouter(userController: UserController): Router {
 
     if (result.success) {
       res.json({
-        user: { id: targetUser.id, username: targetUser.username },
+        user: { 
+          id: targetUser.id, 
+          username: targetUser.username,
+          avatar_url: targetUser.avatar_url,
+          cover_url: targetUser.cover_url,
+          bio: (targetUser as any).bio
+        },
         reviews: result.reviews
       });
     } else {
       res.status(500).json({ error: result.message });
     }
+  });
+
+  router.get('/me/notifications', async (req: Request, res: Response) => {
+    const result = await userController.getNotifications(req.user!.userId);
+    if (result.success) res.json(result.notifications);
+    else res.status(500).json({ error: result.message });
+  });
+
+  router.put('/me/notifications/read', async (req: Request, res: Response) => {
+    const result = await userController.markNotificationsAsRead(req.user!.userId);
+    if (result.success) res.json({ message: 'Lidas' });
+    else res.status(500).json({ error: result.message });
+  });
+
+  router.put('/me/password', async (req: Request, res: Response) => {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      res.status(400).json({ error: 'Senhas obrigatórias' });
+      return;
+    }
+    const result = await userController.changePassword(req.user!.userId, oldPassword, newPassword);
+    if (result.success) res.json({ message: 'Senha atualizada' });
+    else res.status(400).json({ error: result.message });
   });
 
   return router;

@@ -32,7 +32,7 @@ export class ReviewController {
   /**
    * Cria uma nova avaliação para uma música, álbum ou artista.
    */
-  async createReview(userId: number, itemType: ItemType, itemId: string, rating: number, reviewText?: string) {
+  async createReview(userId: number, itemType: ItemType, itemId: string, rating: number, reviewText?: string, itemName?: string, itemImageUrl?: string, itemPreviewUrl?: string) {
     if (!['track', 'album', 'artist'].includes(itemType)) {
       return { success: false, message: 'Tipo de item inválido. Use: track, album ou artist.' };
     }
@@ -41,8 +41,8 @@ export class ReviewController {
     }
     try {
       const result = await this.db.run(
-        'INSERT INTO reviews ("userId", item_id, item_type, rating, review_text, "createdAt", "updatedAt") VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
-        [userId, itemId, itemType, rating, reviewText || null]
+        'INSERT INTO reviews ("userId", item_id, item_type, rating, review_text, item_name, item_image_url, item_preview_url, "createdAt", "updatedAt") VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+        [userId, itemId, itemType, rating, reviewText || null, itemName || null, itemImageUrl || null, itemPreviewUrl || null]
       );
       return { success: true, reviewId: result.lastInsertRowid };
     } catch (error: any) {
@@ -136,6 +136,54 @@ export class ReviewController {
     } catch (error) {
       console.error('Falha ao obter estatísticas:', error);
       return { success: false, message: 'Falha ao obter estatísticas.' };
+    }
+  }
+
+  // =====================
+  // Comentários
+  // =====================
+
+  async getReviewComments(reviewId: number) {
+    try {
+      const comments = await this.db.all(
+        `SELECT c.id, c.content, c.created_at, u.username as user_username, u.avatar_url as user_avatar, u.id as user_id 
+         FROM review_comments c 
+         JOIN users u ON c.user_id = u.id 
+         WHERE c.review_id = ? 
+         ORDER BY c.created_at ASC`,
+        [reviewId]
+      );
+      return { success: true, comments: comments || [] };
+    } catch (error) {
+      console.error('Falha ao buscar comentários:', error);
+      return { success: false, message: 'Falha ao buscar comentários.' };
+    }
+  }
+
+  async addComment(reviewId: number, userId: number, content: string) {
+    try {
+      if (!content || content.trim() === '') {
+        return { success: false, message: 'O comentário não pode ser vazio.' };
+      }
+
+      const result = await this.db.run(
+        'INSERT INTO review_comments (review_id, user_id, content, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
+        [reviewId, userId, content.trim()]
+      );
+
+      // Enviar notificação para o autor da review
+      const review = await this.db.get('SELECT "userId" FROM reviews WHERE id = ?', [reviewId]);
+      if (review && review.userId !== userId) {
+        await this.db.run(
+          'INSERT INTO notifications (user_id, actor_id, type, reference_id) VALUES (?, ?, ?, ?)',
+          [review.userId, userId, 'comment', reviewId]
+        );
+      }
+
+      return { success: true, commentId: result.lastInsertRowid };
+    } catch (error) {
+      console.error('Falha ao adicionar comentário:', error);
+      return { success: false, message: 'Falha ao adicionar comentário.' };
     }
   }
 }

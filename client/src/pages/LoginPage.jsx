@@ -10,18 +10,30 @@ import {
   Alert, 
   Paper,
   Divider,
-  MenuItem
+  MenuItem,
+  Checkbox,
+  FormControlLabel,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import api from '../services/api';
 
 function LoginPage() {
   const [step, setStep] = useState(1);
+  const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [name, setName] = useState('');
   const [gender, setGender] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  
   const [isLoginFlow, setIsLoginFlow] = useState(false);
   
   const [error, setError] = useState('');
@@ -30,21 +42,26 @@ function LoginPage() {
   const navigate = useNavigate();
   const { login, setAuth } = useAuth();
 
-  const handleEmailSubmit = async (e) => {
+  const handleIdentifierSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
     try {
-      const response = await api.post('/auth/check-email', { email });
+      const response = await api.post('/auth/check', { identifier });
       if (response.data.exists) {
         setIsLoginFlow(true);
         setStep(2);
       } else {
-        setIsLoginFlow(false);
-        setStep(2);
+        if (response.data.isEmail) {
+          setIsLoginFlow(false);
+          setEmail(identifier);
+          setStep(2);
+        } else {
+          setError('Conta não encontrada. Para criar uma conta, insira o seu e-mail.');
+        }
       }
     } catch (err) {
-      setError('Ocorreu um erro ao verificar o e-mail.');
+      setError('Ocorreu um erro ao verificar a conta.');
     } finally {
       setIsSubmitting(false);
     }
@@ -56,17 +73,29 @@ function LoginPage() {
     setIsSubmitting(true);
     try {
       if (isLoginFlow) {
-        const result = await login(email, password);
+        const result = await login(identifier, password);
         if (result.success) {
           navigate('/');
         } else {
           setError(result.message);
         }
       } else {
-        // Validation for registration
+        // Register validations
+        if (password !== confirmPassword) {
+          setError('As senhas não coincidem.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (!termsAccepted) {
+          setError('Você deve aceitar os termos de uso.');
+          setIsSubmitting(false);
+          return;
+        }
+
         const passwordRegex = /^(?=.*[a-zA-Z])(?=.*[\d#?!&@$*^%-]).{10,}$/;
         if (!passwordRegex.test(password)) {
-          setError('A senha deve ter pelo menos 10 caracteres, conter 1 letra e 1 número ou caractere especial.');
+          setError('A senha não atende a todos os requisitos.');
           setIsSubmitting(false);
           return;
         }
@@ -96,9 +125,16 @@ function LoginPage() {
     }
   };
 
+  // Password validators
+  const hasMinLength = password.length >= 10;
+  const hasLetter = /[a-zA-Z]/.test(password);
+  const hasNumberOrSpecial = /[\d#?!&@$*^%-]/.test(password);
+  
+  const allRequirementsMet = hasMinLength && hasLetter && hasNumberOrSpecial;
+
   return (
     <Container maxWidth="xs">
-      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 8 }}>
         <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
           <Typography component="h1" variant="h5" align="center" gutterBottom>
             {step === 1 && 'Entrar ou Criar Conta'}
@@ -110,11 +146,11 @@ function LoginPage() {
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           
           {step === 1 && (
-            <Box component="form" onSubmit={handleEmailSubmit}>
+            <Box component="form" onSubmit={handleIdentifierSubmit}>
               <TextField
-                margin="normal" required fullWidth id="email" label="E-mail" name="email"
-                type="email" autoComplete="email" autoFocus value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                margin="normal" required fullWidth id="identifier" label="E-mail ou Username" name="identifier"
+                autoComplete="email" autoFocus value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
               />
               <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} disabled={isSubmitting}>
                 {isSubmitting ? 'Verificando...' : 'Avançar'}
@@ -133,7 +169,9 @@ function LoginPage() {
 
           {step === 2 && (
             <Box component="form" onSubmit={handleCredentialsSubmit}>
-              <Typography variant="body2" sx={{ mb: 2 }}>E-mail: {email}</Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {isLoginFlow ? `Conta: ${identifier}` : `E-mail: ${email}`}
+              </Typography>
               
               {!isLoginFlow && (
                 <TextField
@@ -148,13 +186,54 @@ function LoginPage() {
                 autoFocus={isLoginFlow}
                 onChange={(e) => setPassword(e.target.value)}
               />
+
               {!isLoginFlow && (
-                <Typography variant="caption" color="text.secondary">
-                  A senha deve ter pelo menos 10 caracteres, 1 letra e 1 número/caractere especial.
-                </Typography>
+                <>
+                  <TextField
+                    margin="normal" required fullWidth name="confirmPassword" label="Confirmar Senha" type="password" id="confirmPassword"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+
+                  <Box sx={{ mt: 2, mb: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>Requisitos da senha:</Typography>
+                    <List dense sx={{ pt: 0, pb: 0 }}>
+                      <ListItem sx={{ py: 0, px: 0 }}>
+                        <ListItemIcon sx={{ minWidth: 30 }}>
+                          {hasMinLength ? <CheckCircleIcon color="success" fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" color="disabled" />}
+                        </ListItemIcon>
+                        <ListItemText primary="Pelo menos 10 caracteres" sx={{ m: 0 }} primaryTypographyProps={{ variant: 'caption', color: hasMinLength ? 'text.primary' : 'text.secondary' }} />
+                      </ListItem>
+                      <ListItem sx={{ py: 0, px: 0 }}>
+                        <ListItemIcon sx={{ minWidth: 30 }}>
+                          {hasLetter ? <CheckCircleIcon color="success" fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" color="disabled" />}
+                        </ListItemIcon>
+                        <ListItemText primary="Pelo menos 1 letra" sx={{ m: 0 }} primaryTypographyProps={{ variant: 'caption', color: hasLetter ? 'text.primary' : 'text.secondary' }} />
+                      </ListItem>
+                      <ListItem sx={{ py: 0, px: 0 }}>
+                        <ListItemIcon sx={{ minWidth: 30 }}>
+                          {hasNumberOrSpecial ? <CheckCircleIcon color="success" fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" color="disabled" />}
+                        </ListItemIcon>
+                        <ListItemText primary="Pelo menos 1 número ou caractere especial" sx={{ m: 0 }} primaryTypographyProps={{ variant: 'caption', color: hasNumberOrSpecial ? 'text.primary' : 'text.secondary' }} />
+                      </ListItem>
+                    </List>
+                  </Box>
+
+                  <FormControlLabel
+                    control={<Checkbox checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} color="primary" />}
+                    label={<Typography variant="caption">Eu concordo com os Termos de Uso</Typography>}
+                    sx={{ mb: 1 }}
+                  />
+                </>
               )}
               
-              <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} disabled={isSubmitting}>
+              <Button 
+                type="submit" 
+                fullWidth 
+                variant="contained" 
+                sx={{ mt: 1, mb: 2 }} 
+                disabled={isSubmitting || (!isLoginFlow && (!allRequirementsMet || !termsAccepted))}
+              >
                 {isSubmitting ? 'Aguarde...' : (isLoginFlow ? 'Entrar' : 'Criar Conta')}
               </Button>
               <Button fullWidth variant="text" onClick={() => setStep(1)} disabled={isSubmitting}>

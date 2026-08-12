@@ -7,7 +7,9 @@ const TAB_INDEX_MAP = {
   2: 'albums',
   3: 'artists',
   4: 'social',
-  5: 'status'
+  5: 'status',
+  6: 'playlists',
+  7: 'spotify_stats'
 };
 
 export default function ProfileTabs({ value, onChange }) {
@@ -41,7 +43,9 @@ export default function ProfileTabs({ value, onChange }) {
         <Tab label="Álbum" />
         <Tab label="Artistas" />
         <Tab label="Social" />
-        <Tab label="Status" />
+        <Tab label="Estatísticas" />
+        <Tab label="Playlists" />
+        <Tab label="Spotify Stats" />
       </Tabs>
     </Box>
   );
