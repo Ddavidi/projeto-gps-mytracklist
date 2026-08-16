@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import { getAlbumDetails } from '../services/spotify';
 import api from '../services/api';
@@ -13,16 +13,20 @@ import {
   List, 
   ListItem, 
   ListItemText, 
-  ListItemButton,
   Button,
   Divider,
-  Chip,
-  Grid
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import AlbumIcon from '@mui/icons-material/Album';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import CloseIcon from '@mui/icons-material/Close';
 import ReviewSection from '../components/ReviewSection';
 import FriendsReviews from '../components/FriendsReviews';
 import ScoreDistribution from '../components/ScoreDistribution';
@@ -35,6 +39,20 @@ function AlbumDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [userRatings, setUserRatings] = useState({});
+  const [reviewTrackModal, setReviewTrackModal] = useState(null);
+
+  const fetchTrackRatings = async (tracks) => {
+    if (!tracks || tracks.length === 0) return;
+    const items = tracks.map(t => ({ itemType: 'track', itemId: t.id }));
+    try {
+      const res = await api.post('/reviews/batch', { items });
+      const ratingsMap = {};
+      res.data.forEach(r => { ratingsMap[r.item_id] = r.rating; });
+      setUserRatings(ratingsMap);
+    } catch(err) {
+      console.error('Failed to fetch track ratings', err);
+    }
+  };
 
   useEffect(() => {
     const fetchAlbum = async () => {
@@ -43,18 +61,7 @@ function AlbumDetailsPage() {
       try {
         const data = await getAlbumDetails(id);
         setAlbum(data);
-        
-        if (data.tracks && data.tracks.length > 0) {
-          const items = data.tracks.map(t => ({ itemType: 'track', itemId: t.id }));
-          try {
-            const res = await api.post('/reviews/batch', { items });
-            const ratingsMap = {};
-            res.data.forEach(r => { ratingsMap[r.item_id] = r.rating; });
-            setUserRatings(ratingsMap);
-          } catch(err) {
-            console.error('Failed to fetch track ratings', err);
-          }
-        }
+        await fetchTrackRatings(data.tracks);
       } catch (err) {
         console.error(err);
         setError('Falha ao carregar os detalhes do álbum.');
@@ -91,8 +98,8 @@ function AlbumDetailsPage() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mb: 3 }}>
+    <Container maxWidth="lg" sx={{ py: 4, mb: 10 }}>
+      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>
         Voltar
       </Button>
 
@@ -142,7 +149,6 @@ function AlbumDetailsPage() {
             </Box>
           </Paper>
 
-
         </Grid>
 
         {/* Main Content (Direita) */}
@@ -166,7 +172,9 @@ function AlbumDetailsPage() {
           {/* Relações (Artist) */}
           {album.artistId && (
             <>
-              <Typography variant="h6" fontWeight="bold" gutterBottom>Relações</Typography>
+              <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
+                Artista
+              </Typography>
               <Grid container spacing={2} sx={{ mb: 4 }}>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Paper
@@ -222,19 +230,34 @@ function AlbumDetailsPage() {
                       />
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: { xs: 4, sm: 0 } }}>
-                      {userRatings[track.id] && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'warning.main' }}>
+                      
+                      {/* Rating Button / Star */}
+                      {userRatings[track.id] ? (
+                        <Button 
+                          size="small" 
+                          onClick={() => setReviewTrackModal(track)} 
+                          sx={{ color: 'warning.main', minWidth: 0, p: 0.5, borderRadius: 2 }}
+                        >
                           <StarIcon fontSize="small" />
                           <Typography variant="body2" fontWeight="bold" sx={{ ml: 0.5 }}>{userRatings[track.id]}/10</Typography>
-                        </Box>
+                        </Button>
+                      ) : (
+                        <Tooltip title="Avaliar Música">
+                          <IconButton size="small" onClick={() => setReviewTrackModal(track)} sx={{ color: 'text.secondary' }}>
+                            <StarBorderIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       )}
+
                       <Typography variant="body2" color="text.secondary">
                         {formatDuration(track.durationMs)}
                       </Typography>
+                      
                       <PlayButton
                         track={{ id: track.id, name: track.name, artist: track.artist || album.artist, imageUrl: album.imageUrl, previewUrl: track.previewUrl }}
                         size="small"
                       />
+                      
                       <Button 
                         variant="outlined" 
                         size="small" 
@@ -251,12 +274,57 @@ function AlbumDetailsPage() {
               ))}
             </List>
           </Paper>
-          
-          <Box sx={{ mt: 6 }}>
-            <FriendsReviews itemType="album" itemId={id} />
-          </Box>
+
+          <Divider sx={{ my: 4 }} />
+
+          <Typography variant="h6" fontWeight="bold" gutterBottom>O que os amigos estão achando deste álbum</Typography>
+          <FriendsReviews itemType="album" itemId={id} />
+
         </Grid>
       </Grid>
+
+      {/* Modal de Avaliar Música (Track) */}
+      <Dialog 
+        open={!!reviewTrackModal} 
+        onClose={() => setReviewTrackModal(null)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3, backgroundImage: 'none', bgcolor: 'background.default' } }}
+      >
+        {reviewTrackModal && (
+          <>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar variant="rounded" src={album.imageUrl} alt={reviewTrackModal.name} sx={{ width: 48, height: 48 }} />
+                <Box>
+                  <Typography variant="h6" fontWeight="bold" lineHeight={1.2}>{reviewTrackModal.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">{reviewTrackModal.artist || album.artist}</Typography>
+                </Box>
+              </Box>
+              <IconButton onClick={() => setReviewTrackModal(null)}>
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent dividers sx={{ p: 3 }}>
+              <ReviewSection 
+                itemType="track" 
+                itemId={reviewTrackModal.id} 
+                itemData={{ 
+                  name: reviewTrackModal.name, 
+                  imageUrl: album.imageUrl, 
+                  artist: reviewTrackModal.artist || album.artist 
+                }}
+                onReviewSaved={() => {
+                  // Atualiza a lista de notas para refletir a nova avaliação
+                  fetchTrackRatings(album.tracks);
+                  setReviewTrackModal(null);
+                }}
+              />
+            </DialogContent>
+          </>
+        )}
+      </Dialog>
+      
     </Container>
   );
 }
