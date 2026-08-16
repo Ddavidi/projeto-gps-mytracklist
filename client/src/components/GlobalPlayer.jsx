@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box, IconButton, Tooltip, Fade, Dialog, DialogTitle, DialogContent,
   List, ListItem, ListItemAvatar, Avatar, ListItemText, CircularProgress,
@@ -179,88 +179,87 @@ export default function GlobalPlayer() {
           <div ref={embedRef}></div>
         </Box>
 
-        {/* Sidebar de acoes */}
+        {/* Barra de acoes na direita (horizontal) */}
         <Box
           sx={{
             display: "flex",
-            flexDirection: "column",
+            flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
             bgcolor: "#111",
             borderLeft: "1px solid rgba(255,255,255,0.05)",
             height: 80,
-            px: 0.5,
-            gap: 0,
+            px: 2,
+            gap: 1,
             flexShrink: 0,
           }}
         >
           {/* Save to library — so para tracks */}
           {isTrack && (
-            <Tooltip title={saved ? "Remover das Curtidas" : "Salvar nas Curtidas"} placement="left">
+            <Tooltip title={saved ? "Remover das Curtidas" : "Salvar nas Curtidas"} placement="top">
               <IconButton
                 onClick={handleToggleSave}
                 disabled={savingLoad}
-                size="small"
+                size="medium"
                 sx={{
                   color: saved ? "#1ED760" : "rgba(255,255,255,0.35)",
                   "&:hover": { color: "#1ED760" },
-                  p: 0.75,
                 }}
               >
-                {saved ? <FavoriteIcon sx={{ fontSize: 17 }} /> : <FavoriteBorderIcon sx={{ fontSize: 17 }} />}
+                {saved ? <FavoriteIcon /> : <FavoriteBorderIcon />}
               </IconButton>
             </Tooltip>
           )}
 
           {/* Add to playlist — so para tracks */}
           {isTrack && (
-            <Tooltip title="Adicionar a Playlist" placement="left">
+            <Tooltip title="Adicionar a Playlist" placement="top">
               <IconButton
                 onClick={handleOpenPlaylistModal}
-                size="small"
-                sx={{ color: "rgba(255,255,255,0.35)", "&:hover": { color: "#fff" }, p: 0.75 }}
+                size="medium"
+                sx={{ color: "rgba(255,255,255,0.35)", "&:hover": { color: "#fff" } }}
               >
-                <PlaylistAddIcon sx={{ fontSize: 17 }} />
+                <PlaylistAddIcon />
               </IconButton>
             </Tooltip>
           )}
 
           {/* Add to queue — so para tracks */}
           {isTrack && (
-            <Tooltip title="Adicionar à Fila" placement="left">
+            <Tooltip title="Adicionar à Fila" placement="top">
               <IconButton
                 onClick={handleAddToQueue}
-                size="small"
-                sx={{ color: "rgba(255,255,255,0.35)", "&:hover": { color: "#fff" }, p: 0.75 }}
+                size="medium"
+                sx={{ color: "rgba(255,255,255,0.35)", "&:hover": { color: "#fff" } }}
               >
-                <QueueMusicIcon sx={{ fontSize: 17 }} />
+                <QueueMusicIcon />
               </IconButton>
             </Tooltip>
           )}
 
           {/* Abrir no Spotify */}
-          <Tooltip title="Abrir no Spotify" placement="left">
+          <Tooltip title="Abrir no Spotify" placement="top">
             <IconButton
               component="a"
               href={spotifyUrl}
               target="_blank"
               rel="noopener noreferrer"
-              size="small"
+              size="medium"
               disabled={!currentContext}
-              sx={{ color: "#1ED760", "&:hover": { bgcolor: "rgba(30,215,96,0.15)" }, p: 0.75 }}
+              sx={{ color: "#1ED760", "&:hover": { bgcolor: "rgba(30,215,96,0.15)" } }}
             >
-              <OpenInNewIcon sx={{ fontSize: 17 }} />
+              <OpenInNewIcon />
             </IconButton>
           </Tooltip>
 
           {/* Fechar */}
-          <Tooltip title="Fechar" placement="left">
+          <Tooltip title="Fechar" placement="top">
             <IconButton
               onClick={closePlayer}
-              size="small"
-              sx={{ color: "rgba(255,255,255,0.3)", "&:hover": { color: "#fff" }, p: 0.75 }}
+              size="medium"
+              sx={{ color: "rgba(255,255,255,0.3)", "&:hover": { color: "#fff" } }}
             >
-              <CloseIcon sx={{ fontSize: 17 }} />
+              <CloseIcon />
             </IconButton>
           </Tooltip>
         </Box>

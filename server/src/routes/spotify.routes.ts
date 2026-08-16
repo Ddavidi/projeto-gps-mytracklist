@@ -233,7 +233,7 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
    */
   router.get('/me/playlists', async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.userId;
       const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
       const playlists = await spotifyService.getUserPlaylists(accessToken);
       res.json(playlists);
@@ -250,7 +250,7 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     const trackId = req.query.id as string;
     if (!trackId) { res.status(400).json({ error: 'id é obrigatório' }); return; }
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.userId;
       const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
       const saved = await spotifyService.checkSavedTrack(accessToken, trackId);
       res.json({ saved });
@@ -268,7 +268,7 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     const { trackId } = req.body;
     if (!trackId) { res.status(400).json({ error: 'trackId é obrigatório' }); return; }
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.userId;
       const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
       await spotifyService.saveTrack(accessToken, trackId);
       res.json({ success: true });
@@ -286,7 +286,7 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     const { trackId } = req.body;
     if (!trackId) { res.status(400).json({ error: 'trackId é obrigatório' }); return; }
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.userId;
       const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
       await spotifyService.unsaveTrack(accessToken, trackId);
       res.json({ success: true });
@@ -304,7 +304,7 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     const { trackId } = req.body;
     if (!trackId) { res.status(400).json({ error: 'trackId é obrigatório' }); return; }
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.userId;
       const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
       await spotifyService.addToQueue(accessToken, `spotify:track:${trackId}`);
       res.json({ success: true });
@@ -323,7 +323,7 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     const { playlistId } = req.params;
     if (!trackId) { res.status(400).json({ error: 'trackId é obrigatório' }); return; }
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.userId;
       const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
       await spotifyService.addTrackToPlaylist(accessToken, playlistId, `spotify:track:${trackId}`);
       res.json({ success: true });
