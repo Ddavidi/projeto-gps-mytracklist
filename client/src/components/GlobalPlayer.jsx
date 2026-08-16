@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   Box, IconButton, Tooltip, Fade, Dialog, DialogTitle, DialogContent,
   List, ListItem, ListItemAvatar, Avatar, ListItemText, CircularProgress,
@@ -18,6 +18,9 @@ export default function GlobalPlayer() {
   const { currentContext, isVisible, closePlayer } = usePlayer();
   const { isAuthenticated, user } = useAuth();
 
+  const embedRef = useRef(null);
+  const [controller, setController] = useState(null);
+
   const [saved, setSaved] = useState(false);
   const [savingLoad, setSavingLoad] = useState(false);
 
@@ -31,7 +34,52 @@ export default function GlobalPlayer() {
 
   const isTrack = currentContext?.type === "track";
 
-  // Verifica se a track esta salva quando muda
+  // INICIALIZA O SPOTIFY IFRAME API UMA VEZ
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://open.spotify.com/embed/iframe-api/v1";
+    script.async = true;
+    document.body.appendChild(script);
+
+    window.onSpotifyIframeApiReady = (IFrameAPI) => {
+      const element = embedRef.current;
+      if (!element) return;
+      
+      const options = {
+        width: '100%',
+        height: '80',
+        uri: '', // Vazio inicialmente
+        theme: '0'
+      };
+
+      IFrameAPI.createController(element, options, (ctrl) => {
+        setController(ctrl);
+        // Opcional: Adicionar listeners do controller se necessario
+        // ctrl.addListener('playback_update', e => { ... });
+      });
+    };
+
+    return () => {
+      document.body.removeChild(script);
+      delete window.onSpotifyIframeApiReady;
+    };
+  }, []);
+
+  // MUDA A MÚSICA E TENTA DAR AUTOPLAY USANDO O CONTROLLER
+  useEffect(() => {
+    if (controller && currentContext) {
+      const uri = `spotify:${currentContext.type}:${currentContext.id}`;
+      // loadUri muda a musica sem recarregar o iframe inteiro, preservando a sessao.
+      controller.loadUri(uri);
+      
+      // Tenta forcar o play apos o carregamento
+      setTimeout(() => {
+        controller.play();
+      }, 500);
+    }
+  }, [currentContext, controller]);
+
+  // Verifica se a track esta salva
   useEffect(() => {
     if (!isAuthenticated || !isTrack || !currentContext?.id) { setSaved(false); return; }
     api.get(`/spotify/me/saved-tracks/contains?id=${currentContext.id}`)
@@ -101,130 +149,122 @@ export default function GlobalPlayer() {
     }
   };
 
-  if (!isVisible || !currentContext) return null;
-
-  const { type, id, externalUrl } = currentContext;
-  const embedUrl = `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0&autoplay=1`;
-  const spotifyUrl = externalUrl || `https://open.spotify.com/${type}/${id}`;
+  const spotifyUrl = currentContext?.externalUrl || `https://open.spotify.com/${currentContext?.type}/${currentContext?.id}`;
 
   return (
     <>
-      <Fade in={isVisible}>
+      {/* 
+        NOTA: Não usamos "if (!isVisible) return null" aqui para que o iframe 
+        sempre exista no DOM (escondido) e a API carregue sem atrasos.
+      */}
+      <Box
+        sx={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1300,
+          bgcolor: "#0a0a0a",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
+          display: "flex",
+          alignItems: "stretch",
+          transition: "transform 0.3s ease-in-out",
+          transform: isVisible ? "translateY(0)" : "translateY(100%)",
+        }}
+      >
+        {/* Iframe — ocupa a maior parte */}
+        <Box sx={{ flex: 1, minWidth: 0, height: 80 }}>
+          {/* A API substitui esta div pelo iframe */}
+          <div ref={embedRef}></div>
+        </Box>
+
+        {/* Sidebar de acoes */}
         <Box
           sx={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 1300,
-            bgcolor: "#0a0a0a",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
             display: "flex",
-            alignItems: "stretch",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "#111",
+            borderLeft: "1px solid rgba(255,255,255,0.05)",
+            height: 80,
+            px: 0.5,
+            gap: 0,
+            flexShrink: 0,
           }}
         >
-          {/* Iframe — ocupa a maior parte */}
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <iframe
-              key={`${type}-${id}`}
-              src={embedUrl}
-              width="100%"
-              height="80"
-              frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-              style={{ display: "block" }}
-              title="Spotify Player"
-            />
-          </Box>
-
-          {/* Sidebar de acoes */}
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              bgcolor: "#111",
-              borderLeft: "1px solid rgba(255,255,255,0.05)",
-              height: 80,
-              px: 0.5,
-              gap: 0,
-              flexShrink: 0,
-            }}
-          >
-            {/* Save to library — so para tracks */}
-            {isTrack && (
-              <Tooltip title={saved ? "Remover das Curtidas" : "Salvar nas Curtidas"} placement="left">
-                <IconButton
-                  onClick={handleToggleSave}
-                  disabled={savingLoad}
-                  size="small"
-                  sx={{
-                    color: saved ? "#1ED760" : "rgba(255,255,255,0.35)",
-                    "&:hover": { color: "#1ED760" },
-                    p: 0.75,
-                  }}
-                >
-                  {saved ? <FavoriteIcon sx={{ fontSize: 17 }} /> : <FavoriteBorderIcon sx={{ fontSize: 17 }} />}
-                </IconButton>
-              </Tooltip>
-            )}
-
-            {/* Add to playlist — so para tracks */}
-            {isTrack && (
-              <Tooltip title="Adicionar a Playlist" placement="left">
-                <IconButton
-                  onClick={handleOpenPlaylistModal}
-                  size="small"
-                  sx={{ color: "rgba(255,255,255,0.35)", "&:hover": { color: "#fff" }, p: 0.75 }}
-                >
-                  <PlaylistAddIcon sx={{ fontSize: 17 }} />
-                </IconButton>
-              </Tooltip>
-            )}
-
-            {/* Add to queue — so para tracks */}
-            {isTrack && (
-              <Tooltip title="Adicionar à Fila" placement="left">
-                <IconButton
-                  onClick={handleAddToQueue}
-                  size="small"
-                  sx={{ color: "rgba(255,255,255,0.35)", "&:hover": { color: "#fff" }, p: 0.75 }}
-                >
-                  <QueueMusicIcon sx={{ fontSize: 17 }} />
-                </IconButton>
-              </Tooltip>
-            )}
-
-            {/* Abrir no Spotify */}
-            <Tooltip title="Abrir no Spotify" placement="left">
+          {/* Save to library — so para tracks */}
+          {isTrack && (
+            <Tooltip title={saved ? "Remover das Curtidas" : "Salvar nas Curtidas"} placement="left">
               <IconButton
-                component="a"
-                href={spotifyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+                onClick={handleToggleSave}
+                disabled={savingLoad}
                 size="small"
-                sx={{ color: "#1ED760", "&:hover": { bgcolor: "rgba(30,215,96,0.15)" }, p: 0.75 }}
+                sx={{
+                  color: saved ? "#1ED760" : "rgba(255,255,255,0.35)",
+                  "&:hover": { color: "#1ED760" },
+                  p: 0.75,
+                }}
               >
-                <OpenInNewIcon sx={{ fontSize: 17 }} />
+                {saved ? <FavoriteIcon sx={{ fontSize: 17 }} /> : <FavoriteBorderIcon sx={{ fontSize: 17 }} />}
               </IconButton>
             </Tooltip>
+          )}
 
-            {/* Fechar */}
-            <Tooltip title="Fechar" placement="left">
+          {/* Add to playlist — so para tracks */}
+          {isTrack && (
+            <Tooltip title="Adicionar a Playlist" placement="left">
               <IconButton
-                onClick={closePlayer}
+                onClick={handleOpenPlaylistModal}
                 size="small"
-                sx={{ color: "rgba(255,255,255,0.3)", "&:hover": { color: "#fff" }, p: 0.75 }}
+                sx={{ color: "rgba(255,255,255,0.35)", "&:hover": { color: "#fff" }, p: 0.75 }}
               >
-                <CloseIcon sx={{ fontSize: 17 }} />
+                <PlaylistAddIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
-          </Box>
+          )}
+
+          {/* Add to queue — so para tracks */}
+          {isTrack && (
+            <Tooltip title="Adicionar à Fila" placement="left">
+              <IconButton
+                onClick={handleAddToQueue}
+                size="small"
+                sx={{ color: "rgba(255,255,255,0.35)", "&:hover": { color: "#fff" }, p: 0.75 }}
+              >
+                <QueueMusicIcon sx={{ fontSize: 17 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          {/* Abrir no Spotify */}
+          <Tooltip title="Abrir no Spotify" placement="left">
+            <IconButton
+              component="a"
+              href={spotifyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              size="small"
+              disabled={!currentContext}
+              sx={{ color: "#1ED760", "&:hover": { bgcolor: "rgba(30,215,96,0.15)" }, p: 0.75 }}
+            >
+              <OpenInNewIcon sx={{ fontSize: 17 }} />
+            </IconButton>
+          </Tooltip>
+
+          {/* Fechar */}
+          <Tooltip title="Fechar" placement="left">
+            <IconButton
+              onClick={closePlayer}
+              size="small"
+              sx={{ color: "rgba(255,255,255,0.3)", "&:hover": { color: "#fff" }, p: 0.75 }}
+            >
+              <CloseIcon sx={{ fontSize: 17 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
-      </Fade>
+      </Box>
 
       {/* Modal: Adicionar a Playlist */}
       <Dialog
