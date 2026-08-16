@@ -67,15 +67,20 @@ export default function GlobalPlayer() {
 
   // MUDA A MÚSICA E TENTA DAR AUTOPLAY USANDO O CONTROLLER
   useEffect(() => {
-    if (controller && currentContext) {
-      const uri = `spotify:${currentContext.type}:${currentContext.id}`;
-      // loadUri muda a musica sem recarregar o iframe inteiro, preservando a sessao.
-      controller.loadUri(uri);
-      
-      // Tenta forcar o play apos o carregamento
-      setTimeout(() => {
-        controller.play();
-      }, 500);
+    if (controller) {
+      if (currentContext) {
+        const uri = `spotify:${currentContext.type}:${currentContext.id}`;
+        // loadUri muda a musica sem recarregar o iframe inteiro, preservando a sessao.
+        controller.loadUri(uri);
+        
+        // Tenta forcar o play apos o carregamento
+        setTimeout(() => {
+          controller.play();
+        }, 500);
+      } else {
+        // Se currentContext é nulo (player foi fechado), pausar a musica e descarregar URI
+        controller.pause();
+      }
     }
   }, [currentContext, controller]);
 
