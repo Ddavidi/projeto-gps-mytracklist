@@ -2,15 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getFriendsReviews } from '../services/social';
+import { Box, Typography, Card, CardHeader, CardContent, Avatar, Rating, CircularProgress } from '@mui/material';
 
-/**
- * Componente "Following" estilo AniList.
- * Exibe as avaliações de amigos (utilizadores seguidos) para um item específico.
- *
- * Props:
- *   - itemType: 'track' | 'album' | 'artist'
- *   - itemId: string (ID do Spotify)
- */
 function FriendsReviews({ itemType, itemId }) {
   const { isAuthenticated } = useAuth();
   const [reviews, setReviews] = useState([]);
@@ -25,60 +18,64 @@ function FriendsReviews({ itemType, itemId }) {
       .finally(() => setLoading(false));
   }, [isAuthenticated, itemType, itemId]);
 
-  // Não exibe nada se: não logado, carregando com dados vazios, ou sem amigos com review
   if (!isAuthenticated || (!loading && reviews.length === 0)) return null;
 
   return (
-    <div className="friends-reviews">
-      <h3 className="friends-reviews__title">Following</h3>
+    <Box sx={{ mt: 4, mb: 2 }}>
+      <Typography variant="h6" fontWeight="bold" gutterBottom>
+        Avaliações de Amigos
+      </Typography>
 
       {loading ? (
-        <div className="friends-reviews__loading">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="friends-reviews__skeleton" />
-          ))}
-        </div>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <CircularProgress size={30} />
+        </Box>
       ) : (
-        <ul className="friends-reviews__list">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {reviews.map((review) => (
-            <li key={review.id} className="friends-reviews__item">
-              {/* Avatar */}
-              <Link
-                to={`/user/${review.author_username}`}
-                className="friends-reviews__avatar"
-                title={review.author_username}
-              >
-                {(review.author_name || review.author_username || '?')[0].toUpperCase()}
-              </Link>
-
-              {/* Info */}
-              <div className="friends-reviews__info">
-                <Link
-                  to={`/user/${review.author_username}`}
-                  className="friends-reviews__username"
-                >
-                  {review.author_username}
-                </Link>
-
-                {review.review_text && (
-                  <p className="friends-reviews__text" title={review.review_text}>
-                    {review.review_text.length > 80
-                      ? `${review.review_text.slice(0, 80)}…`
-                      : review.review_text}
-                  </p>
-                )}
-              </div>
-
-              {/* Rating */}
-              <div className="friends-reviews__rating">
-                <span className="friends-reviews__score">{review.rating}</span>
-                <span className="friends-reviews__score-max">/10</span>
-              </div>
-            </li>
+            <Card key={review.id} variant="outlined" sx={{ borderRadius: 3, bgcolor: 'background.paper' }}>
+              <CardHeader
+                avatar={
+                  <Avatar 
+                    component={Link} 
+                    to={`/user/${review.author_username}`} 
+                    sx={{ bgcolor: 'primary.main', textDecoration: 'none' }}
+                  >
+                    {(review.author_name || review.author_username || '?')[0].toUpperCase()}
+                  </Avatar>
+                }
+                title={
+                  <Typography 
+                    component={Link} 
+                    to={`/user/${review.author_username}`} 
+                    variant="subtitle2" 
+                    fontWeight="bold" 
+                    sx={{ color: 'text.primary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    {review.author_username}
+                  </Typography>
+                }
+                subheader={new Date(review.createdAt).toLocaleDateString()}
+                action={
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mr: 1 }}>
+                    <Rating value={review.rating / 2} precision={0.5} readOnly size="small" />
+                    <Typography variant="body2" fontWeight="bold" sx={{ ml: 1 }}>{review.rating}/10</Typography>
+                  </Box>
+                }
+                sx={{ pb: review.review_text ? 0 : 2 }}
+              />
+              {review.review_text && (
+                <CardContent>
+                  <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
+                    {review.review_text}
+                  </Typography>
+                </CardContent>
+              )}
+            </Card>
           ))}
-        </ul>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
 

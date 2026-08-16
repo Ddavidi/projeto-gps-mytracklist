@@ -14,6 +14,8 @@ function ReviewCard({ review }) {
   const [liked, setLiked] = useState(Boolean(review.is_liked));
   const [likesCount, setLikesCount] = useState(Number(review.likes_count) || 0);
   const [likeLoading, setLikeLoading] = useState(false);
+  
+  const [commentsCount, setCommentsCount] = useState(Number(review.comments_count) || 0);
 
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
@@ -74,6 +76,7 @@ function ReviewCard({ review }) {
       // Recarrega os comentários para mostrar o novo
       const data = await getReviewComments(review.id);
       setComments(data || []);
+      setCommentsCount(prev => prev + 1);
     } catch(err) {
       console.error('Failed to send comment');
     }
@@ -192,6 +195,9 @@ function ReviewCard({ review }) {
           <IconButton aria-label="comment" onClick={toggleComments}>
             <ChatBubbleOutlineIcon />
           </IconButton>
+          <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5, fontWeight: 600 }}>
+            {commentsCount}
+          </Typography>
         </Box>
       </CardActions>
 

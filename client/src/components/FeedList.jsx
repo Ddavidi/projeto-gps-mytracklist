@@ -18,7 +18,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import ReviewCard from './ReviewCard';
 
 const ITEM_META = {
-  track: { label: 'Música', icon: <MusicNoteIcon fontSize="small" />, path: '/music' },
+  track: { label: 'Música', icon: <MusicNoteIcon fontSize="small" />, path: '/track' },
   album: { label: 'Álbum', icon: <AlbumIcon fontSize="small" />, path: '/album' },
   artist: { label: 'Artista', icon: <PersonIcon fontSize="small" />, path: '/artist' },
 };
