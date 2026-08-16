@@ -124,7 +124,7 @@ function SearchResultsPage() {
                           onClick={(e) => e.preventDefault()}
                         >
                           <PlayButton
-                            track={{ id: track.id, name: track.name, artist: track.artist, imageUrl: track.imageUrl, previewUrl: track.previewUrl }}
+                            track={{ id: track.id, name: track.name, artist: track.artist, imageUrl: track.imageUrl, previewUrl: track.previewUrl, externalUrl: track.externalUrl }}
                             size="small"
                             filled
                           />

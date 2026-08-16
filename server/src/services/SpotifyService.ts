@@ -142,6 +142,7 @@ export class SpotifyService {
         imageUrl: item.track.album?.images?.[0]?.url || '',
         durationMs: item.track.duration_ms,
         previewUrl: item.track.preview_url,
+        externalUrl: item.track.external_urls?.spotify || '',
       }));
   }
 
@@ -282,6 +283,7 @@ export class SpotifyService {
       imageUrl: track.album?.images[0]?.url || '',
       durationMs: track.duration_ms,
       previewUrl: track.preview_url,
+      externalUrl: track.external_urls?.spotify || '',
     }));
 
     const albums = (albumData?.albums?.items || []).map((album: any) => ({

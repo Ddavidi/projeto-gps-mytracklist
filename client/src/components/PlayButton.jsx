@@ -2,12 +2,12 @@
 import { IconButton, Tooltip } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
-import MusicOffIcon from "@mui/icons-material/MusicOff";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { usePlayer } from "../context/PlayerContext";
 
 /**
  * Botao de play reutilizavel para qualquer lugar do site.
- * @param {{ id, name, artist, imageUrl, previewUrl }} track
+ * @param {{ id, name, artist, imageUrl, previewUrl, externalUrl }} track
  * @param {string} size - "small" | "medium" | "large"
  * @param {boolean} filled - se true, usa fundo colorido
  */
@@ -16,31 +16,41 @@ export default function PlayButton({ track, size = "medium", filled = false, sx 
 
   const isCurrentTrack = currentTrack?.id === track?.id;
   const isCurrentlyPlaying = isCurrentTrack && isPlaying;
-
   const hasPreview = !!track?.previewUrl;
 
   const handleClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!hasPreview) return;
     playTrack(track);
+  };
+
+  const handleOpenSpotify = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = track?.externalUrl || `https://open.spotify.com/track/${track?.id}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   if (!hasPreview) {
     return (
-      <Tooltip title="Preview indisponivel">
-        <span>
-          <IconButton
-            size={size}
-            disabled
-            sx={{
-              bgcolor: filled ? "rgba(255,255,255,0.1)" : "transparent",
-              ...sx,
-            }}
-          >
-            <MusicOffIcon fontSize={size === "small" ? "small" : "medium"} />
-          </IconButton>
-        </span>
+      <Tooltip title="Abrir no Spotify">
+        <IconButton
+          onClick={handleOpenSpotify}
+          size={size}
+          sx={{
+            bgcolor: filled ? "rgba(30, 215, 96, 0.15)" : "transparent",
+            color: filled ? "#1ED760" : "rgba(30, 215, 96, 0.7)",
+            "&:hover": {
+              bgcolor: "rgba(30, 215, 96, 0.25)",
+              color: "#1ED760",
+              transform: "scale(1.1)",
+            },
+            transition: "all 0.15s",
+            ...sx,
+          }}
+        >
+          <OpenInNewIcon fontSize={size === "small" ? "small" : "medium"} />
+        </IconButton>
       </Tooltip>
     );
   }
