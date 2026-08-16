@@ -8,10 +8,33 @@ const VALID_ITEM_TYPES: ItemType[] = ['track', 'album', 'artist'];
 export function createReviewRouter(reviewController: ReviewController): Router {
   const router = Router();
 
-  // Todas as rotas de reviews requerem autenticação
-  // Caso deseje tornar a rota de stats pública, ela deve vir ANTES do requireAuth.
-  // router.get('/stats/:itemType/:itemId', async (req, res) => { ... })
-  
+  // ==========================
+  // ROTAS PÚBLICAS
+  // ==========================
+
+  /**
+   * GET /reviews/top/:itemType
+   * Obtém os itens mais bem avaliados (dashboard discovery)
+   */
+  router.get('/top/:itemType', async (req: Request, res: Response) => {
+    const { itemType } = req.params as { itemType: string };
+
+    if (!VALID_ITEM_TYPES.includes(itemType as ItemType)) {
+      res.status(400).json({ error: 'Tipo de item inválido. Use: track, album ou artist.' });
+      return;
+    }
+
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+    const result = await reviewController.getTopRatedItems(itemType as ItemType, limit);
+
+    if (result.success) {
+      res.json(result.items);
+    } else {
+      res.status(500).json({ error: result.message });
+    }
+  });
+
+  // Todas as rotas de reviews abaixo requerem autenticação
   router.use(requireAuth);
 
   /**
@@ -22,6 +45,25 @@ export function createReviewRouter(reviewController: ReviewController): Router {
     const result = await reviewController.getRecentReviews(req.user!.userId);
     if (result.success) res.json(result.reviews);
     else res.status(500).json({ error: result.message });
+  });
+
+  /**
+   * POST /reviews/batch
+   * Obtém as avaliações do utilizador para um lote de itens.
+   * Body: { items: { itemType: 'track'|'album'|'artist', itemId: string }[] }
+   */
+  router.post('/batch', async (req: Request, res: Response) => {
+    const { items } = req.body;
+    if (!items || !Array.isArray(items)) {
+      res.status(400).json({ error: 'Formato inválido. Requer array de items.' });
+      return;
+    }
+    const result = await reviewController.getReviewsForItems(req.user!.userId, items);
+    if (result.success) {
+      res.json(result.reviews);
+    } else {
+      res.status(500).json({ error: result.message });
+    }
   });
 
   /**
@@ -43,6 +85,25 @@ export function createReviewRouter(reviewController: ReviewController): Router {
     } else {
       res.status(500).json({ error: result.message });
     }
+  });
+
+  // ==========================
+  // COMENTÁRIOS
+  // ==========================
+
+  router.get('/:reviewId/comments', async (req: Request, res: Response) => {
+    const result = await reviewController.getReviewComments(Number(req.params.reviewId));
+    if (result.success) res.json(result.comments);
+    else res.status(500).json({ error: result.message });
+  });
+
+  router.post('/:reviewId/comments', async (req: Request, res: Response) => {
+    const { content } = req.body;
+    if (!content) return res.status(400).json({ error: 'O comentário é obrigatório.' });
+
+    const result = await reviewController.addComment(Number(req.params.reviewId), req.user!.userId, content);
+    if (result.success) res.status(201).json({ success: true, message: 'Comentário adicionado.' });
+    else res.status(400).json({ error: result.message });
   });
 
   /**
@@ -140,27 +201,6 @@ export function createReviewRouter(reviewController: ReviewController): Router {
     } else {
       res.status(400).json({ error: result.message });
     }
-  });
-
-
-
-  // ==========================
-  // COMENTÁRIOS
-  // ==========================
-
-  router.get('/:reviewId/comments', async (req: Request, res: Response) => {
-    const result = await reviewController.getReviewComments(Number(req.params.reviewId));
-    if (result.success) res.json(result.comments);
-    else res.status(500).json({ error: result.message });
-  });
-
-  router.post('/:reviewId/comments', async (req: Request, res: Response) => {
-    const { content } = req.body;
-    if (!content) return res.status(400).json({ error: 'O comentário é obrigatório.' });
-
-    const result = await reviewController.addComment(Number(req.params.reviewId), req.user!.userId, content);
-    if (result.success) res.status(201).json({ success: true, message: 'Comentário adicionado.' });
-    else res.status(400).json({ error: result.message });
   });
 
   return router;

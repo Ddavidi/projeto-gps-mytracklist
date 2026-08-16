@@ -199,7 +199,8 @@ export class SocialController {
            u.username as author_username,
            u.name as author_name,
            (SELECT COUNT(*) FROM review_likes rl WHERE rl."reviewId" = r.id) as likes_count,
-           (SELECT 1 FROM review_likes rl2 WHERE rl2."reviewId" = r.id AND rl2."userId" = ?) as is_liked
+           (SELECT 1 FROM review_likes rl2 WHERE rl2."reviewId" = r.id AND rl2."userId" = ?) as is_liked,
+           (SELECT COUNT(*) FROM review_comments rc WHERE rc.review_id = r.id) as comments_count
          FROM reviews r
          JOIN users u ON u.id = r."userId"
          WHERE r."userId" IN (
@@ -236,7 +237,8 @@ export class SocialController {
            u.username as author_username,
            u.name as author_name,
            (SELECT COUNT(*) FROM review_likes rl WHERE rl."reviewId" = r.id) as likes_count,
-           (SELECT 1 FROM review_likes rl2 WHERE rl2."reviewId" = r.id AND rl2."userId" = ?) as is_liked
+           (SELECT 1 FROM review_likes rl2 WHERE rl2."reviewId" = r.id AND rl2."userId" = ?) as is_liked,
+           (SELECT COUNT(*) FROM review_comments rc WHERE rc.review_id = r.id) as comments_count
          FROM reviews r
          JOIN users u ON u.id = r."userId"
          WHERE r."userId" IN (

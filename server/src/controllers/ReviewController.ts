@@ -30,6 +30,27 @@ export class ReviewController {
   }
 
   /**
+   * Obtém as avaliações de um utilizador para um lote de itens específicos.
+   */
+  async getReviewsForItems(userId: number, items: { itemType: ItemType, itemId: string }[]) {
+    if (!items || items.length === 0) return { success: true, reviews: [] };
+    
+    try {
+      const conditions = items.map(() => '(item_type = ? AND item_id = ?)').join(' OR ');
+      const params = items.flatMap(i => [i.itemType, i.itemId]);
+      
+      const reviews = await this.db.all(
+        `SELECT * FROM reviews WHERE "userId" = ? AND (${conditions})`,
+        [userId, ...params]
+      );
+      return { success: true, reviews: reviews || [] };
+    } catch (error) {
+      console.error('Falha ao obter avaliações em lote:', error);
+      return { success: false, message: 'Falha ao obter avaliações em lote.' };
+    }
+  }
+
+  /**
    * Cria uma nova avaliação para uma música, álbum ou artista.
    */
   async createReview(userId: number, itemType: ItemType, itemId: string, rating: number, reviewText?: string, itemName?: string, itemImageUrl?: string, itemPreviewUrl?: string) {
@@ -184,6 +205,36 @@ export class ReviewController {
     } catch (error) {
       console.error('Falha ao adicionar comentário:', error);
       return { success: false, message: 'Falha ao adicionar comentário.' };
+    }
+  }
+
+  // =====================
+  // Discovery
+  // =====================
+
+  async getTopRatedItems(itemType: ItemType, limit: number = 10) {
+    try {
+      const items = await this.db.all(
+        `SELECT item_id, item_type, item_name, item_image_url, 
+                AVG(rating) as avg_rating, COUNT(id) as review_count 
+         FROM reviews 
+         WHERE item_type = ? AND rating IS NOT NULL 
+         GROUP BY item_id 
+         HAVING review_count > 0 
+         ORDER BY avg_rating DESC, review_count DESC 
+         LIMIT ?`,
+        [itemType, limit]
+      );
+      
+      const formattedItems = items.map((item: any) => ({
+        ...item,
+        avg_rating: parseFloat(item.avg_rating.toFixed(1))
+      }));
+      
+      return { success: true, items: formattedItems };
+    } catch (error) {
+      console.error('Falha ao buscar top items:', error);
+      return { success: false, message: 'Falha ao buscar top items.' };
     }
   }
 }
