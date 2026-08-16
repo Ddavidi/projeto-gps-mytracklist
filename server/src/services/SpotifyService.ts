@@ -492,8 +492,17 @@ export class SpotifyService {
     }
 
     const data = await response.json();
-    return data.tracks
-      .filter((track: any) => track !== null)
+    const tracksWithData = data.tracks.filter((track: any) => track !== null);
+
+    // Buscar gêneros dos artistas
+    const artistIds = [...new Set(tracksWithData.map((t: any) => t.artists?.[0]?.id).filter(Boolean))] as string[];
+    const artistMap: Record<string, any> = {};
+    if (artistIds.length > 0) {
+      const artists = await this.getMultipleArtists(artistIds);
+      artists.forEach((a: any) => { artistMap[a.id] = a; });
+    }
+
+    return tracksWithData
       .map((track: any) => ({
         id: track.id,
         name: track.name,
@@ -504,6 +513,7 @@ export class SpotifyService {
         previewUrl: track.preview_url,
         popularity: track.popularity,
         externalUrl: track.external_urls.spotify,
+        genres: track.artists?.[0]?.id && artistMap[track.artists[0].id] ? artistMap[track.artists[0].id].genres : [],
       }));
   }
 
@@ -534,8 +544,17 @@ export class SpotifyService {
     }
 
     const data = await response.json();
-    return data.albums
-      .filter((album: any) => album !== null)
+    const albumsWithData = data.albums.filter((album: any) => album !== null);
+
+    // Buscar gêneros dos artistas
+    const artistIds = [...new Set(albumsWithData.map((a: any) => a.artists?.[0]?.id).filter(Boolean))] as string[];
+    const artistMap: Record<string, any> = {};
+    if (artistIds.length > 0) {
+      const artists = await this.getMultipleArtists(artistIds);
+      artists.forEach((a: any) => { artistMap[a.id] = a; });
+    }
+
+    return albumsWithData
       .map((album: any) => ({
         id: album.id,
         name: album.name,
@@ -545,6 +564,7 @@ export class SpotifyService {
         totalTracks: album.total_tracks,
         albumType: album.album_type,
         externalUrl: album.external_urls.spotify,
+        genres: album.artists?.[0]?.id && artistMap[album.artists[0].id] ? artistMap[album.artists[0].id].genres : [],
       }));
   }
 
