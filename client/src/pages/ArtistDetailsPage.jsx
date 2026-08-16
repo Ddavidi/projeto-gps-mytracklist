@@ -34,6 +34,7 @@ function ArtistDetailsPage() {
   const [artist, setArtist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [albumFilter, setAlbumFilter] = useState('Todos');
 
   useEffect(() => {
     const fetchArtist = async () => {
@@ -180,14 +181,41 @@ function ArtistDetailsPage() {
 
             {/* Albums & Singles */}
             <Grid size={{ xs: 12, md: 6 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AlbumIcon color="secondary" sx={{ mr: 1 }} />
-                <Typography variant="h5" fontWeight="bold">
-                  Álbuns e Singles
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <AlbumIcon color="secondary" sx={{ mr: 1 }} />
+                  <Typography variant="h5" fontWeight="bold">
+                    Álbuns e Singles
+                  </Typography>
+                </Box>
+                <Box>
+                  <Chip 
+                    label="Todos" 
+                    onClick={() => setAlbumFilter('Todos')} 
+                    color={albumFilter === 'Todos' ? 'secondary' : 'default'}
+                    variant={albumFilter === 'Todos' ? 'filled' : 'outlined'}
+                    size="small"
+                    sx={{ mr: 0.5 }}
+                  />
+                  <Chip 
+                    label="Álbuns" 
+                    onClick={() => setAlbumFilter('album')} 
+                    color={albumFilter === 'album' ? 'secondary' : 'default'}
+                    variant={albumFilter === 'album' ? 'filled' : 'outlined'}
+                    size="small"
+                    sx={{ mr: 0.5 }}
+                  />
+                  <Chip 
+                    label="Singles/EPs" 
+                    onClick={() => setAlbumFilter('single')} 
+                    color={albumFilter === 'single' ? 'secondary' : 'default'}
+                    variant={albumFilter === 'single' ? 'filled' : 'outlined'}
+                    size="small"
+                  />
+                </Box>
               </Box>
               <Grid container spacing={2}>
-                {artist.albums?.map((album) => (
+                {artist.albums?.filter(a => albumFilter === 'Todos' || a.albumType === albumFilter).map((album) => (
                   <Grid size={{ xs: 6, sm: 4 }} key={album.id}>
                     <Card 
                       elevation={2}

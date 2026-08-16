@@ -103,7 +103,7 @@ function SearchResultsPage() {
                     '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 }
                   }}
                 >
-                  <CardActionArea component={RouterLink} to={`/music/${track.id}`}>
+                  <CardActionArea component={RouterLink} to={`/track/${track.id}`}>
                     <Box sx={{ display: 'flex', alignItems: 'center', p: 1.5 }}>
                       <Avatar
                         variant="square"

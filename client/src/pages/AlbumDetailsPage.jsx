@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import { getAlbumDetails } from '../services/spotify';
+import api from '../services/api';
 import { 
   Container, 
   Typography, 
@@ -21,6 +22,7 @@ import {
 import AlbumIcon from '@mui/icons-material/Album';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import StarIcon from '@mui/icons-material/Star';
 import ReviewSection from '../components/ReviewSection';
 import FriendsReviews from '../components/FriendsReviews';
 import ScoreDistribution from '../components/ScoreDistribution';
@@ -31,6 +33,7 @@ function AlbumDetailsPage() {
   const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [userRatings, setUserRatings] = useState({});
 
   useEffect(() => {
     const fetchAlbum = async () => {
@@ -39,6 +42,18 @@ function AlbumDetailsPage() {
       try {
         const data = await getAlbumDetails(id);
         setAlbum(data);
+        
+        if (data.tracks && data.tracks.length > 0) {
+          const items = data.tracks.map(t => ({ itemType: 'track', itemId: t.id }));
+          try {
+            const res = await api.post('/reviews/batch', { items });
+            const ratingsMap = {};
+            res.data.forEach(r => { ratingsMap[r.item_id] = r.rating; });
+            setUserRatings(ratingsMap);
+          } catch(err) {
+            console.error('Failed to fetch track ratings', err);
+          }
+        }
       } catch (err) {
         console.error(err);
         setError('Falha ao carregar os detalhes do álbum.');
@@ -180,7 +195,35 @@ function AlbumDetailsPage() {
                 <React.Fragment key={track.id}>
                   {index > 0 && <Divider component="li" />}
                   <ListItem
-                    secondaryAction={
+                    sx={{
+                      py: 1.5,
+                      px: 2,
+                      display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
+                      alignItems: { xs: 'flex-start', sm: 'center' },
+                      '&:hover': { backgroundColor: 'action.hover' }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, width: '100%', mb: { xs: 1, sm: 0 } }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ width: 32, fontWeight: 600 }}>
+                        {track.trackNumber || index + 1}
+                      </Typography>
+                      <ListItemText
+                        primary={track.name}
+                        secondary={track.artist !== album.artist && track.artist ? track.artist : null}
+                        primaryTypographyProps={{ fontWeight: 600 }}
+                      />
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: { xs: 4, sm: 0 } }}>
+                      {userRatings[track.id] && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'warning.main' }}>
+                          <StarIcon fontSize="small" />
+                          <Typography variant="body2" fontWeight="bold" sx={{ ml: 0.5 }}>{userRatings[track.id]}/10</Typography>
+                        </Box>
+                      )}
+                      <Typography variant="body2" color="text.secondary">
+                        {formatDuration(track.durationMs)}
+                      </Typography>
                       <Button 
                         variant="outlined" 
                         size="small" 
@@ -191,24 +234,7 @@ function AlbumDetailsPage() {
                       >
                         Ver
                       </Button>
-                    }
-                    sx={{
-                      py: 1.5,
-                      px: 2,
-                      '&:hover': { backgroundColor: 'action.hover' }
-                    }}
-                  >
-                    <Typography variant="body2" color="text.secondary" sx={{ width: 32, fontWeight: 600 }}>
-                      {track.trackNumber || index + 1}
-                    </Typography>
-                    <ListItemText
-                      primary={track.name}
-                      secondary={track.artist !== album.artist && track.artist ? track.artist : null}
-                      primaryTypographyProps={{ fontWeight: 600 }}
-                    />
-                    <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
-                      {formatDuration(track.durationMs)}
-                    </Typography>
+                    </Box>
                   </ListItem>
                 </React.Fragment>
               ))}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, Paper, Tabs, Tab, TextField, Button, Alert, CircularProgress, Divider } from '@mui/material';
+import { Container, Typography, Box, Paper, Tabs, Tab, TextField, Button, Alert, CircularProgress, Divider, MenuItem } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -157,10 +157,18 @@ function SettingsPage() {
               <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                 <TextField
                   fullWidth
+                  select
                   label="Gênero"
-                  value={profileData.gender}
+                  value={profileData.gender || ''}
                   onChange={(e) => setProfileData({ ...profileData, gender: e.target.value })}
-                />
+                >
+                  <MenuItem value="">Não especificado</MenuItem>
+                  <MenuItem value="Masculino">Masculino</MenuItem>
+                  <MenuItem value="Feminino">Feminino</MenuItem>
+                  <MenuItem value="Não Binário">Não Binário</MenuItem>
+                  <MenuItem value="Outro">Outro</MenuItem>
+                  <MenuItem value="Prefiro não dizer">Prefiro não dizer</MenuItem>
+                </TextField>
                 <TextField
                   fullWidth
                   type="date"

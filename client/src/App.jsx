@@ -38,7 +38,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<LoginPage />} />
         <Route path="/search" element={<SearchResultsPage />} />
-        <Route path="/music/:id" element={<ProtectedRoute><TrackDetailsPage /></ProtectedRoute>} />
+        <Route path="/track/:id" element={<ProtectedRoute><TrackDetailsPage /></ProtectedRoute>} />
         <Route path="/album/:id" element={<ProtectedRoute><AlbumDetailsPage /></ProtectedRoute>} />
         <Route path="/artist/:id" element={<ProtectedRoute><ArtistDetailsPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

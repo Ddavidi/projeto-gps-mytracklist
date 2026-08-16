@@ -46,7 +46,7 @@ function AdminPage() {
       </Typography>
 
       <Grid container spacing={4} sx={{ mb: 6 }}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Card sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 3 }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 3 }}>
               <Box>
@@ -57,7 +57,7 @@ function AdminPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Card sx={{ bgcolor: 'secondary.main', color: 'secondary.contrastText', borderRadius: 3 }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 3 }}>
               <Box>
