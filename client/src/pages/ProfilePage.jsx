@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getMyReviews } from '../services/reviews';
 import { getMultipleTrackDetails, getMultipleAlbumDetails, getMultipleArtistDetails } from '../services/spotify';
 import { getUserFavorites } from '../services/favorites';
@@ -12,6 +13,8 @@ import ProfileOverview from '../components/profile/ProfileOverview';
 import ProfileMediaGrid from '../components/profile/ProfileMediaGrid';
 import ProfileSocial from '../components/profile/ProfileSocial';
 import ProfileStatus from '../components/profile/ProfileStatus';
+import ProfilePlaylists from '../components/profile/ProfilePlaylists';
+import ProfileSpotifyStats from '../components/profile/ProfileSpotifyStats';
 import EditProfileModal from '../components/profile/EditProfileModal';
 
 function ProfilePage() {
@@ -31,8 +34,24 @@ function ProfilePage() {
   const [error, setError] = useState('');
   
   // UI states
-  const [tabIndex, setTabIndex] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [editModalOpen, setEditModalOpen] = useState(false);
+
+  const getInitialTab = () => {
+    const tab = searchParams.get('tab');
+    if (tab === 'music') return 1;
+    if (tab === 'album') return 2;
+    if (tab === 'artist') return 3;
+    if (tab === 'playlists') return 6;
+    if (tab === 'spotify_stats') return 7;
+    return 0;
+  };
+  const [tabIndex, setTabIndex] = useState(getInitialTab());
+
+  // Watch for URL changes if user clicks Navbar links while already on Profile
+  useEffect(() => {
+    setTabIndex(getInitialTab());
+  }, [searchParams]);
 
   const enrichDataWithSpotify = useCallback(async (items, isFavorites = false) => {
     const trackIds = [...new Set(items.filter(i => i.item_type === 'track').map(i => i.item_id))];
@@ -99,6 +118,12 @@ function ProfilePage() {
 
   const handleTabChange = (event, newValue) => {
     setTabIndex(newValue);
+    if (newValue === 0) setSearchParams({});
+    if (newValue === 1) setSearchParams({ tab: 'music' });
+    if (newValue === 2) setSearchParams({ tab: 'album' });
+    if (newValue === 3) setSearchParams({ tab: 'artist' });
+    if (newValue === 6) setSearchParams({ tab: 'playlists' });
+    if (newValue === 7) setSearchParams({ tab: 'spotify_stats' });
   };
 
   const renderTabContent = () => {
@@ -115,6 +140,10 @@ function ProfilePage() {
         return <ProfileSocial userId={user?.id || user?.userId} />;
       case 5:
         return <ProfileStatus reviews={reviews} />;
+      case 6:
+        return <ProfilePlaylists userId={user?.id || user?.userId} reviews={reviews} />;
+      case 7:
+        return <ProfileSpotifyStats userId={user?.id || user?.userId} />;
       default:
         return null;
     }

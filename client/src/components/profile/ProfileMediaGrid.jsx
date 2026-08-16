@@ -1,11 +1,27 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Typography, Grid, Paper, Select, MenuItem, FormControl, InputLabel, Slider, Button } from '@mui/material';
+import { Box, Typography, Grid, Paper, Select, MenuItem, FormControl, InputLabel, Slider, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Tooltip, Chip } from '@mui/material';
 import { Link } from 'react-router-dom';
 import StarIcon from '@mui/icons-material/Star';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
+import GridViewIcon from '@mui/icons-material/GridView';
 
 export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
   const [sortOrder, setSortOrder] = useState('recent'); // recent, old, high_score, low_score
   const [minScore, setMinScore] = useState(0);
+  const [viewMode, setViewMode] = useState('grid');
+  const [genreFilter, setGenreFilter] = useState('');
+
+  // Extrair todos os gêneros únicos dos itens deste tipo
+  const availableGenres = useMemo(() => {
+    const genres = new Set();
+    reviews.filter(r => (r.item_type || 'track') === type).forEach(r => {
+      const details = itemDetails[r.item_id];
+      if (details?.genres && Array.isArray(details.genres)) {
+        details.genres.forEach(g => genres.add(g));
+      }
+    });
+    return Array.from(genres).sort();
+  }, [reviews, type, itemDetails]);
 
   // Filtra as avaliações pelo tipo atual
   const filteredReviews = useMemo(() => {
@@ -13,6 +29,14 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
     
     // Filtro de nota
     result = result.filter(r => r.rating >= minScore);
+
+    // Filtro de Gênero
+    if (genreFilter) {
+      result = result.filter(r => {
+        const details = itemDetails[r.item_id];
+        return details?.genres && details.genres.includes(genreFilter);
+      });
+    }
 
     // Ordenação
     result.sort((a, b) => {
@@ -24,7 +48,7 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
     });
 
     return result;
-  }, [reviews, type, sortOrder, minScore]);
+  }, [reviews, type, sortOrder, minScore, genreFilter, itemDetails]);
 
   return (
     <Grid container spacing={4}>
@@ -54,6 +78,22 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
               </Select>
             </FormControl>
 
+            {availableGenres.length > 0 && (
+              <FormControl fullWidth size="small" sx={{ mb: 3 }}>
+                <InputLabel>Gênero Musical</InputLabel>
+                <Select
+                  value={genreFilter}
+                  label="Gênero Musical"
+                  onChange={(e) => setGenreFilter(e.target.value)}
+                >
+                  <MenuItem value="">Todos os Gêneros</MenuItem>
+                  {availableGenres.map(g => (
+                    <MenuItem key={g} value={g} sx={{ textTransform: 'capitalize' }}>{g}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
             <Typography variant="body2" gutterBottom>Nota mínima: {minScore}</Typography>
             <Slider
               value={minScore}
@@ -69,11 +109,37 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
         </Paper>
       </Grid>
 
-      {/* Grid Principal */}
+      {/* Grid/Table Principal */}
       <Grid size={{ xs: 12, md: 9 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h6" fontWeight="bold">
+            {type === 'track' ? 'Músicas' : type === 'album' ? 'Álbuns' : 'Artistas'}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, bgcolor: 'background.paper', p: 0.5, borderRadius: 2 }}>
+            <Tooltip title="Visualização em Grade">
+              <IconButton 
+                size="small" 
+                onClick={() => setViewMode('grid')}
+                color={viewMode === 'grid' ? 'primary' : 'default'}
+              >
+                <GridViewIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Visualização em Lista">
+              <IconButton 
+                size="small" 
+                onClick={() => setViewMode('table')}
+                color={viewMode === 'table' ? 'primary' : 'default'}
+              >
+                <FormatListBulletedIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
+
         {filteredReviews.length === 0 ? (
           <Typography color="text.secondary">Nenhum item encontrado com estes filtros.</Typography>
-        ) : (
+        ) : viewMode === 'grid' ? (
           <Grid container spacing={3}>
             {filteredReviews.map((review) => {
               const details = itemDetails[review.item_id];
@@ -140,6 +206,69 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
               );
             })}
           </Grid>
+        ) : (
+          <TableContainer component={Paper} elevation={1} sx={{ borderRadius: 2 }}>
+            <Table size="small">
+              <TableHead sx={{ bgcolor: 'action.hover' }}>
+                <TableRow>
+                  <TableCell>Item</TableCell>
+                  {type !== 'artist' && <TableCell>Artista</TableCell>}
+                  <TableCell>Gêneros</TableCell>
+                  <TableCell align="center">Sua Nota</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredReviews.map((review) => {
+                  const details = itemDetails[review.item_id];
+                  if (!details) return null;
+                  const linkTarget = `/${type}/${review.item_id}`;
+
+                  return (
+                    <TableRow key={review.id} hover>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box 
+                            component="img" 
+                            src={details.imageUrl || ''} 
+                            sx={{ width: 40, height: 40, borderRadius: type === 'artist' ? '50%' : 1, objectFit: 'cover' }}
+                          />
+                          <Typography 
+                            component={Link} 
+                            to={linkTarget} 
+                            variant="body2" 
+                            fontWeight="bold"
+                            sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+                          >
+                            {details.name}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      {type !== 'artist' && (
+                        <TableCell>
+                          <Typography variant="body2" color="text.secondary">
+                            {details.artist || '-'}
+                          </Typography>
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', maxWidth: 200 }}>
+                          {details.genres && details.genres.slice(0, 2).map(g => (
+                            <Chip key={g} label={g} size="small" variant="outlined" sx={{ fontSize: '0.65rem', height: 20, textTransform: 'capitalize' }} />
+                          ))}
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: 'warning.main' }}>
+                          <StarIcon sx={{ fontSize: 16 }} />
+                          <Typography variant="body2" fontWeight="bold">{review.rating}</Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </Grid>
     </Grid>

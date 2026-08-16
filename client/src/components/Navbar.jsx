@@ -8,6 +8,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import CircleIcon from '@mui/icons-material/Circle';
 import MenuIcon from '@mui/icons-material/Menu';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { Drawer, List, ListItemText, ListItemButton } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import SearchBar from './SearchBar';
@@ -86,9 +87,15 @@ function Navbar() {
                 Início
               </Button>
               {isAuthenticated && (
-                <Button component={Link} to="/search-users" sx={{ color: '#fff', fontWeight: 600, opacity: 0.8, '&:hover': { opacity: 1 } }}>
-                  Comunidade
-                </Button>
+                <>
+                  <Button component={Link} to="/profile" sx={{ color: '#fff', fontWeight: 600, opacity: 0.8, '&:hover': { opacity: 1 } }}>Profile</Button>
+                  <Button component={Link} to="/profile?tab=music" sx={{ color: '#fff', fontWeight: 600, opacity: 0.8, '&:hover': { opacity: 1 } }}>Music List</Button>
+                  <Button component={Link} to="/profile?tab=album" sx={{ color: '#fff', fontWeight: 600, opacity: 0.8, '&:hover': { opacity: 1 } }}>Album List</Button>
+                  <Button component={Link} to="/profile?tab=artist" sx={{ color: '#fff', fontWeight: 600, opacity: 0.8, '&:hover': { opacity: 1 } }}>Artist List</Button>
+                  <Button component={Link} to="/search-users" sx={{ color: '#fff', fontWeight: 600, opacity: 0.8, '&:hover': { opacity: 1 } }}>
+                    Comunidade
+                  </Button>
+                </>
               )}
               {isAuthenticated && user?.is_admin && (
                 <Button component={Link} to="/admin" sx={{ color: 'secondary.main', fontWeight: 600 }}>
@@ -115,15 +122,34 @@ function Navbar() {
               <Box 
                 onMouseEnter={handleDropdownOpen} 
                 onMouseLeave={handleDropdownClose}
-                sx={{ position: 'relative', py: 1, display: { xs: 'none', md: 'block' } }}
+                sx={{ position: 'relative', py: 1, display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1, cursor: 'pointer' }}
               >
                 <Avatar 
                   src={user?.avatar_url} 
                   alt={user?.username} 
                   variant="square"
-                  sx={{ width: 40, height: 40, cursor: 'pointer', borderRadius: 1.5 }} 
+                  sx={{ width: 40, height: 40, borderRadius: 1.5 }} 
                 />
                 
+                {unreadCount > 0 && (
+                  <Box sx={{ 
+                    bgcolor: 'error.main', 
+                    color: 'white', 
+                    borderRadius: '50%', 
+                    width: 20, 
+                    height: 20, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {unreadCount}
+                  </Box>
+                )}
+                
+                <ArrowDropDownIcon sx={{ color: '#fff', opacity: 0.7 }} />
+
                 {/* Dropdown Menu Customizado no Hover */}
                 {isHovering && (
                   <Box
@@ -200,9 +226,23 @@ function Navbar() {
               <ListItemText primary="Início" />
             </ListItemButton>
             {isAuthenticated && (
-              <ListItemButton component={Link} to="/search-users" onClick={() => setMobileOpen(false)}>
-                <ListItemText primary="Comunidade" />
-              </ListItemButton>
+              <>
+                <ListItemButton component={Link} to="/profile" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Profile" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/profile?tab=music" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Music List" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/profile?tab=album" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Album List" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/profile?tab=artist" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Artist List" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/search-users" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Comunidade" />
+                </ListItemButton>
+              </>
             )}
             {isAuthenticated && user?.is_admin && (
               <ListItemButton component={Link} to="/admin" onClick={() => setMobileOpen(false)}>

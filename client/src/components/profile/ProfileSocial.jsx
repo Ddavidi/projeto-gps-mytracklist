@@ -28,7 +28,7 @@ export default function ProfileSocial({ userId }) {
 
         if (currentUser) {
           const myFollowingData = await getFollowing(currentUser.id || currentUser.userId);
-          const ids = new Set(myFollowingData.map(f => f.followingId));
+          const ids = new Set(myFollowingData.map(f => f.id));
           setMyFollowingIds(ids);
         }
       } catch (err) {

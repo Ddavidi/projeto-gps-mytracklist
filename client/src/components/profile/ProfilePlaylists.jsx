@@ -3,8 +3,10 @@ import { Box, Typography, Grid, Paper, CircularProgress, Alert, Card, CardMedia,
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import ReviewSection from '../ReviewSection';
+import StarIcon from '@mui/icons-material/Star';
 
-export default function ProfilePlaylists({ userId }) {
+export default function ProfilePlaylists({ userId, reviews = [] }) {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,6 +15,7 @@ export default function ProfilePlaylists({ userId }) {
   const [playlistTracks, setPlaylistTracks] = useState([]);
   const [tracksLoading, setTracksLoading] = useState(false);
   const [tracksError, setTracksError] = useState(null);
+  const [selectedTrackForReview, setSelectedTrackForReview] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,7 +57,18 @@ export default function ProfilePlaylists({ userId }) {
       <Grid container spacing={3} sx={{ mt: 1 }}>
         {playlists.map((playlist) => (
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={playlist.id}>
-          <Card elevation={0} sx={{ bgcolor: 'background.default', borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Card 
+            elevation={2} 
+            sx={{ 
+              bgcolor: 'background.paper', 
+              borderRadius: 3, 
+              height: '100%', 
+              display: 'flex', 
+              flexDirection: 'column',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }
+            }}
+          >
             <CardActionArea onClick={() => handleOpenPlaylist(playlist)} sx={{ flexGrow: 1 }}>
               <CardMedia
                 component="img"
@@ -99,28 +113,108 @@ export default function ProfilePlaylists({ userId }) {
                 <Typography color="text.secondary">Esta playlist não possui músicas válidas.</Typography>
               ) : (
                 <List disablePadding>
-                  {playlistTracks.map((track, i) => (
-                    <ListItem key={track.id + i} sx={{ px: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
+                  {playlistTracks.map((track, i) => {
+                    const userReview = reviews.find(r => r.item_id === track.id && r.item_type === 'track');
+                    const hasRated = !!userReview;
+                    
+                    return (
+                    <ListItem 
+                      key={track.id + i} 
+                      sx={{ 
+                        px: 2, 
+                        py: 1.5,
+                        borderBottom: '1px solid', 
+                        borderColor: 'divider',
+                        transition: 'background-color 0.2s',
+                        '&:hover': { bgcolor: 'action.hover' }
+                      }}
+                    >
                       <ListItemAvatar>
-                        <Avatar variant="square" src={track.imageUrl} sx={{ borderRadius: 1 }} />
+                        <Avatar variant="square" src={track.imageUrl} sx={{ borderRadius: 1, width: 48, height: 48, mr: 1 }} />
                       </ListItemAvatar>
                       <ListItemText 
-                        primary={track.name} 
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body1" fontWeight="bold" noWrap>
+                              {track.name}
+                            </Typography>
+                            {hasRated && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: 'rgba(237, 108, 2, 0.1)', color: 'warning.main', px: 1, py: 0.2, borderRadius: 1 }}>
+                                <StarIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                                <Typography variant="caption" fontWeight="bold">{userReview.rating}</Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        }
                         secondary={track.artist}
-                        primaryTypographyProps={{ variant: 'body1', fontWeight: 'bold' }}
+                        sx={{ m: 0 }}
                       />
-                      <Button 
-                        variant="outlined" 
-                        size="small" 
-                        color="primary"
-                        onClick={() => navigate(`/music/${track.id}`)}
-                      >
-                        Avaliar
-                      </Button>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button 
+                          variant={hasRated ? "contained" : "outlined"} 
+                          size="small" 
+                          color="primary"
+                          onClick={() => setSelectedTrackForReview(track)}
+                          sx={{ textTransform: 'none', borderRadius: 2 }}
+                        >
+                          {hasRated ? 'Editar Nota' : 'Avaliar'}
+                        </Button>
+                        <Button 
+                          variant="text" 
+                          size="small" 
+                          color="inherit"
+                          onClick={() => navigate(`/track/${track.id}`)}
+                        >
+                          Detalhes
+                        </Button>
+                      </Box>
                     </ListItem>
-                  ))}
+                    );
+                  })}
                 </List>
               )}
+            </DialogContent>
+          </>
+        )}
+      </Dialog>
+
+      {/* Dialog para Avaliação Rápida */}
+      <Dialog open={!!selectedTrackForReview} onClose={() => setSelectedTrackForReview(null)} maxWidth="sm" fullWidth>
+        {selectedTrackForReview && (
+          <>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6" fontWeight="bold">Avaliar Música</Typography>
+              <IconButton onClick={() => setSelectedTrackForReview(null)}>
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent dividers>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                <Avatar variant="square" src={selectedTrackForReview.imageUrl} sx={{ width: 64, height: 64, borderRadius: 1, mr: 2 }} />
+                <Box>
+                  <Typography variant="subtitle1" fontWeight="bold">{selectedTrackForReview.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">{selectedTrackForReview.artist}</Typography>
+                </Box>
+              </Box>
+              
+              <ReviewSection 
+                itemType="track" 
+                itemId={selectedTrackForReview.id} 
+                itemData={{ 
+                  name: selectedTrackForReview.name, 
+                  imageUrl: selectedTrackForReview.imageUrl, 
+                  previewUrl: selectedTrackForReview.previewUrl 
+                }} 
+              />
+              
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                <Button 
+                  variant="text" 
+                  onClick={() => navigate(`/track/${selectedTrackForReview.id}`)}
+                >
+                  Ver todos os detalhes da música
+                </Button>
+              </Box>
             </DialogContent>
           </>
         )}
