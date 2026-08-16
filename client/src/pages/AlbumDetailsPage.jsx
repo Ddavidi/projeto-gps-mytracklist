@@ -26,6 +26,7 @@ import StarIcon from '@mui/icons-material/Star';
 import ReviewSection from '../components/ReviewSection';
 import FriendsReviews from '../components/FriendsReviews';
 import ScoreDistribution from '../components/ScoreDistribution';
+import PlayButton from '../components/PlayButton';
 
 function AlbumDetailsPage() {
   const { id } = useParams();
@@ -224,11 +225,15 @@ function AlbumDetailsPage() {
                       <Typography variant="body2" color="text.secondary">
                         {formatDuration(track.durationMs)}
                       </Typography>
+                      <PlayButton
+                        track={{ id: track.id, name: track.name, artist: track.artist || album.artist, imageUrl: album.imageUrl, previewUrl: track.previewUrl }}
+                        size="small"
+                      />
                       <Button 
                         variant="outlined" 
                         size="small" 
                         component={RouterLink} 
-                        to={`/music/${track.id}`}
+                        to={`/track/${track.id}`}
                         startIcon={<MusicNoteIcon />}
                         sx={{ borderRadius: 2 }}
                       >

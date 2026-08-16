@@ -19,6 +19,7 @@ import {
 import ReviewSection from '../components/ReviewSection';
 import FriendsReviews from '../components/FriendsReviews';
 import ScoreDistribution from '../components/ScoreDistribution';
+import PlayButton from '../components/PlayButton';
 import { Link as RouterLink } from 'react-router-dom';
 
 function TrackDetailsPage() {
@@ -111,10 +112,17 @@ function TrackDetailsPage() {
 
         {/* Main Content (Direita) */}
         <Grid size={{ xs: 12, md: 9 }}>
-          <Typography variant="h3" component="h1" fontWeight="bold" gutterBottom>{track.name}</Typography>
-          <Typography variant="h6" color="text.secondary" gutterBottom sx={{ mb: 4 }}>
-            {track.artist}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+            <Typography variant="h3" component="h1" fontWeight="bold">{track.name}</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 4 }}>
+            <Typography variant="h6" color="text.secondary">{track.artist}</Typography>
+            <PlayButton
+              track={{ id: track.id, name: track.name, artist: track.artist, imageUrl: track.imageUrl, previewUrl: track.previewUrl }}
+              filled
+              size="medium"
+            />
+          </Box>
 
           <Typography variant="h6" fontWeight="bold" gutterBottom>Avalie esta Música</Typography>
           <ReviewSection itemType="track" itemId={trackId} itemData={{ name: track.name, imageUrl: track.imageUrl, previewUrl: track.previewUrl }} />

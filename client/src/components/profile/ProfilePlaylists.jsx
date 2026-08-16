@@ -5,8 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import ReviewSection from '../ReviewSection';
 import StarIcon from '@mui/icons-material/Star';
+import PlayButton from '../PlayButton';
 
-export default function ProfilePlaylists({ userId, reviews = [] }) {
+export default function ProfilePlaylists({ userId, reviews = [], onReviewUpdate }) {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -95,16 +96,22 @@ export default function ProfilePlaylists({ userId, reviews = [] }) {
     </Grid>
 
       {/* Dialog de Músicas da Playlist */}
-      <Dialog open={!!selectedPlaylist} onClose={() => setSelectedPlaylist(null)} maxWidth="md" fullWidth>
+      <Dialog 
+        open={!!selectedPlaylist} 
+        onClose={() => setSelectedPlaylist(null)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3, backgroundImage: 'none' } }}
+      >
         {selectedPlaylist && (
           <>
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'background.paper' }}>
               <Typography variant="h6" fontWeight="bold">{selectedPlaylist.name}</Typography>
               <IconButton onClick={() => setSelectedPlaylist(null)}>
                 <CloseIcon />
               </IconButton>
             </DialogTitle>
-            <DialogContent dividers>
+            <DialogContent dividers sx={{ bgcolor: 'background.default', p: 0 }}>
               {tracksLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
               ) : tracksError ? (
@@ -121,8 +128,8 @@ export default function ProfilePlaylists({ userId, reviews = [] }) {
                     <ListItem 
                       key={track.id + i} 
                       sx={{ 
-                        px: 2, 
-                        py: 1.5,
+                        px: 3, 
+                        py: 2,
                         borderBottom: '1px solid', 
                         borderColor: 'divider',
                         transition: 'background-color 0.2s',
@@ -130,7 +137,7 @@ export default function ProfilePlaylists({ userId, reviews = [] }) {
                       }}
                     >
                       <ListItemAvatar>
-                        <Avatar variant="square" src={track.imageUrl} sx={{ borderRadius: 1, width: 48, height: 48, mr: 1 }} />
+                        <Avatar variant="square" src={track.imageUrl} sx={{ borderRadius: 1, width: 56, height: 56, mr: 2 }} />
                       </ListItemAvatar>
                       <ListItemText 
                         primary={
@@ -149,13 +156,17 @@ export default function ProfilePlaylists({ userId, reviews = [] }) {
                         secondary={track.artist}
                         sx={{ m: 0 }}
                       />
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <PlayButton
+                          track={{ id: track.id, name: track.name, artist: track.artist, imageUrl: track.imageUrl, previewUrl: track.previewUrl }}
+                          size="small"
+                        />
                         <Button 
                           variant={hasRated ? "contained" : "outlined"} 
                           size="small" 
-                          color="primary"
+                          color="success"
                           onClick={() => setSelectedTrackForReview(track)}
-                          sx={{ textTransform: 'none', borderRadius: 2 }}
+                          sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 'bold' }}
                         >
                           {hasRated ? 'Editar Nota' : 'Avaliar'}
                         </Button>
@@ -164,8 +175,9 @@ export default function ProfilePlaylists({ userId, reviews = [] }) {
                           size="small" 
                           color="inherit"
                           onClick={() => navigate(`/track/${track.id}`)}
+                          sx={{ fontWeight: 'bold', display: { xs: 'none', sm: 'inline-flex' } }}
                         >
-                          Detalhes
+                          DETALHES
                         </Button>
                       </Box>
                     </ListItem>
@@ -179,20 +191,26 @@ export default function ProfilePlaylists({ userId, reviews = [] }) {
       </Dialog>
 
       {/* Dialog para Avaliação Rápida */}
-      <Dialog open={!!selectedTrackForReview} onClose={() => setSelectedTrackForReview(null)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={!!selectedTrackForReview} 
+        onClose={() => setSelectedTrackForReview(null)} 
+        maxWidth="xs" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3, backgroundImage: 'none', p: 1 } }}
+      >
         {selectedTrackForReview && (
           <>
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
               <Typography variant="h6" fontWeight="bold">Avaliar Música</Typography>
-              <IconButton onClick={() => setSelectedTrackForReview(null)}>
+              <IconButton onClick={() => setSelectedTrackForReview(null)} size="small">
                 <CloseIcon />
               </IconButton>
             </DialogTitle>
-            <DialogContent dividers>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <Avatar variant="square" src={selectedTrackForReview.imageUrl} sx={{ width: 64, height: 64, borderRadius: 1, mr: 2 }} />
+            <DialogContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, mt: 1 }}>
+                <Avatar variant="square" src={selectedTrackForReview.imageUrl} sx={{ width: 80, height: 80, borderRadius: 2, mr: 2, boxShadow: 2 }} />
                 <Box>
-                  <Typography variant="subtitle1" fontWeight="bold">{selectedTrackForReview.name}</Typography>
+                  <Typography variant="subtitle1" fontWeight="bold" sx={{ lineHeight: 1.2, mb: 0.5 }}>{selectedTrackForReview.name}</Typography>
                   <Typography variant="body2" color="text.secondary">{selectedTrackForReview.artist}</Typography>
                 </Box>
               </Box>
@@ -204,15 +222,20 @@ export default function ProfilePlaylists({ userId, reviews = [] }) {
                   name: selectedTrackForReview.name, 
                   imageUrl: selectedTrackForReview.imageUrl, 
                   previewUrl: selectedTrackForReview.previewUrl 
-                }} 
+                }}
+                onReviewSaved={() => {
+                  if (onReviewUpdate) onReviewUpdate();
+                }}
               />
               
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
                 <Button 
                   variant="text" 
+                  color="success"
                   onClick={() => navigate(`/track/${selectedTrackForReview.id}`)}
+                  sx={{ fontWeight: 'bold' }}
                 >
-                  Ver todos os detalhes da música
+                  VER TODOS OS DETALHES DA MÚSICA
                 </Button>
               </Box>
             </DialogContent>

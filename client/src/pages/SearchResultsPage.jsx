@@ -19,6 +19,7 @@ import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import AlbumIcon from '@mui/icons-material/Album';
 import PersonIcon from '@mui/icons-material/Person';
 import SearchBar from '../components/SearchBar';
+import PlayButton from '../components/PlayButton';
 
 function SearchResultsPage() {
   const [searchParams] = useSearchParams();
@@ -102,15 +103,33 @@ function SearchResultsPage() {
                     transition: 'transform 0.2s, box-shadow 0.2s',
                     '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 }
                   }}
-                >
+                 >
                   <CardActionArea component={RouterLink} to={`/track/${track.id}`}>
                     <Box sx={{ display: 'flex', alignItems: 'center', p: 1.5 }}>
-                      <Avatar
-                        variant="square"
-                        src={track.imageUrl}
-                        alt={track.name}
-                        sx={{ width: 56, height: 56, borderRadius: 2, mr: 2 }}
-                      />
+                      <Box sx={{ position: 'relative', mr: 2, flexShrink: 0 }}>
+                        <Avatar
+                          variant="square"
+                          src={track.imageUrl}
+                          alt={track.name}
+                          sx={{ width: 56, height: 56, borderRadius: 2 }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute', inset: 0, borderRadius: 2,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            bgcolor: 'rgba(0,0,0,0.35)',
+                            opacity: 0, transition: 'opacity 0.2s',
+                            '.MuiCardActionArea-root:hover &': { opacity: 1 },
+                          }}
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <PlayButton
+                            track={{ id: track.id, name: track.name, artist: track.artist, imageUrl: track.imageUrl, previewUrl: track.previewUrl }}
+                            size="small"
+                            filled
+                          />
+                        </Box>
+                      </Box>
                       <Box sx={{ minWidth: 0, flex: 1 }}>
                         <Typography variant="subtitle1" fontWeight="bold" noWrap>
                           {track.name}

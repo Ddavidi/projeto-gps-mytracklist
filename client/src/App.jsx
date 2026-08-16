@@ -16,6 +16,8 @@ import AdminPage from './pages/AdminPage';
 import SettingsPage from './pages/SettingsPage';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import { PlayerProvider } from './context/PlayerContext';
+import GlobalPlayer from './components/GlobalPlayer';
 
 function App() {
   const { isAuthenticated, user, logout, loading } = useAuth();
@@ -30,9 +32,9 @@ function App() {
   }
 
   return (
-    <>
+    <PlayerProvider>
       <Navbar />
-      <Container>
+      <Container sx={{ pb: '90px' }}>
         <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -48,7 +50,8 @@ function App() {
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         </Routes>
       </Container>
-    </>
+      <GlobalPlayer />
+    </PlayerProvider>
   );
 }
 
