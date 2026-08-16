@@ -1,76 +1,59 @@
 ﻿import React from "react";
 import { IconButton, Tooltip } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import QueueMusicIcon from "@mui/icons-material/QueueMusic";
 import { usePlayer } from "../context/PlayerContext";
 
 /**
- * Botao de play reutilizavel para qualquer lugar do site.
- * Abre o Spotify Embed no player global do rodape.
- * Se nao tiver id, abre o link externo no Spotify.
- * @param {{ id, name, artist, imageUrl, previewUrl, externalUrl }} track
- * @param {string} size - "small" | "medium" | "large"
- * @param {boolean} filled - se true, usa fundo colorido
+ * Botao de play reutilizavel.
+ * @param {{ id, name, artist?, imageUrl, externalUrl?, type? }} track
+ *   type pode ser "track" (padrao) | "playlist" | "album"
  */
 export default function PlayButton({ track, size = "medium", filled = false, sx = {} }) {
-  const { currentTrack, playTrack } = usePlayer();
-  const isCurrentTrack = currentTrack?.id === track?.id;
+  const { currentContext, playTrack, playPlaylist, playAlbum } = usePlayer();
 
-  const handlePlay = (e) => {
+  const isActive = currentContext?.id === track?.id;
+  const isPlaylist = track?.type === "playlist";
+  const isAlbum = track?.type === "album";
+
+  const handleClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    playTrack(track);
+    if (!track?.id) return;
+    if (isPlaylist) playPlaylist(track);
+    else if (isAlbum) playAlbum(track);
+    else playTrack(track);
   };
 
-  const handleOpenSpotify = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const url = track?.externalUrl || `https://open.spotify.com/track/${track?.id}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  // Se nao tem ID nao conseguimos nem embedar
-  if (!track?.id) {
-    return (
-      <Tooltip title="Abrir no Spotify">
-        <IconButton
-          onClick={handleOpenSpotify}
-          size={size}
-          sx={{
-            color: "rgba(30, 215, 96, 0.7)",
-            "&:hover": { color: "#1ED760", transform: "scale(1.1)" },
-            transition: "all 0.15s",
-            ...sx,
-          }}
-        >
-          <OpenInNewIcon fontSize={size === "small" ? "small" : "medium"} />
-        </IconButton>
-      </Tooltip>
-    );
-  }
+  const Icon = isPlaylist ? QueueMusicIcon : PlayArrowIcon;
+  const tooltip = isActive
+    ? "Tocando..."
+    : isPlaylist ? "Tocar playlist no player"
+    : isAlbum ? "Tocar album no player"
+    : "Ouvir no player";
 
   return (
-    <Tooltip title={isCurrentTrack ? "Tocando no player..." : "Ouvir no player"}>
+    <Tooltip title={tooltip}>
       <IconButton
-        onClick={handlePlay}
+        onClick={handleClick}
         size={size}
         sx={{
           bgcolor: filled
-            ? isCurrentTrack ? "primary.main" : "rgba(255,255,255,0.15)"
+            ? isActive ? "primary.main" : "rgba(255,255,255,0.15)"
             : "transparent",
           color: filled
-            ? isCurrentTrack ? "#000" : "#fff"
-            : isCurrentTrack ? "primary.main" : "inherit",
+            ? isActive ? "#000" : "#fff"
+            : isActive ? "primary.main" : "inherit",
           "&:hover": {
-            bgcolor: filled ? "primary.main" : "rgba(0,0,0,0.04)",
+            bgcolor: filled ? "primary.main" : "rgba(0,0,0,0.06)",
             color: filled ? "#000" : "primary.main",
-            transform: "scale(1.1)",
+            transform: "scale(1.08)",
           },
           transition: "all 0.15s",
           ...sx,
         }}
       >
-        <PlayArrowIcon fontSize={size === "small" ? "small" : "medium"} />
+        <Icon fontSize={size === "small" ? "small" : "medium"} />
       </IconButton>
     </Tooltip>
   );

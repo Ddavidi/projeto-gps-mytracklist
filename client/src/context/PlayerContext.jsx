@@ -2,26 +2,46 @@
 
 const PlayerContext = createContext(null);
 
+/**
+ * context pode ser:
+ *   { type: "track",    id, name, artist, imageUrl, externalUrl }
+ *   { type: "playlist", id, name, imageUrl, externalUrl }
+ *   { type: "album",    id, name, artist, imageUrl, externalUrl }
+ */
 export function PlayerProvider({ children }) {
-  const [currentTrack, setCurrentTrack] = useState(null); // { id, name, artist, imageUrl }
+  const [currentContext, setCurrentContext] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
 
   const playTrack = useCallback((track) => {
     if (!track?.id) return;
-    setCurrentTrack(track);
+    setCurrentContext({ type: "track", ...track });
+    setIsVisible(true);
+  }, []);
+
+  const playPlaylist = useCallback((playlist) => {
+    if (!playlist?.id) return;
+    setCurrentContext({ type: "playlist", ...playlist });
+    setIsVisible(true);
+  }, []);
+
+  const playAlbum = useCallback((album) => {
+    if (!album?.id) return;
+    setCurrentContext({ type: "album", ...album });
     setIsVisible(true);
   }, []);
 
   const closePlayer = useCallback(() => {
     setIsVisible(false);
-    setCurrentTrack(null);
+    setCurrentContext(null);
   }, []);
 
   return (
     <PlayerContext.Provider value={{
-      currentTrack,
+      currentContext,
       isVisible,
       playTrack,
+      playPlaylist,
+      playAlbum,
       closePlayer,
     }}>
       {children}
@@ -30,7 +50,7 @@ export function PlayerProvider({ children }) {
 }
 
 export function usePlayer() {
-  const context = useContext(PlayerContext);
-  if (!context) throw new Error("usePlayer must be used within a PlayerProvider");
-  return context;
+  const ctx = useContext(PlayerContext);
+  if (!ctx) throw new Error("usePlayer must be used within a PlayerProvider");
+  return ctx;
 }

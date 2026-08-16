@@ -90,6 +90,14 @@ export default function ProfilePlaylists({ userId, reviews = [], onReviewUpdate 
                 </Typography>
               </CardContent>
             </CardActionArea>
+            {/* Botao tocar playlist — fora do CardActionArea para nao conflitar */}
+            <Box sx={{ px: 1.5, pb: 1.5, display: 'flex', justifyContent: 'flex-end' }}>
+              <PlayButton
+                track={{ type: 'playlist', id: playlist.id, name: playlist.name, imageUrl: playlist.imageUrl, externalUrl: playlist.externalUrl }}
+                size="small"
+                filled
+              />
+            </Box>
           </Card>
         </Grid>
       ))}
@@ -106,7 +114,13 @@ export default function ProfilePlaylists({ userId, reviews = [], onReviewUpdate 
         {selectedPlaylist && (
           <>
             <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'background.paper' }}>
-              <Typography variant="h6" fontWeight="bold">{selectedPlaylist.name}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6" fontWeight="bold">{selectedPlaylist.name}</Typography>
+                <PlayButton
+                  track={{ type: 'playlist', id: selectedPlaylist.id, name: selectedPlaylist.name, imageUrl: selectedPlaylist.imageUrl, externalUrl: selectedPlaylist.externalUrl }}
+                  size="small"
+                />
+              </Box>
               <IconButton onClick={() => setSelectedPlaylist(null)}>
                 <CloseIcon />
               </IconButton>

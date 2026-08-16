@@ -1,17 +1,29 @@
-﻿import React from "react";
-import { Box, IconButton, Typography, Avatar, Tooltip, Fade, Chip } from "@mui/material";
+﻿import React, { useRef, useEffect } from "react";
+import { Box, IconButton, Tooltip, Fade } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { usePlayer } from "../context/PlayerContext";
-import { Link } from "react-router-dom";
 
 export default function GlobalPlayer() {
-  const { currentTrack, isVisible, closePlayer } = usePlayer();
+  const { currentContext, isVisible, closePlayer } = usePlayer();
+  const iframeRef = useRef(null);
 
-  if (!isVisible || !currentTrack) return null;
+  // Ao mudar de musica/contexto, tenta forcar o autoplay via postMessage
+  useEffect(() => {
+    if (!isVisible || !currentContext) return;
+    const timer = setTimeout(() => {
+      try {
+        iframeRef.current?.contentWindow?.postMessage({ command: "play" }, "*");
+      } catch (_) {}
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [currentContext?.id, isVisible]);
 
-  const embedUrl = `https://open.spotify.com/embed/track/${currentTrack.id}?utm_source=generator&theme=0`;
-  const spotifyUrl = currentTrack.externalUrl || `https://open.spotify.com/track/${currentTrack.id}`;
+  if (!isVisible || !currentContext) return null;
+
+  const { type, id, externalUrl } = currentContext;
+  const embedUrl = `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0&autoplay=1`;
+  const spotifyUrl = externalUrl || `https://open.spotify.com/${type}/${id}`;
 
   return (
     <Fade in={isVisible}>
@@ -22,76 +34,61 @@ export default function GlobalPlayer() {
           left: 0,
           right: 0,
           zIndex: 1300,
-          bgcolor: "rgba(18, 18, 18, 0.98)",
-          backdropFilter: "blur(20px)",
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 -8px 32px rgba(0,0,0,0.5)",
+          bgcolor: "#000",
+          boxShadow: "0 -4px 24px rgba(0,0,0,0.7)",
           display: "flex",
           alignItems: "center",
-          gap: 2,
-          px: { xs: 1, sm: 2 },
-          py: 1,
         }}
       >
-        {/* Capa + info — visivel em telas maiores */}
-        <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 1.5, minWidth: 0, width: 200, flexShrink: 0 }}>
-          <Avatar
-            variant="square"
-            src={currentTrack.imageUrl}
-            sx={{ width: 56, height: 56, borderRadius: 1, boxShadow: 2 }}
-          />
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              component={Link}
-              to={`/track/${currentTrack.id}`}
-              variant="body2"
-              fontWeight="bold"
-              noWrap
-              sx={{ color: "#fff", textDecoration: "none", "&:hover": { color: "primary.main" }, display: "block", lineHeight: 1.3 }}
-            >
-              {currentTrack.name}
-            </Typography>
-            <Typography variant="caption" color="rgba(255,255,255,0.5)" noWrap display="block">
-              {currentTrack.artist}
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Iframe do Spotify — ocupa o espaco central */}
+        {/* Iframe ocupa todo o espaco disponivel */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <iframe
+            ref={iframeRef}
+            key={`${type}-${id}`}
             src={embedUrl}
             width="100%"
             height="80"
             frameBorder="0"
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
             loading="lazy"
-            style={{ borderRadius: "12px", display: "block" }}
-            title={`Spotify player - ${currentTrack.name}`}
+            style={{ display: "block" }}
+            title="Spotify Player"
           />
         </Box>
 
-        {/* Acoes: abrir no Spotify + fechar */}
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
-          <Tooltip title="Abrir no Spotify">
+        {/* Acoes fora do iframe */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 0.25,
+            bgcolor: "#121212",
+            height: 80,
+            px: 0.5,
+            flexShrink: 0,
+          }}
+        >
+          <Tooltip title="Abrir no Spotify" placement="left">
             <IconButton
               component="a"
               href={spotifyUrl}
               target="_blank"
               rel="noopener noreferrer"
               size="small"
-              sx={{ color: "#1ED760", "&:hover": { bgcolor: "rgba(30,215,96,0.15)" } }}
+              sx={{ color: "#1ED760", "&:hover": { bgcolor: "rgba(30,215,96,0.15)" }, p: 0.75 }}
             >
-              <OpenInNewIcon fontSize="small" />
+              <OpenInNewIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Fechar player">
+          <Tooltip title="Fechar" placement="left">
             <IconButton
               onClick={closePlayer}
               size="small"
-              sx={{ color: "rgba(255,255,255,0.4)", "&:hover": { color: "#fff" } }}
+              sx={{ color: "rgba(255,255,255,0.4)", "&:hover": { color: "#fff" }, p: 0.75 }}
             >
-              <CloseIcon fontSize="small" />
+              <CloseIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
         </Box>
