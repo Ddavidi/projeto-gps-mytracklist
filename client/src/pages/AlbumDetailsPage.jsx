@@ -147,7 +147,13 @@ function AlbumDetailsPage() {
 
         {/* Main Content (Direita) */}
         <Grid size={{ xs: 12, md: 9 }}>
-          <Typography variant="h3" component="h1" fontWeight="bold" gutterBottom>{album.name}</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+            <Typography variant="h3" component="h1" fontWeight="bold">{album.name}</Typography>
+            <PlayButton
+              track={{ type: 'album', id, name: album.name, artist: album.artist, imageUrl: album.imageUrl }}
+              size="medium"
+            />
+          </Box>
           <Typography variant="h6" color="text.secondary" gutterBottom sx={{ mb: 4 }}>
             {album.artist}
           </Typography>

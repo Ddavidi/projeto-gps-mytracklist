@@ -73,10 +73,10 @@ function ProfilePage() {
     }
   }, []);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (background = false) => {
     if (!user) return;
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       setError('');
 
       const [myReviews, myFavs, followers, following] = await Promise.all([
@@ -141,7 +141,7 @@ function ProfilePage() {
       case 5:
         return <ProfileStatus reviews={reviews} />;
       case 6:
-        return <ProfilePlaylists userId={user?.id || user?.userId} reviews={reviews} />;
+        return <ProfilePlaylists userId={user?.id || user?.userId} reviews={reviews} onReviewUpdate={() => fetchData(true)} />;
       case 7:
         return <ProfileSpotifyStats userId={user?.id || user?.userId} />;
       default:

@@ -3,7 +3,7 @@ import { Box, Typography, TextField, Button, CircularProgress, Snackbar, Alert }
 import RatingInput from './RatingInput';
 import { getUserReviewForItem, saveReview } from '../services/reviews';
 
-function ReviewSection({ itemType, itemId, itemData = {} }) {
+function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved }) {
   const [currentReview, setCurrentReview] = useState(null);
   const [reviewText, setReviewText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +49,8 @@ function ReviewSection({ itemType, itemId, itemData = {} }) {
         review_text: reviewText,
       });
 
+      if (onReviewSaved) onReviewSaved();
+
       setSnackbarMessage('Avaliação salva com sucesso!');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
@@ -74,6 +76,7 @@ function ReviewSection({ itemType, itemId, itemData = {} }) {
       };
       await saveReview(itemType, itemId, currentReview.rating, reviewText, currentReview.id, metadata);
       setCurrentReview({ ...currentReview, review_text: reviewText });
+      if (onReviewSaved) onReviewSaved();
       setSnackbarMessage('Texto da review atualizado!');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);

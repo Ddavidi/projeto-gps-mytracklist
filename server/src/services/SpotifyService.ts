@@ -26,7 +26,7 @@ export class SpotifyService {
   // ==========================================
 
   public getAuthorizationUrl(state: string): string {
-    const scope = 'playlist-read-private playlist-read-collaborative user-read-recently-played user-top-read';
+    const scope = 'playlist-read-private playlist-read-collaborative user-read-recently-played user-top-read user-library-modify user-library-read user-modify-playback-state playlist-modify-public playlist-modify-private';
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: this.clientId,
@@ -700,5 +700,78 @@ export class SpotifyService {
     }));
 
     return { albums };
+  }
+
+  // ==========================================
+  // PLAYER CONTROL & LIBRARY METHODS
+  // ==========================================
+
+  /** Salva uma musica na biblioteca (Curtidas) do usuario */
+  public async saveTrack(accessToken: string, trackId: string) {
+    const response = await fetch(`https://api.spotify.com/v1/me/tracks`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ids: [trackId] }),
+    });
+    if (!response.ok) throw new Error('Falha ao salvar musica na biblioteca');
+    return { success: true };
+  }
+
+  /** Remove uma musica da biblioteca do usuario */
+  public async unsaveTrack(accessToken: string, trackId: string) {
+    const response = await fetch(`https://api.spotify.com/v1/me/tracks`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ids: [trackId] }),
+    });
+    if (!response.ok) throw new Error('Falha ao remover musica da biblioteca');
+    return { success: true };
+  }
+
+  /** Verifica se uma musica esta salva na biblioteca */
+  public async checkSavedTrack(accessToken: string, trackId: string): Promise<boolean> {
+    const response = await fetch(`https://api.spotify.com/v1/me/tracks/contains?ids=${trackId}`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data[0] === true;
+  }
+
+  /** Adiciona uma musica a fila do player ativo */
+  public async addToQueue(accessToken: string, trackUri: string) {
+    const response = await fetch(`https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(trackUri)}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    if (response.status === 204) return { success: true };
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Falha ao adicionar à fila');
+    }
+    return { success: true };
+  }
+
+  /** Adiciona uma musica a uma playlist especifica */
+  public async addTrackToPlaylist(accessToken: string, playlistId: string, trackUri: string) {
+    const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ uris: [trackUri] }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Falha ao adicionar musica a playlist');
+    }
+    return { success: true };
   }
 }
