@@ -219,8 +219,8 @@ export class ReviewController {
                 AVG(rating) as avg_rating, COUNT(id) as review_count 
          FROM reviews 
          WHERE item_type = ? AND rating IS NOT NULL 
-         GROUP BY item_id 
-         HAVING review_count > 0 
+         GROUP BY item_id, item_type, item_name, item_image_url 
+         HAVING COUNT(id) > 0 
          ORDER BY avg_rating DESC, review_count DESC 
          LIMIT ?`,
         [itemType, limit]
