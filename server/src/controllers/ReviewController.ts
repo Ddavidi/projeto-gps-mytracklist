@@ -143,14 +143,14 @@ export class ReviewController {
       };
       
       for (const row of distributionRows) {
-        distribution[row.rating] = row.count;
+        distribution[row.rating] = Number(row.count);
       }
 
       return { 
         success: true, 
         stats: {
-          averageScore: stats?.averageScore ? parseFloat(stats.averageScore.toFixed(1)) : 0,
-          totalReviews: stats?.totalReviews || 0,
+          averageScore: stats?.averageScore ? parseFloat(Number(stats.averageScore).toFixed(1)) : 0,
+          totalReviews: stats?.totalReviews ? Number(stats.totalReviews) : 0,
           distribution
         }
       };
@@ -228,7 +228,8 @@ export class ReviewController {
       
       const formattedItems = items.map((item: any) => ({
         ...item,
-        avg_rating: parseFloat(item.avg_rating.toFixed(1))
+        avg_rating: parseFloat(Number(item.avg_rating).toFixed(1)),
+        review_count: Number(item.review_count)
       }));
       
       return { success: true, items: formattedItems };
