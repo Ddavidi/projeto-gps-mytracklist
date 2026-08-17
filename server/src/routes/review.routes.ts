@@ -37,15 +37,7 @@ export function createReviewRouter(reviewController: ReviewController): Router {
   // Todas as rotas de reviews abaixo requerem autenticação
   router.use(requireAuth);
 
-  /**
-   * GET /reviews/feed
-   * Obtém as avaliações mais recentes de toda a rede social.
-   */
-  router.get('/feed', async (req: Request, res: Response) => {
-    const result = await reviewController.getRecentReviews(req.user!.userId);
-    if (result.success) res.json(result.reviews);
-    else res.status(500).json({ error: result.message });
-  });
+
 
   /**
    * POST /reviews/batch

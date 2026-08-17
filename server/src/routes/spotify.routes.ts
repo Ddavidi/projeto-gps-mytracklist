@@ -185,7 +185,7 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
   router.get('/user/:userId/playlists/:playlistId/tracks', async (req: Request, res: Response) => {
     try {
       const accessToken = await spotifyService.getValidUserAccessToken(Number(req.params.userId), userController);
-      const tracks = await spotifyService.getPlaylistTracks(accessToken, req.params.playlistId);
+      const tracks = await spotifyService.getPlaylistTracks(accessToken, req.params.playlistId as string);
       res.json(tracks);
     } catch (err: any) {
       console.error('Erro ao obter faixas da playlist:', err.message);
@@ -325,7 +325,7 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     try {
       const userId = (req as any).user?.userId;
       const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
-      await spotifyService.addTrackToPlaylist(accessToken, playlistId, `spotify:track:${trackId}`);
+      await spotifyService.addTrackToPlaylist(accessToken, playlistId as string, `spotify:track:${trackId}`);
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
