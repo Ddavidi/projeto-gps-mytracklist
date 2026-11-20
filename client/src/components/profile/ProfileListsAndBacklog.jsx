@@ -23,22 +23,24 @@ import {
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import AlbumIcon from '@mui/icons-material/Album';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import PersonIcon from '@mui/icons-material/Person';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import { getUserLists, createList, deleteList } from '../../services/lists';
+import { getUserLists, createList, updateList, deleteList } from '../../services/lists';
 
 export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingListId, setEditingListId] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [listType, setListType] = useState('album'); // 'album' | 'track'
+  const [listType, setListType] = useState('album'); // 'album' | 'track' | 'artist'
   const [isRanked, setIsRanked] = useState(true);
   const [isPublic, setIsPublic] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -58,22 +60,49 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
     loadData();
   }, [loadData]);
 
-  const handleCreate = async (e) => {
+  const openCreateModal = () => {
+    setEditingListId(null);
+    setTitle('');
+    setDescription('');
+    setListType('album');
+    setIsRanked(true);
+    setIsPublic(true);
+    setCreateOpen(true);
+  };
+
+  const openEditModal = (list) => {
+    setEditingListId(list.id);
+    setTitle(list.title || '');
+    setDescription(list.description || '');
+    setListType(list.list_type || 'album');
+    setIsRanked(Boolean(list.is_ranked));
+    setIsPublic(Boolean(list.is_public));
+    setCreateOpen(true);
+  };
+
+  const handleSaveList = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
     setSubmitting(true);
     try {
-      await createList({
-        title: title.trim(),
-        description: description.trim(),
-        isRanked,
-        isPublic,
-        listType,
-      });
-      setTitle('');
-      setDescription('');
-      setListType('album');
+      if (editingListId) {
+        await updateList(editingListId, {
+          title: title.trim(),
+          description: description.trim(),
+          isRanked,
+          isPublic,
+        });
+      } else {
+        await createList({
+          title: title.trim(),
+          description: description.trim(),
+          isRanked,
+          isPublic,
+          listType,
+        });
+      }
       setCreateOpen(false);
+      setEditingListId(null);
       loadData();
     } finally {
       setSubmitting(false);
@@ -106,7 +135,7 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
           </Typography>
         </Box>
         {isOwner && (
-          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openCreateModal}>
             Nova Tier List
           </Button>
         )}
@@ -228,9 +257,14 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
                       </Box>
                     </Box>
                     {isOwner && (
-                      <IconButton size="small" color="error" onClick={() => handleDeleteList(list.id)} aria-label="Apagar lista">
-                        <DeleteOutlineIcon fontSize="small" />
-                      </IconButton>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <IconButton size="small" onClick={() => openEditModal(list)} aria-label="Editar lista" title="Editar Tier List">
+                          <EditOutlinedIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteList(list.id)} aria-label="Apagar lista" title="Apagar Tier List">
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
                     )}
                   </Box>
                 </Paper>
@@ -240,10 +274,12 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
         </Grid>
       )}
 
-      {/* Modal Criar Tier List / Lista com seleção obrigatória de tipo */}
+      {/* Modal Criar / Editar Tier List */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3.5 } }}>
-        <Box component="form" onSubmit={handleCreate}>
-          <DialogTitle sx={{ pb: 1, fontWeight: 800 }}>Nova Tier List / Lista</DialogTitle>
+        <Box component="form" onSubmit={handleSaveList}>
+          <DialogTitle sx={{ pb: 1, fontWeight: 800 }}>
+            {editingListId ? 'Editar Tier List' : 'Nova Tier List / Lista'}
+          </DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '10px !important' }}>
             <TextField
               label="Título da Lista"
@@ -254,33 +290,35 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
               onChange={(e) => setTitle(e.target.value)}
             />
 
-            {/* Escolha do Tipo de Lista: Álbuns OU Músicas (sem misturar) */}
-            <FormControl component="fieldset" sx={{ p: 1.5, borderRadius: 2, bgcolor: (theme) => alpha(theme.palette.text.primary, 0.03), border: '1px solid', borderColor: 'divider' }}>
-              <FormLabel component="legend" sx={{ fontSize: '0.78rem', fontWeight: 700, mb: 0.5, color: 'text.primary' }}>
-                Formato dos itens da lista (não misturados):
-              </FormLabel>
-              <RadioGroup
-                row
-                value={listType}
-                onChange={(e) => setListType(e.target.value)}
-              >
-                <FormControlLabel
-                  value="album"
-                  control={<Radio size="small" color="primary" />}
-                  label={<Typography variant="body2" fontWeight={600}>💿 Álbuns</Typography>}
-                />
-                <FormControlLabel
-                  value="track"
-                  control={<Radio size="small" color="primary" />}
-                  label={<Typography variant="body2" fontWeight={600}>🎵 Músicas</Typography>}
-                />
-                <FormControlLabel
-                  value="artist"
-                  control={<Radio size="small" color="primary" />}
-                  label={<Typography variant="body2" fontWeight={600}>🎤 Artistas</Typography>}
-                />
-              </RadioGroup>
-            </FormControl>
+            {/* Escolha do Tipo de Lista apenas na criação (evita misturar itens já adicionados) */}
+            {!editingListId && (
+              <FormControl component="fieldset" sx={{ p: 1.5, borderRadius: 2, bgcolor: (theme) => alpha(theme.palette.text.primary, 0.03), border: '1px solid', borderColor: 'divider' }}>
+                <FormLabel component="legend" sx={{ fontSize: '0.78rem', fontWeight: 700, mb: 0.5, color: 'text.primary' }}>
+                  Formato dos itens da lista (não misturados):
+                </FormLabel>
+                <RadioGroup
+                  row
+                  value={listType}
+                  onChange={(e) => setListType(e.target.value)}
+                >
+                  <FormControlLabel
+                    value="album"
+                    control={<Radio size="small" color="primary" />}
+                    label={<Typography variant="body2" fontWeight={600}>💿 Álbuns</Typography>}
+                  />
+                  <FormControlLabel
+                    value="track"
+                    control={<Radio size="small" color="primary" />}
+                    label={<Typography variant="body2" fontWeight={600}>🎵 Músicas</Typography>}
+                  />
+                  <FormControlLabel
+                    value="artist"
+                    control={<Radio size="small" color="primary" />}
+                    label={<Typography variant="body2" fontWeight={600}>🎤 Artistas</Typography>}
+                  />
+                </RadioGroup>
+              </FormControl>
+            )}
 
             <TextField
               label="Descrição (opcional)"
@@ -302,7 +340,7 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
           <DialogActions sx={{ px: 3, pb: 2.5 }}>
             <Button onClick={() => setCreateOpen(false)} color="inherit">Cancelar</Button>
             <Button type="submit" variant="contained" disabled={submitting || !title.trim()}>
-              {submitting ? 'Criando...' : 'Criar Lista'}
+              {submitting ? 'Salvando...' : editingListId ? 'Salvar Alterações' : 'Criar Lista'}
             </Button>
           </DialogActions>
         </Box>

@@ -171,6 +171,51 @@ export class ListController {
     }
   }
 
+  async updateList(
+    listId: number,
+    userId: number,
+    fields: { title?: string; description?: string; isRanked?: boolean; isPublic?: boolean }
+  ) {
+    try {
+      const existing = await this.db.get('SELECT id, user_id FROM custom_lists WHERE id = ?', [listId]);
+      if (!existing || existing.user_id !== userId) {
+        return { success: false, message: 'Lista não encontrada ou sem permissão.' };
+      }
+
+      const updates: string[] = ['updated_at = CURRENT_TIMESTAMP'];
+      const params: any[] = [];
+
+      if (fields.title !== undefined) {
+        const cleanTitle = fields.title.trim();
+        if (!cleanTitle) return { success: false, message: 'O título da lista é obrigatório.' };
+        updates.push('title = ?');
+        params.push(cleanTitle);
+      }
+      if (fields.description !== undefined) {
+        updates.push('description = ?');
+        params.push(fields.description.trim());
+      }
+      if (fields.isRanked !== undefined) {
+        updates.push('is_ranked = ?');
+        params.push(Boolean(fields.isRanked));
+      }
+      if (fields.isPublic !== undefined) {
+        updates.push('is_public = ?');
+        params.push(Boolean(fields.isPublic));
+      }
+
+      params.push(listId, userId);
+      await this.db.run(
+        `UPDATE custom_lists SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`,
+        params
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao atualizar lista:', error);
+      return { success: false, message: 'Falha ao atualizar lista.' };
+    }
+  }
+
   async deleteList(listId: number, userId: number) {
     try {
       const result = await this.db.run(

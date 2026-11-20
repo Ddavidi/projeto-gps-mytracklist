@@ -256,17 +256,6 @@ function Navbar() {
 
             {isAuthenticated && (
               <>
-                <Tooltip title="Paletas de Cores">
-                  <IconButton
-                    component={Link}
-                    to="/settings?tab=appearance"
-                    aria-label="Paletas de Cores"
-                    sx={{ display: { xs: 'none', sm: 'inline-flex' }, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
-                  >
-                    <PaletteOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-
                 <Tooltip title="Notificações">
                   <IconButton
                     onClick={handleNotificationsClick}

@@ -20,6 +20,11 @@ export const createList = async ({ title, description, isRanked = true, isPublic
   return res.data;
 };
 
+export const updateList = async (listId, { title, description, isRanked, isPublic }) => {
+  const res = await api.put(`/lists/${listId}`, { title, description, isRanked, isPublic });
+  return res.data;
+};
+
 export const deleteList = async (listId) => {
   const res = await api.delete(`/lists/${listId}`);
   return res.data;

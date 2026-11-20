@@ -152,17 +152,15 @@ export default function MediaActionBar({ itemType, itemId, itemName, itemArtist 
   return (
     <>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, mb: 3 }}>
-        {itemType !== 'artist' && (
-          <Button
-            variant={inListenLater ? 'contained' : 'outlined'}
-            size="small"
-            startIcon={inListenLater ? <BookmarkIcon fontSize="small" /> : <BookmarkBorderIcon fontSize="small" />}
-            onClick={handleToggleListenLater}
-            disabled={busyLater}
-          >
-            {inListenLater ? 'Em Quero Ouvir' : 'Quero Ouvir'}
-          </Button>
-        )}
+        <Button
+          variant={inListenLater ? 'contained' : 'outlined'}
+          size="small"
+          startIcon={inListenLater ? <BookmarkIcon fontSize="small" /> : <BookmarkBorderIcon fontSize="small" />}
+          onClick={handleToggleListenLater}
+          disabled={busyLater}
+        >
+          {inListenLater ? 'Em Quero Ouvir' : 'Quero Ouvir'}
+        </Button>
 
         <Button
           variant={isFav ? 'contained' : 'outlined'}

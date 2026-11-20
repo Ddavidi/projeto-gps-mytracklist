@@ -62,6 +62,18 @@ export function createListRouter(listController: ListController): Router {
     else res.status(400).json({ error: result.message });
   });
 
+  router.put('/:id', async (req: Request, res: Response) => {
+    const { title, description, isRanked, isPublic } = req.body;
+    const result = await listController.updateList(Number(req.params.id), req.user!.userId, {
+      title,
+      description,
+      isRanked,
+      isPublic,
+    });
+    if (result.success) res.json({ success: true });
+    else res.status(400).json({ error: result.message });
+  });
+
   router.delete('/:id', async (req: Request, res: Response) => {
     const result = await listController.deleteList(Number(req.params.id), req.user!.userId);
     if (result.success) res.json({ success: true });

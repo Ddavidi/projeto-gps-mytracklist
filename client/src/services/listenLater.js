@@ -9,6 +9,7 @@ export const getUserListenLater = async (userId) => {
   const res = await api.get(`/listen-later/user/${userId}`);
   return {
     isPrivate: Boolean(res.data?.isPrivate),
+    visibility: res.data?.visibility || (res.data?.isPrivate ? 'private' : 'public'),
     items: res.data?.items || (Array.isArray(res.data) ? res.data : []),
   };
 };
@@ -33,8 +34,9 @@ export const reorderListenLater = async (items) => {
   return res.data;
 };
 
-export const updateListenLaterVisibility = async (isPublic) => {
-  const res = await api.put('/listen-later/visibility', { isPublic });
+export const updateListenLaterVisibility = async (visibility) => {
+  const payload = typeof visibility === 'string' ? { visibility } : { isPublic: Boolean(visibility) };
+  const res = await api.put('/listen-later/visibility', payload);
   return res.data;
 };
 

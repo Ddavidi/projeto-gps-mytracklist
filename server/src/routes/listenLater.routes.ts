@@ -23,7 +23,7 @@ export function createListenLaterRouter(controller: ListenLaterController): Rout
     const requesterId = getOptionalUserId(req);
     const result = await controller.getUserItems(userId, requesterId);
     if (result.success) {
-      res.json({ isPrivate: result.isPrivate, items: result.items });
+      res.json({ isPrivate: result.isPrivate, visibility: result.visibility, items: result.items });
     } else {
       res.status(500).json({ error: result.message });
     }
@@ -33,7 +33,7 @@ export function createListenLaterRouter(controller: ListenLaterController): Rout
 
   router.get('/me', async (req: Request, res: Response) => {
     const result = await controller.getUserItems(req.user!.userId, req.user!.userId);
-    if (result.success) res.json({ isPrivate: false, items: result.items });
+    if (result.success) res.json({ isPrivate: false, visibility: result.visibility, items: result.items });
     else res.status(500).json({ error: result.message });
   });
 
@@ -49,9 +49,14 @@ export function createListenLaterRouter(controller: ListenLaterController): Rout
   });
 
   router.put('/visibility', async (req: Request, res: Response) => {
-    const { isPublic } = req.body;
-    const result = await controller.updateVisibility(req.user!.userId, Boolean(isPublic));
-    if (result.success) res.json({ success: true, isPublic: result.isPublic });
+    const { visibility, isPublic } = req.body;
+    const resolved = visibility
+      ? visibility
+      : isPublic === false
+      ? 'private'
+      : 'public';
+    const result = await controller.updateVisibility(req.user!.userId, resolved);
+    if (result.success) res.json({ success: true, visibility: result.visibility, isPublic: result.isPublic });
     else res.status(400).json({ error: result.message });
   });
 

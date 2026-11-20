@@ -197,7 +197,7 @@ export class UserController {
   async getUserById(userId: number) {
     try {
       const user = await this.db.get(
-        `SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, favorite_genres, is_admin, is_private, listen_later_is_public, created_at,
+        `SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, favorite_genres, is_admin, is_private, listen_later_is_public, listen_later_visibility, created_at,
          (CASE WHEN spotify_access_token IS NOT NULL AND spotify_access_token != '' THEN 1 ELSE 0 END) as spotify_connected
          FROM users WHERE id = ?`,
         [userId]
@@ -207,6 +207,7 @@ export class UserController {
         ...user,
         is_private: Boolean(user.is_private),
         listen_later_is_public: user.listen_later_is_public === null || user.listen_later_is_public === undefined ? true : Boolean(user.listen_later_is_public),
+        listen_later_visibility: user.listen_later_visibility || (user.listen_later_is_public === false || user.listen_later_is_public === 0 ? 'private' : 'public'),
         favorite_genres: this.parseFavoriteGenres(user.favorite_genres),
         spotify_connected: Number(user.spotify_connected) === 1,
       };

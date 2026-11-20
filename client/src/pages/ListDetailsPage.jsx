@@ -15,15 +15,22 @@ import {
   InputAdornment,
   Grid,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControlLabel,
+  Switch,
   alpha,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
-import { getListById, addItemToList, removeItemFromList, toggleLikeList } from '../services/lists';
+import { getListById, updateList, addItemToList, removeItemFromList, toggleLikeList } from '../services/lists';
 import { searchMulti } from '../services/spotify';
 import { useAuth } from '../context/AuthContext';
 
@@ -40,6 +47,42 @@ export default function ListDetailsPage() {
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editRanked, setEditRanked] = useState(true);
+  const [editPublic, setEditPublic] = useState(true);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const openEditDialog = () => {
+    if (!list) return;
+    setEditTitle(list.title || '');
+    setEditDescription(list.description || '');
+    setEditRanked(Boolean(list.is_ranked));
+    setEditPublic(Boolean(list.is_public));
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editTitle.trim() || !list) return;
+    setSavingEdit(true);
+    try {
+      await updateList(list.id, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        isRanked: editRanked,
+        isPublic: editPublic,
+      });
+      setEditOpen(false);
+      loadList();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erro ao atualizar lista.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -166,15 +209,28 @@ export default function ListDetailsPage() {
             </Box>
           </Box>
 
-          <Button
-            variant={list.is_liked ? 'contained' : 'outlined'}
-            color={list.is_liked ? 'error' : 'inherit'}
-            startIcon={list.is_liked ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
-            onClick={handleToggleLike}
-            disabled={!isAuthenticated}
-          >
-            <Box component="span" className="mtl-mono">{list.likes_count}</Box>
-          </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {isOwner && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EditOutlinedIcon fontSize="small" />}
+                onClick={openEditDialog}
+                sx={{ borderRadius: 2 }}
+              >
+                Editar
+              </Button>
+            )}
+            <Button
+              variant={list.is_liked ? 'contained' : 'outlined'}
+              color={list.is_liked ? 'error' : 'inherit'}
+              startIcon={list.is_liked ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
+              onClick={handleToggleLike}
+              disabled={!isAuthenticated}
+            >
+              <Box component="span" className="mtl-mono">{list.likes_count}</Box>
+            </Button>
+          </Box>
         </Box>
 
         {/* Adicionar itens diretamente (se dono) */}
@@ -303,6 +359,43 @@ export default function ListDetailsPage() {
           ))}
         </Paper>
       )}
+      {/* Modal Editar Tier List */}
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3.5 } }}>
+        <Box component="form" onSubmit={handleSaveEdit}>
+          <DialogTitle sx={{ fontWeight: 800 }}>Editar Tier List</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '10px !important' }}>
+            <TextField
+              label="Título"
+              required
+              fullWidth
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+            />
+            <TextField
+              label="Descrição (opcional)"
+              multiline
+              rows={2}
+              fullWidth
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+            />
+            <FormControlLabel
+              control={<Switch checked={editRanked} onChange={(e) => setEditRanked(e.target.checked)} color="primary" />}
+              label="Lista ranqueada (1º, 2º, 3º...)"
+            />
+            <FormControlLabel
+              control={<Switch checked={editPublic} onChange={(e) => setEditPublic(e.target.checked)} color="primary" />}
+              label="Pública para a comunidade"
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5 }}>
+            <Button onClick={() => setEditOpen(false)} color="inherit">Cancelar</Button>
+            <Button type="submit" variant="contained" disabled={savingEdit || !editTitle.trim()}>
+              {savingEdit ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Container>
   );
 }

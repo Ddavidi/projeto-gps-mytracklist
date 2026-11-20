@@ -1,15 +1,44 @@
 import { IDatabase } from '../interfaces/IDatabase';
 
+export type ListenLaterVisibility = 'public' | 'close_friends' | 'private';
+
 export class ListenLaterController {
   constructor(private db: IDatabase) {}
+
+  private normalizeVisibility(userRow: any): ListenLaterVisibility {
+    if (userRow?.listen_later_visibility && ['public', 'close_friends', 'private'].includes(userRow.listen_later_visibility)) {
+      return userRow.listen_later_visibility as ListenLaterVisibility;
+    }
+    if (userRow && (userRow.listen_later_is_public === false || userRow.listen_later_is_public === 0)) {
+      return 'private';
+    }
+    return 'public';
+  }
 
   async getUserItems(userId: number, requesterId?: number) {
     try {
       const isOwner = requesterId === userId;
+      const user = await this.db.get(
+        'SELECT listen_later_visibility, listen_later_is_public FROM users WHERE id = ?',
+        [userId]
+      );
+      const visibility = this.normalizeVisibility(user);
+
       if (!isOwner) {
-        const user = await this.db.get('SELECT listen_later_is_public FROM users WHERE id = ?', [userId]);
-        if (user && (user.listen_later_is_public === false || user.listen_later_is_public === 0)) {
-          return { success: true, isPrivate: true, items: [] };
+        if (visibility === 'private') {
+          return { success: true, isPrivate: true, visibility, items: [] };
+        }
+        if (visibility === 'close_friends') {
+          if (!requesterId) {
+            return { success: true, isPrivate: true, visibility, items: [] };
+          }
+          const isCf = await this.db.get(
+            'SELECT id FROM close_friends WHERE user_id = ? AND friend_id = ?',
+            [userId, requesterId]
+          );
+          if (!isCf) {
+            return { success: true, isPrivate: true, visibility, items: [] };
+          }
         }
       }
 
@@ -20,7 +49,7 @@ export class ListenLaterController {
          ORDER BY position ASC, created_at DESC`,
         [userId]
       );
-      return { success: true, isPrivate: false, items: items || [] };
+      return { success: true, isPrivate: false, visibility, items: items || [] };
     } catch (error) {
       console.error('Erro ao buscar Quero Ouvir:', error);
       return { success: false, message: 'Falha ao buscar lista Quero Ouvir.' };
@@ -85,13 +114,16 @@ export class ListenLaterController {
     }
   }
 
-  async updateVisibility(userId: number, isPublic: boolean) {
+  async updateVisibility(userId: number, visibility: ListenLaterVisibility) {
+    const clean: ListenLaterVisibility = ['public', 'close_friends', 'private'].includes(visibility)
+      ? visibility
+      : 'public';
     try {
       await this.db.run(
-        'UPDATE users SET listen_later_is_public = ? WHERE id = ?',
-        [isPublic, userId]
+        'UPDATE users SET listen_later_visibility = ?, listen_later_is_public = ? WHERE id = ?',
+        [clean, clean === 'public', userId]
       );
-      return { success: true, isPublic };
+      return { success: true, visibility: clean, isPublic: clean === 'public' };
     } catch (error) {
       console.error('Erro ao alterar visibilidade de Quero Ouvir:', error);
       return { success: false, message: 'Falha ao alterar visibilidade.' };
@@ -111,4 +143,3 @@ export class ListenLaterController {
     }
   }
 }
-
