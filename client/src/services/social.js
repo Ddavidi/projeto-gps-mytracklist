@@ -107,3 +107,8 @@ export const getFriendsReviews = async (itemType, itemId) => {
     return [];
   }
 };
+
+export const getCompatibility = async (targetUserId) => {
+  const response = await api.get(`/social/compatibility/${targetUserId}`);
+  return response.data;
+};

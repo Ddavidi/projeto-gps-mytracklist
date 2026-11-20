@@ -182,5 +182,20 @@ export function createSocialRouter(socialController: SocialController): Router {
     }
   });
 
+  /**
+   * GET /social/compatibility/:targetUserId
+   * Calcula a afinidade musical (Taste Match %) entre o usuário logado e outro perfil.
+   */
+  router.get('/compatibility/:targetUserId', requireAuth, async (req: Request, res: Response) => {
+    const targetUserId = Number(req.params.targetUserId);
+    if (isNaN(targetUserId)) {
+      res.status(400).json({ error: 'ID inválido.' });
+      return;
+    }
+    const result = await socialController.getCompatibility(req.user!.userId, targetUserId);
+    if (result.success) res.json(result.compatibility);
+    else res.status(500).json({ error: result.message });
+  });
+
   return router;
 }

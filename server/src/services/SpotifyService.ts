@@ -4,6 +4,18 @@ interface SpotifyToken {
   expiresAt: number; // Timestamp de quando o token expira
 }
 
+export class SpotifyApiError extends Error {
+  public status: number;
+  public code?: string;
+
+  constructor(message: string, status: number = 500, code?: string) {
+    super(message);
+    this.name = 'SpotifyApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export class SpotifyService {
   private clientId: string;
   private clientSecret: string;
@@ -32,7 +44,8 @@ export class SpotifyService {
       client_id: this.clientId,
       scope,
       redirect_uri: this.redirectUri,
-      state
+      state,
+      show_dialog: 'true',
     });
     return `https://accounts.spotify.com/authorize?${params.toString()}`;
   }
@@ -52,7 +65,9 @@ export class SpotifyService {
     });
 
     if (!response.ok) {
-      throw new Error('Falha ao trocar código por token no Spotify.');
+      const body = await response.text().catch(() => '');
+      console.error('Spotify exchangeCodeForToken error:', response.status, body);
+      throw new SpotifyApiError('Falha ao trocar código por token no Spotify.', response.status);
     }
 
     return response.json();
@@ -72,38 +87,113 @@ export class SpotifyService {
     });
 
     if (!response.ok) {
-      throw new Error('Falha ao atualizar token do usuário.');
+      const body = await response.text().catch(() => '');
+      console.error('Spotify refreshUserToken error:', response.status, body);
+      throw new SpotifyApiError(
+        'Sua sessão com o Spotify expirou. Desvincule e conecte sua conta novamente em Configurações.',
+        401,
+        'SPOTIFY_REAUTH_REQUIRED'
+      );
     }
 
     return response.json();
   }
 
-  public async getValidUserAccessToken(userId: number, userController: any): Promise<string> {
+  public async getValidUserAccessToken(userId: number, userController: any, forceRefresh: boolean = false): Promise<string> {
     const userTokens = await userController.getSpotifyTokens(userId);
     if (!userTokens || !userTokens.spotify_access_token) {
-      throw new Error('Usuário não possui conta Spotify vinculada.');
+      throw new SpotifyApiError('Usuário não possui conta Spotify vinculada.', 404, 'SPOTIFY_NOT_LINKED');
     }
 
-    const expiresAt = new Date(userTokens.spotify_token_expires_at).getTime();
-    
-    // Se o token expira em menos de 1 minuto, renova
-    if (Date.now() > expiresAt - 60000) {
+    const expiresAt = userTokens.spotify_token_expires_at
+      ? new Date(userTokens.spotify_token_expires_at).getTime()
+      : 0;
+    const isExpired = !expiresAt || Number.isNaN(expiresAt) || Date.now() > expiresAt - 60000;
+
+    if (forceRefresh || isExpired) {
       if (!userTokens.spotify_refresh_token) {
-        throw new Error('Refresh token não encontrado. Necessário refazer o login no Spotify.');
+        throw new SpotifyApiError(
+          'Token do Spotify expirado. Reconecte sua conta em Configurações > Conexões.',
+          401,
+          'SPOTIFY_REAUTH_REQUIRED'
+        );
       }
 
       console.log(`Renovando token do Spotify para o usuário ${userId}...`);
       const tokenData = await this.refreshUserToken(userTokens.spotify_refresh_token);
-      
+
       const newAccessToken = tokenData.access_token;
-      const newRefreshToken = tokenData.refresh_token || userTokens.spotify_refresh_token; // Às vezes a API não retorna novo refresh token
-      const newExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+      const newRefreshToken = tokenData.refresh_token || userTokens.spotify_refresh_token;
+      const newExpiresAt = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000);
 
       await userController.updateSpotifyTokens(userId, newAccessToken, newRefreshToken, newExpiresAt);
       return newAccessToken;
     }
 
     return userTokens.spotify_access_token;
+  }
+
+  /**
+   * Executa uma chamada com o token do usuário. Se o Spotify responder 401,
+   * força a renovação do token e tenta mais uma vez automaticamente.
+   */
+  public async withUserToken<T>(
+    userId: number,
+    userController: any,
+    fn: (accessToken: string) => Promise<T>
+  ): Promise<T> {
+    const token = await this.getValidUserAccessToken(userId, userController, false);
+    try {
+      return await fn(token);
+    } catch (err: any) {
+      if (err instanceof SpotifyApiError && err.status === 401) {
+        const refreshed = await this.getValidUserAccessToken(userId, userController, true);
+        return await fn(refreshed);
+      }
+      throw err;
+    }
+  }
+
+  private async handleSpotifyError(response: Response, fallbackMessage: string): Promise<never> {
+    const rawBody = await response.text().catch(() => '');
+    let spotifyMessage = '';
+    try {
+      const parsed = JSON.parse(rawBody);
+      spotifyMessage = parsed?.error?.message || parsed?.error_description || '';
+    } catch {
+      spotifyMessage = rawBody.slice(0, 200);
+    }
+
+    console.error(`[Spotify API ${response.status}] ${fallbackMessage}:`, spotifyMessage || rawBody);
+
+    if (response.status === 401) {
+      throw new SpotifyApiError(
+        'Sessão do Spotify expirada. Reconecte sua conta em Configurações > Conexões.',
+        401,
+        'SPOTIFY_REAUTH_REQUIRED'
+      );
+    }
+
+    if (response.status === 403) {
+      throw new SpotifyApiError(
+        'O Spotify bloqueou o acesso aos dados desta conta (403). No Modo Desenvolvimento do Spotify, o e-mail da conta precisa estar autorizado no Spotify Developer Dashboard (User Management) e o app precisa ter permissões válidas.',
+        403,
+        'SPOTIFY_FORBIDDEN'
+      );
+    }
+
+    if (response.status === 429) {
+      throw new SpotifyApiError(
+        'Limite de requisições do Spotify atingido temporariamente. Tente novamente em alguns instantes.',
+        429,
+        'SPOTIFY_RATE_LIMIT'
+      );
+    }
+
+    throw new SpotifyApiError(
+      spotifyMessage ? `${fallbackMessage}: ${spotifyMessage}` : fallbackMessage,
+      response.status
+    );
   }
 
   // ==========================================
@@ -114,35 +204,46 @@ export class SpotifyService {
     const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
-    if (!response.ok) throw new Error('Falha ao buscar playlists');
+    if (!response.ok) await this.handleSpotifyError(response, 'Falha ao buscar playlists');
     const data = await response.json();
-    return data.items.map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      imageUrl: item.images?.[0]?.url || '',
-      tracksTotal: item.tracks?.total,
-      owner: item.owner?.display_name,
-      externalUrl: item.external_urls?.spotify
-    }));
+    return (data.items || [])
+      .filter((item: any) => Boolean(item && item.id))
+      .map((item: any) => ({
+        id: item.id,
+        name: item.name || 'Playlist sem nome',
+        imageUrl: item.images?.[0]?.url || '',
+        tracksTotal: item.items?.total ?? item.tracks?.total ?? 0,
+        owner: item.owner?.display_name || item.owner?.id || '',
+        externalUrl: item.external_urls?.spotify || ''
+      }));
   }
 
   public async getPlaylistTracks(accessToken: string, playlistId: string) {
-    const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`, {
+    // API 2026 migrou /tracks para /items; tentamos /items primeiro e fazemos fallback para /tracks
+    let response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/items?limit=50`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
-    if (!response.ok) throw new Error('Falha ao buscar músicas da playlist');
+
+    if (response.status === 404 || response.status === 400) {
+      response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+    }
+
+    if (!response.ok) await this.handleSpotifyError(response, 'Falha ao buscar músicas da playlist');
     const data = await response.json();
-    return data.items
-      .filter((item: any) => item.track)
-      .map((item: any) => ({
-        id: item.track.id,
-        name: item.track.name,
-        artist: item.track.artists?.map((a: any) => a.name).join(', '),
-        album: item.track.album?.name,
-        imageUrl: item.track.album?.images?.[0]?.url || '',
-        durationMs: item.track.duration_ms,
-        previewUrl: item.track.preview_url,
-        externalUrl: item.track.external_urls?.spotify || '',
+    return (data.items || [])
+      .map((entry: any) => entry?.item || entry?.track)
+      .filter((track: any) => Boolean(track && track.id))
+      .map((track: any) => ({
+        id: track.id,
+        name: track.name,
+        artist: track.artists?.map((a: any) => a.name).join(', ') || '',
+        album: track.album?.name || '',
+        imageUrl: track.album?.images?.[0]?.url || '',
+        durationMs: track.duration_ms || 0,
+        previewUrl: track.preview_url || null,
+        externalUrl: track.external_urls?.spotify || '',
       }));
   }
 
@@ -150,45 +251,51 @@ export class SpotifyService {
     const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=20', {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
-    if (!response.ok) throw new Error('Falha ao buscar músicas recentes');
+    if (!response.ok) await this.handleSpotifyError(response, 'Falha ao buscar músicas recentes');
     const data = await response.json();
-    return data.items.map((item: any) => ({
-      id: item.track.id,
-      name: item.track.name,
-      artist: item.track.artists?.map((a: any) => a.name).join(', '),
-      album: item.track.album?.name,
-      imageUrl: item.track.album?.images?.[0]?.url || '',
-      playedAt: item.played_at,
-      durationMs: item.track.duration_ms,
-      previewUrl: item.track.preview_url,
-    }));
+    return (data.items || [])
+      .filter((item: any) => Boolean(item && item.track && item.track.id))
+      .map((item: any) => ({
+        id: item.track.id,
+        name: item.track.name,
+        artist: item.track.artists?.map((a: any) => a.name).join(', ') || '',
+        album: item.track.album?.name || '',
+        imageUrl: item.track.album?.images?.[0]?.url || '',
+        playedAt: item.played_at,
+        durationMs: item.track.duration_ms || 0,
+        previewUrl: item.track.preview_url || null,
+      }));
   }
 
   public async getUserTopItems(accessToken: string, type: 'tracks' | 'artists', timeRange: 'short_term' | 'medium_term' | 'long_term') {
     const response = await fetch(`https://api.spotify.com/v1/me/top/${type}?time_range=${timeRange}&limit=20`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
-    if (!response.ok) throw new Error(`Falha ao buscar top ${type}`);
+    if (!response.ok) await this.handleSpotifyError(response, `Falha ao buscar top ${type}`);
     const data = await response.json();
 
     if (type === 'tracks') {
-      return data.items.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        artist: item.artists?.map((a: any) => a.name).join(', '),
-        album: item.album?.name,
-        imageUrl: item.album?.images?.[0]?.url || '',
-        durationMs: item.duration_ms,
-        previewUrl: item.preview_url,
-      }));
+      return (data.items || [])
+        .filter((item: any) => Boolean(item && item.id))
+        .map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          artist: item.artists?.map((a: any) => a.name).join(', ') || '',
+          album: item.album?.name || '',
+          imageUrl: item.album?.images?.[0]?.url || '',
+          durationMs: item.duration_ms || 0,
+          previewUrl: item.preview_url || null,
+        }));
     } else {
-      return data.items.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        imageUrl: item.images?.[0]?.url || '',
-        genres: item.genres,
-        popularity: item.popularity,
-      }));
+      return (data.items || [])
+        .filter((item: any) => Boolean(item && item.id))
+        .map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          imageUrl: item.images?.[0]?.url || '',
+          genres: item.genres || [],
+          popularity: item.popularity || 0,
+        }));
     }
   }
 
@@ -489,8 +596,11 @@ export class SpotifyService {
     });
 
     if (!response.ok) {
-      console.error('Falha ao obter múltiplas músicas do Spotify:', await response.text());
-      throw new Error('Falha ao obter múltiplas músicas do Spotify.');
+      console.warn('Batch getMultipleTracks falhou, usando fallback individual:', response.status);
+      const individual = await Promise.all(
+        validIds.slice(0, 20).map((id) => this.getTrackDetails(id).catch(() => null))
+      );
+      return individual.filter(Boolean).map((t: any) => ({ ...t, genres: [] }));
     }
 
     const data = await response.json();
@@ -541,8 +651,11 @@ export class SpotifyService {
     });
 
     if (!response.ok) {
-      console.error('Falha ao obter múltiplos álbuns do Spotify:', await response.text());
-      throw new Error('Falha ao obter múltiplos álbuns do Spotify.');
+      console.warn('Batch getMultipleAlbums falhou, usando fallback individual:', response.status);
+      const individual = await Promise.all(
+        validIds.slice(0, 15).map((id) => this.getAlbumDetails(id).catch(() => null))
+      );
+      return individual.filter(Boolean);
     }
 
     const data = await response.json();
@@ -592,8 +705,30 @@ export class SpotifyService {
     });
 
     if (!response.ok) {
-      console.error('Falha ao obter múltiplos artistas do Spotify:', await response.text());
-      throw new Error('Falha ao obter múltiplos artistas do Spotify.');
+      console.warn('Batch getMultipleArtists falhou, usando fallback individual:', response.status);
+      const individual = await Promise.all(
+        validIds.slice(0, 15).map(async (id) => {
+          try {
+            const res = await fetch(`https://api.spotify.com/v1/artists/${id}`, {
+              headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            if (!res.ok) return null;
+            const artist = await res.json();
+            return {
+              id: artist.id,
+              name: artist.name,
+              imageUrl: artist.images?.[0]?.url,
+              genres: artist.genres || [],
+              popularity: artist.popularity,
+              followers: artist.followers?.total,
+              externalUrl: artist.external_urls?.spotify,
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+      return individual.filter(Boolean);
     }
 
     const data = await response.json();
@@ -708,40 +843,60 @@ export class SpotifyService {
 
   /** Salva uma musica na biblioteca (Curtidas) do usuario */
   public async saveTrack(accessToken: string, trackId: string) {
-    const response = await fetch(`https://api.spotify.com/v1/me/tracks`, {
+    const uri = `spotify:track:${trackId}`;
+    let response = await fetch(`https://api.spotify.com/v1/me/library?uris=${encodeURIComponent(uri)}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ ids: [trackId] }),
+      headers: { 'Authorization': `Bearer ${accessToken}` },
     });
-    if (!response.ok) throw new Error('Falha ao salvar musica na biblioteca');
+    if (response.status === 404 || response.status === 400) {
+      response = await fetch(`https://api.spotify.com/v1/me/tracks`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ids: [trackId] }),
+      });
+    }
+    if (!response.ok) await this.handleSpotifyError(response, 'Falha ao salvar música na biblioteca');
     return { success: true };
   }
 
   /** Remove uma musica da biblioteca do usuario */
   public async unsaveTrack(accessToken: string, trackId: string) {
-    const response = await fetch(`https://api.spotify.com/v1/me/tracks`, {
+    const uri = `spotify:track:${trackId}`;
+    let response = await fetch(`https://api.spotify.com/v1/me/library?uris=${encodeURIComponent(uri)}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ ids: [trackId] }),
+      headers: { 'Authorization': `Bearer ${accessToken}` },
     });
-    if (!response.ok) throw new Error('Falha ao remover musica da biblioteca');
+    if (response.status === 404 || response.status === 400) {
+      response = await fetch(`https://api.spotify.com/v1/me/tracks`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ids: [trackId] }),
+      });
+    }
+    if (!response.ok) await this.handleSpotifyError(response, 'Falha ao remover música da biblioteca');
     return { success: true };
   }
 
   /** Verifica se uma musica esta salva na biblioteca */
   public async checkSavedTrack(accessToken: string, trackId: string): Promise<boolean> {
-    const response = await fetch(`https://api.spotify.com/v1/me/tracks/contains?ids=${trackId}`, {
+    const uri = `spotify:track:${trackId}`;
+    let response = await fetch(`https://api.spotify.com/v1/me/library/contains?uris=${encodeURIComponent(uri)}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` },
     });
+    if (response.status === 404 || response.status === 400) {
+      response = await fetch(`https://api.spotify.com/v1/me/tracks/contains?ids=${trackId}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+    }
     if (!response.ok) return false;
     const data = await response.json();
-    return data[0] === true;
+    return Array.isArray(data) && data[0] === true;
   }
 
   /** Adiciona uma musica a fila do player ativo */
@@ -751,16 +906,13 @@ export class SpotifyService {
       headers: { 'Authorization': `Bearer ${accessToken}` },
     });
     if (response.status === 204) return { success: true };
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error?.message || 'Falha ao adicionar à fila');
-    }
+    if (!response.ok) await this.handleSpotifyError(response, 'Falha ao adicionar à fila');
     return { success: true };
   }
 
   /** Adiciona uma musica a uma playlist especifica */
   public async addTrackToPlaylist(accessToken: string, playlistId: string, trackUri: string) {
-    const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+    let response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/items`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -768,10 +920,17 @@ export class SpotifyService {
       },
       body: JSON.stringify({ uris: [trackUri] }),
     });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error?.message || 'Falha ao adicionar musica a playlist');
+    if (response.status === 404 || response.status === 400) {
+      response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ uris: [trackUri] }),
+      });
     }
+    if (!response.ok) await this.handleSpotifyError(response, 'Falha ao adicionar música à playlist');
     return { success: true };
   }
 }

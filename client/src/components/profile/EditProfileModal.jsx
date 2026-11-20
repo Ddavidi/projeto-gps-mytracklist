@@ -308,7 +308,7 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
               Tamanho recomendado: 400 x 400 pixels (1:1).
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-              <Avatar src={userProfile?.avatar_url} sx={{ width: 80, height: 80, bgcolor: '#1db954' }}>
+              <Avatar src={userProfile?.avatar_url} sx={{ width: 80, height: 80, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
                 {userProfile?.username?.charAt(0).toUpperCase()}
               </Avatar>
               <input accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} id="avatar-upload" type="file" onChange={(e) => handleFileSelect(e, 'avatar')} />

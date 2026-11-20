@@ -81,7 +81,7 @@ export default function ProfileSocial({ userId }) {
             return (
               <ListItem key={u.id} sx={{ bgcolor: 'background.default', mb: 1, borderRadius: 2, boxShadow: 1 }}>
                 <ListItemAvatar>
-                  <Avatar component={Link} to={`/user/${otherUser.username}`} src={otherUser.user_avatar} sx={{ bgcolor: '#1db954', textDecoration: 'none' }}>
+                  <Avatar component={Link} to={`/user/${otherUser.username}`} src={otherUser.user_avatar} sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', textDecoration: 'none' }}>
                     {otherUser.username.charAt(0).toUpperCase()}
                   </Avatar>
                 </ListItemAvatar>

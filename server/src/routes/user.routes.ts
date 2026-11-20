@@ -63,9 +63,13 @@ export function createUserRouter(userController: UserController): Router {
         user: { 
           id: targetUser.id, 
           username: targetUser.username,
+          name: (targetUser as any).name,
           avatar_url: targetUser.avatar_url,
           cover_url: targetUser.cover_url,
-          bio: (targetUser as any).bio
+          bio: (targetUser as any).bio,
+          favorite_genres: (targetUser as any).favorite_genres || [],
+          created_at: (targetUser as any).created_at,
+          spotify_connected: Boolean((targetUser as any).spotify_connected),
         },
         reviews: result.reviews
       });

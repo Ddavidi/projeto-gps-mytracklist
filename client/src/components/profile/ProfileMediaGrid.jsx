@@ -1,44 +1,61 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Typography, Grid, Paper, Select, MenuItem, FormControl, InputLabel, Slider, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Tooltip, Chip } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Grid,
+  Paper,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Slider,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Tooltip,
+  Chip,
+  alpha,
+} from '@mui/material';
 import { Link } from 'react-router-dom';
 import StarIcon from '@mui/icons-material/Star';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import GridViewIcon from '@mui/icons-material/GridView';
+import AlbumIcon from '@mui/icons-material/Album';
 
 export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
-  const [sortOrder, setSortOrder] = useState('recent'); // recent, old, high_score, low_score
+  const [sortOrder, setSortOrder] = useState('recent');
   const [minScore, setMinScore] = useState(0);
   const [viewMode, setViewMode] = useState('grid');
   const [genreFilter, setGenreFilter] = useState('');
 
-  // Extrair todos os gêneros únicos dos itens deste tipo
   const availableGenres = useMemo(() => {
     const genres = new Set();
-    reviews.filter(r => (r.item_type || 'track') === type).forEach(r => {
-      const details = itemDetails[r.item_id];
-      if (details?.genres && Array.isArray(details.genres)) {
-        details.genres.forEach(g => genres.add(g));
-      }
-    });
+    reviews
+      .filter((r) => (r.item_type || 'track') === type)
+      .forEach((r) => {
+        const details = itemDetails[r.item_id];
+        if (details?.genres && Array.isArray(details.genres)) {
+          details.genres.forEach((g) => genres.add(g));
+        }
+      });
     return Array.from(genres).sort();
   }, [reviews, type, itemDetails]);
 
-  // Filtra as avaliações pelo tipo atual
   const filteredReviews = useMemo(() => {
-    let result = reviews.filter(r => (r.item_type || 'track') === type);
-    
-    // Filtro de nota
-    result = result.filter(r => r.rating >= minScore);
+    let result = reviews.filter((r) => (r.item_type || 'track') === type);
+    result = result.filter((r) => r.rating >= minScore);
 
-    // Filtro de Gênero
     if (genreFilter) {
-      result = result.filter(r => {
+      result = result.filter((r) => {
         const details = itemDetails[r.item_id];
         return details?.genres && details.genres.includes(genreFilter);
       });
     }
 
-    // Ordenação
     result.sort((a, b) => {
       if (sortOrder === 'recent') return new Date(b.createdAt) - new Date(a.createdAt);
       if (sortOrder === 'old') return new Date(a.createdAt) - new Date(b.createdAt);
@@ -51,87 +68,78 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
   }, [reviews, type, sortOrder, minScore, genreFilter, itemDetails]);
 
   return (
-    <Grid container spacing={4}>
+    <Grid container spacing={3.5}>
       {/* Sidebar de Filtros */}
       <Grid size={{ xs: 12, md: 3 }}>
-        <Paper sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }} elevation={0}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h6" fontWeight="bold">Filtros</Typography>
-          </Box>
-
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            Total: {filteredReviews.length} {type === 'track' ? 'músicas' : type === 'album' ? 'álbuns' : 'artistas'}
+        <Paper
+          sx={{
+            p: 2.5,
+            bgcolor: (theme) => alpha(theme.palette.text.primary, 0.02),
+            borderRadius: 3,
+          }}
+        >
+          <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+            Filtros
+          </Typography>
+          <Typography variant="caption" className="mtl-mono" color="text.secondary" display="block" sx={{ mb: 2.5 }}>
+            {filteredReviews.length} {type === 'track' ? 'músicas' : type === 'album' ? 'álbuns' : 'artistas'}
           </Typography>
 
-          <Box sx={{ mt: 3 }}>
-            <FormControl fullWidth size="small" sx={{ mb: 3 }}>
-              <InputLabel>Ordenar por</InputLabel>
-              <Select
-                value={sortOrder}
-                label="Ordenar por"
-                onChange={(e) => setSortOrder(e.target.value)}
-              >
-                <MenuItem value="recent">Mais Recentes</MenuItem>
-                <MenuItem value="old">Mais Antigas</MenuItem>
-                <MenuItem value="high_score">Maior Nota</MenuItem>
-                <MenuItem value="low_score">Menor Nota</MenuItem>
+          <FormControl fullWidth size="small" sx={{ mb: 2.5 }}>
+            <InputLabel>Ordenar por</InputLabel>
+            <Select value={sortOrder} label="Ordenar por" onChange={(e) => setSortOrder(e.target.value)}>
+              <MenuItem value="recent">Mais Recentes</MenuItem>
+              <MenuItem value="old">Mais Antigas</MenuItem>
+              <MenuItem value="high_score">Maior Nota</MenuItem>
+              <MenuItem value="low_score">Menor Nota</MenuItem>
+            </Select>
+          </FormControl>
+
+          {availableGenres.length > 0 && (
+            <FormControl fullWidth size="small" sx={{ mb: 2.5 }}>
+              <InputLabel>Gênero Musical</InputLabel>
+              <Select value={genreFilter} label="Gênero Musical" onChange={(e) => setGenreFilter(e.target.value)}>
+                <MenuItem value="">Todos os Gêneros</MenuItem>
+                {availableGenres.map((g) => (
+                  <MenuItem key={g} value={g} sx={{ textTransform: 'capitalize' }}>
+                    {g}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
+          )}
 
-            {availableGenres.length > 0 && (
-              <FormControl fullWidth size="small" sx={{ mb: 3 }}>
-                <InputLabel>Gênero Musical</InputLabel>
-                <Select
-                  value={genreFilter}
-                  label="Gênero Musical"
-                  onChange={(e) => setGenreFilter(e.target.value)}
-                >
-                  <MenuItem value="">Todos os Gêneros</MenuItem>
-                  {availableGenres.map(g => (
-                    <MenuItem key={g} value={g} sx={{ textTransform: 'capitalize' }}>{g}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-
-            <Typography variant="body2" gutterBottom>Nota mínima: {minScore}</Typography>
-            <Slider
-              value={minScore}
-              onChange={(e, val) => setMinScore(val)}
-              step={1}
-              marks
-              min={0}
-              max={10}
-              valueLabelDisplay="auto"
-              sx={{ color: '#1db954' }}
-            />
-          </Box>
+          <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+            Nota mínima: <Box component="span" className="mtl-mono" color="text.primary" fontWeight={700}>{minScore}</Box>
+          </Typography>
+          <Slider
+            value={minScore}
+            onChange={(e, val) => setMinScore(val)}
+            step={1}
+            marks
+            min={0}
+            max={10}
+            valueLabelDisplay="auto"
+            color="primary"
+          />
         </Paper>
       </Grid>
 
-      {/* Grid/Table Principal */}
+      {/* Grade / Tabela */}
       <Grid size={{ xs: 12, md: 9 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h6" fontWeight="bold">
-            {type === 'track' ? 'Músicas' : type === 'album' ? 'Álbuns' : 'Artistas'}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+          <Typography variant="h6">
+            {type === 'track' ? 'Músicas Avaliadas' : type === 'album' ? 'Álbuns Avaliados' : 'Artistas Avaliados'}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, bgcolor: 'background.paper', p: 0.5, borderRadius: 2 }}>
-            <Tooltip title="Visualização em Grade">
-              <IconButton 
-                size="small" 
-                onClick={() => setViewMode('grid')}
-                color={viewMode === 'grid' ? 'primary' : 'default'}
-              >
-                <GridViewIcon />
+          <Box sx={{ display: 'flex', gap: 0.5, p: 0.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+            <Tooltip title="Grade">
+              <IconButton size="small" onClick={() => setViewMode('grid')} color={viewMode === 'grid' ? 'primary' : 'default'}>
+                <GridViewIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Visualização em Lista">
-              <IconButton 
-                size="small" 
-                onClick={() => setViewMode('table')}
-                color={viewMode === 'table' ? 'primary' : 'default'}
-              >
-                <FormatListBulletedIcon />
+            <Tooltip title="Lista">
+              <IconButton size="small" onClick={() => setViewMode('table')} color={viewMode === 'table' ? 'primary' : 'default'}>
+                <FormatListBulletedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Box>
@@ -140,66 +148,82 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
         {filteredReviews.length === 0 ? (
           <Typography color="text.secondary">Nenhum item encontrado com estes filtros.</Typography>
         ) : viewMode === 'grid' ? (
-          <Grid container spacing={3}>
+          <Grid container spacing={2.25}>
             {filteredReviews.map((review) => {
               const details = itemDetails[review.item_id];
-              if (!details) return null;
-
               const isArtist = type === 'artist';
-              const imgUrl = details.imageUrl || '';
+              const imgUrl = details?.imageUrl || review.item_image_url || '';
+              const name = details?.name || review.item_name || 'Item';
               const linkTarget = `/${type}/${review.item_id}`;
 
               return (
                 <Grid size={{ xs: 6, sm: 4, md: 3 }} key={review.id}>
-                  <Box 
-                    component={Link} 
+                  <Box
+                    component={Link}
                     to={linkTarget}
-                    sx={{ 
-                      textDecoration: 'none', 
+                    className="mtl-album-card"
+                    sx={{
+                      textDecoration: 'none',
                       color: 'inherit',
                       display: 'block',
-                      '&:hover .media-img': { opacity: 0.8 },
-                      '&:hover .media-title': { color: '#1db954' }
+                      '&:hover .media-title': { color: 'primary.main' },
                     }}
                   >
-                    <Box 
-                      className="media-img"
-                      sx={{ 
+                    <Box
+                      sx={{
                         width: '100%',
-                        paddingTop: '100%', // 1:1 Aspect Ratio
+                        aspectRatio: '1 / 1',
                         position: 'relative',
-                        bgcolor: 'grey.800',
-                        backgroundImage: `url(${imgUrl})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        borderRadius: isArtist ? '50%' : '8px',
+                        bgcolor: 'action.hover',
+                        borderRadius: isArtist ? '50%' : 2.5,
+                        overflow: 'hidden',
+                        border: '1px solid',
+                        borderColor: 'divider',
                         mb: 1,
-                        transition: 'opacity 0.2s'
-                      }}
-                    >
-                      {/* Badge da Nota */}
-                      <Box sx={{ 
-                        position: 'absolute', 
-                        bottom: 8, 
-                        right: 8, 
-                        bgcolor: 'rgba(0,0,0,0.7)', 
-                        color: 'white',
-                        px: 1,
-                        py: 0.5,
-                        borderRadius: 1,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 0.5
-                      }}>
-                        <StarIcon sx={{ fontSize: 14, color: '#f5c518' }} />
-                        <Typography variant="caption" fontWeight="bold">{review.rating}</Typography>
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {imgUrl ? (
+                        <Box
+                          component="img"
+                          src={imgUrl}
+                          alt={name}
+                          className="mtl-cover-img"
+                          sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <AlbumIcon color="disabled" />
+                      )}
+
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          bottom: 8,
+                          right: 8,
+                          bgcolor: 'rgba(0,0,0,0.78)',
+                          backdropFilter: 'blur(6px)',
+                          color: '#fff',
+                          px: 0.9,
+                          py: 0.35,
+                          borderRadius: 1.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.4,
+                        }}
+                      >
+                        <StarIcon sx={{ fontSize: 13, color: 'secondary.main' }} />
+                        <Typography variant="caption" className="mtl-mono" fontWeight={700}>
+                          {review.rating}
+                        </Typography>
                       </Box>
                     </Box>
-                    <Typography className="media-title" variant="body2" fontWeight="bold" noWrap transition="color 0.2s">
-                      {details.name}
+                    <Typography className="media-title" variant="body2" fontWeight={700} noWrap sx={{ transition: 'color 0.2s' }}>
+                      {name}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" noWrap display="block">
-                      {details.artist || ''}
+                      {details?.artist || ''}
                     </Typography>
                   </Box>
                 </Grid>
@@ -207,60 +231,64 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
             })}
           </Grid>
         ) : (
-          <TableContainer component={Paper} elevation={1} sx={{ borderRadius: 2 }}>
+          <TableContainer component={Paper} sx={{ borderRadius: 2.5 }}>
             <Table size="small">
-              <TableHead sx={{ bgcolor: 'action.hover' }}>
+              <TableHead>
                 <TableRow>
                   <TableCell>Item</TableCell>
                   {type !== 'artist' && <TableCell>Artista</TableCell>}
                   <TableCell>Gêneros</TableCell>
-                  <TableCell align="center">Sua Nota</TableCell>
+                  <TableCell align="center">Nota</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredReviews.map((review) => {
                   const details = itemDetails[review.item_id];
-                  if (!details) return null;
+                  const imgUrl = details?.imageUrl || review.item_image_url || '';
+                  const name = details?.name || review.item_name || 'Item';
                   const linkTarget = `/${type}/${review.item_id}`;
 
                   return (
                     <TableRow key={review.id} hover>
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Box 
-                            component="img" 
-                            src={details.imageUrl || ''} 
-                            sx={{ width: 40, height: 40, borderRadius: type === 'artist' ? '50%' : 1, objectFit: 'cover' }}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box
+                            component="img"
+                            src={imgUrl}
+                            alt={name}
+                            sx={{ width: 40, height: 40, borderRadius: type === 'artist' ? '50%' : 1.5, objectFit: 'cover', bgcolor: 'action.hover' }}
                           />
-                          <Typography 
-                            component={Link} 
-                            to={linkTarget} 
-                            variant="body2" 
-                            fontWeight="bold"
+                          <Typography
+                            component={Link}
+                            to={linkTarget}
+                            variant="body2"
+                            fontWeight={700}
                             sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
                           >
-                            {details.name}
+                            {name}
                           </Typography>
                         </Box>
                       </TableCell>
                       {type !== 'artist' && (
                         <TableCell>
                           <Typography variant="body2" color="text.secondary">
-                            {details.artist || '-'}
+                            {details?.artist || '—'}
                           </Typography>
                         </TableCell>
                       )}
                       <TableCell>
                         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', maxWidth: 200 }}>
-                          {details.genres && details.genres.slice(0, 2).map(g => (
-                            <Chip key={g} label={g} size="small" variant="outlined" sx={{ fontSize: '0.65rem', height: 20, textTransform: 'capitalize' }} />
+                          {details?.genres?.slice(0, 2).map((g) => (
+                            <Chip key={g} label={g} size="small" variant="outlined" sx={{ fontSize: '0.68rem', height: 20, textTransform: 'capitalize' }} />
                           ))}
                         </Box>
                       </TableCell>
                       <TableCell align="center">
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: 'warning.main' }}>
-                          <StarIcon sx={{ fontSize: 16 }} />
-                          <Typography variant="body2" fontWeight="bold">{review.rating}</Typography>
+                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, color: 'secondary.main' }}>
+                          <StarIcon sx={{ fontSize: 15 }} />
+                          <Typography variant="body2" className="mtl-mono" fontWeight={700}>
+                            {review.rating}
+                          </Typography>
                         </Box>
                       </TableCell>
                     </TableRow>

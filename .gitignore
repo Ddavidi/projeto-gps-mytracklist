@@ -29,6 +29,7 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+.agents/skills/
 
 # Logs
 logs/
@@ -39,3 +40,8 @@ pnpm-debug.log*
 
 # Lock files (keep only one package manager)
 bun.lock
+
+# Reference assets and extracts
+*.pdf
+docs_extracted/
+*.zip

@@ -1,14 +1,9 @@
-﻿import React from "react";
+import React from "react";
 import { IconButton, Tooltip } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import QueueMusicIcon from "@mui/icons-material/QueueMusic";
 import { usePlayer } from "../context/PlayerContext";
 
-/**
- * Botao de play reutilizavel.
- * @param {{ id, name, artist?, imageUrl, externalUrl?, type? }} track
- *   type pode ser "track" (padrao) | "playlist" | "album"
- */
 export default function PlayButton({ track, size = "medium", filled = false, sx = {} }) {
   const { currentContext, playTrack, playPlaylist, playAlbum } = usePlayer();
 
@@ -29,7 +24,7 @@ export default function PlayButton({ track, size = "medium", filled = false, sx 
   const tooltip = isActive
     ? "Tocando..."
     : isPlaylist ? "Tocar playlist no player"
-    : isAlbum ? "Tocar album no player"
+    : isAlbum ? "Tocar álbum no player"
     : "Ouvir no player";
 
   return (
@@ -39,17 +34,18 @@ export default function PlayButton({ track, size = "medium", filled = false, sx 
         size={size}
         sx={{
           bgcolor: filled
-            ? isActive ? "primary.main" : "rgba(255,255,255,0.15)"
+            ? "primary.main"
             : "transparent",
           color: filled
-            ? isActive ? "#000" : "#fff"
+            ? "primary.contrastText"
             : isActive ? "primary.main" : "inherit",
+          boxShadow: filled ? "0 6px 18px rgba(0,0,0,0.35)" : "none",
           "&:hover": {
-            bgcolor: filled ? "primary.main" : "rgba(0,0,0,0.06)",
-            color: filled ? "#000" : "primary.main",
+            bgcolor: filled ? "primary.main" : "action.hover",
+            color: filled ? "primary.contrastText" : "primary.main",
             transform: "scale(1.08)",
           },
-          transition: "all 0.15s",
+          transition: "transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s ease",
           ...sx,
         }}
       >

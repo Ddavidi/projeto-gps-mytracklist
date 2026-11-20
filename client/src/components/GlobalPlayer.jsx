@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Box, IconButton, Tooltip, Fade, Dialog, DialogTitle, DialogContent,
-  List, ListItem, ListItemAvatar, Avatar, ListItemText, CircularProgress,
-  Typography, Snackbar, Alert, Divider
+  Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent,
+  List, ListItemButton, ListItemAvatar, Avatar, ListItemText, CircularProgress,
+  Typography, Snackbar, Alert, Divider, alpha
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -16,7 +16,7 @@ import api from "../services/api";
 
 export default function GlobalPlayer() {
   const { currentContext, isVisible, closePlayer } = usePlayer();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const embedRef = useRef(null);
   const [controller, setController] = useState(null);
@@ -34,7 +34,6 @@ export default function GlobalPlayer() {
 
   const isTrack = currentContext?.type === "track";
 
-  // INICIALIZA O SPOTIFY IFRAME API UMA VEZ
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://open.spotify.com/embed/iframe-api/v1";
@@ -44,51 +43,38 @@ export default function GlobalPlayer() {
     window.onSpotifyIframeApiReady = (IFrameAPI) => {
       const element = embedRef.current;
       if (!element) return;
-      
-      const options = {
-        width: '100%',
-        height: '80',
-        uri: '', // Vazio inicialmente
-        theme: '0'
-      };
 
-      IFrameAPI.createController(element, options, (ctrl) => {
-        setController(ctrl);
-        // Opcional: Adicionar listeners do controller se necessario
-        // ctrl.addListener('playback_update', e => { ... });
-      });
+      IFrameAPI.createController(
+        element,
+        { width: '100%', height: '80', uri: '', theme: '0' },
+        (ctrl) => setController(ctrl)
+      );
     };
 
     return () => {
-      document.body.removeChild(script);
+      if (script.parentNode) document.body.removeChild(script);
       delete window.onSpotifyIframeApiReady;
     };
   }, []);
 
-  // MUDA A MÚSICA E TENTA DAR AUTOPLAY USANDO O CONTROLLER
   useEffect(() => {
     if (controller) {
       if (currentContext) {
         const uri = `spotify:${currentContext.type}:${currentContext.id}`;
-        // loadUri muda a musica sem recarregar o iframe inteiro, preservando a sessao.
         controller.loadUri(uri);
-        
-        // Tenta forcar o play apos o carregamento
         setTimeout(() => {
           controller.play();
         }, 500);
       } else {
-        // Se currentContext é nulo (player foi fechado), pausar a musica e descarregar URI
         controller.pause();
       }
     }
   }, [currentContext, controller]);
 
-  // Verifica se a track esta salva
   useEffect(() => {
     if (!isAuthenticated || !isTrack || !currentContext?.id) { setSaved(false); return; }
     api.get(`/spotify/me/saved-tracks/contains?id=${currentContext.id}`)
-      .then(r => setSaved(r.data.saved))
+      .then((r) => setSaved(Boolean(r.data.saved)))
       .catch(() => setSaved(false));
   }, [currentContext?.id, isAuthenticated, isTrack]);
 
@@ -104,7 +90,7 @@ export default function GlobalPlayer() {
       } else {
         await api.put("/spotify/me/saved-tracks", { trackId: currentContext.id });
         setSaved(true);
-        showSnack("Salvo nas Músicas Curtidas ♥");
+        showSnack("Salvo nas Músicas Curtidas");
       }
     } catch (e) {
       showSnack(e.response?.data?.error || "Erro ao salvar música.", "error");
@@ -118,7 +104,7 @@ export default function GlobalPlayer() {
     if (!isTrack) return;
     try {
       await api.post("/spotify/me/queue", { trackId: currentContext.id });
-      showSnack("Adicionado à fila do Spotify ✓");
+      showSnack("Adicionado à fila do Spotify");
     } catch (e) {
       showSnack(e.response?.data?.error || "Abra o Spotify em algum dispositivo primeiro.", "error");
     }
@@ -132,9 +118,9 @@ export default function GlobalPlayer() {
       setPlaylistsLoading(true);
       try {
         const r = await api.get("/spotify/me/playlists");
-        setPlaylists(r.data);
-      } catch {
-        showSnack("Erro ao carregar playlists.", "error");
+        setPlaylists(r.data || []);
+      } catch (e) {
+        showSnack(e.response?.data?.error || "Erro ao carregar playlists.", "error");
       } finally {
         setPlaylistsLoading(false);
       }
@@ -145,7 +131,7 @@ export default function GlobalPlayer() {
     setAddingToPlaylist(playlistId);
     try {
       await api.post(`/spotify/playlists/${playlistId}/tracks`, { trackId: currentContext.id });
-      showSnack(`Adicionado a "${playlistName}" ✓`);
+      showSnack(`Adicionado a "${playlistName}"`);
       setPlaylistModal(false);
     } catch (e) {
       showSnack(e.response?.data?.error || "Erro ao adicionar à playlist.", "error");
@@ -158,10 +144,6 @@ export default function GlobalPlayer() {
 
   return (
     <>
-      {/* 
-        NOTA: Não usamos "if (!isVisible) return null" aqui para que o iframe 
-        sempre exista no DOM (escondido) e a API carregue sem atrasos.
-      */}
       <Box
         sx={{
           position: "fixed",
@@ -169,118 +151,97 @@ export default function GlobalPlayer() {
           left: 0,
           right: 0,
           zIndex: 1300,
-          bgcolor: "#0a0a0a",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
+          bgcolor: (theme) => alpha(theme.palette.background.paper, 0.96),
+          backdropFilter: "blur(16px)",
+          borderTop: "1px solid",
+          borderColor: "divider",
+          boxShadow: "0 -10px 32px rgba(0,0,0,0.45)",
           display: "flex",
           alignItems: "stretch",
-          transition: "transform 0.3s ease-in-out",
-          transform: isVisible ? "translateY(0)" : "translateY(100%)",
+          transition: "transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)",
+          transform: isVisible ? "translateY(0)" : "translateY(105%)",
         }}
       >
-        {/* Iframe — ocupa a maior parte */}
         <Box sx={{ flex: 1, minWidth: 0, height: 80 }}>
-          {/* A API substitui esta div pelo iframe */}
           <div ref={embedRef}></div>
         </Box>
 
-        {/* Barra de acoes na direita (horizontal) */}
         <Box
           sx={{
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
-            bgcolor: "#111",
-            borderLeft: "1px solid rgba(255,255,255,0.05)",
+            borderLeft: "1px solid",
+            borderColor: "divider",
             height: 80,
-            px: 2,
-            gap: 1,
+            px: { xs: 1, sm: 2 },
+            gap: 0.5,
             flexShrink: 0,
           }}
         >
-          {/* Save to library — so para tracks */}
           {isTrack && (
             <Tooltip title={saved ? "Remover das Curtidas" : "Salvar nas Curtidas"} placement="top">
               <IconButton
                 onClick={handleToggleSave}
                 disabled={savingLoad}
-                size="medium"
-                sx={{
-                  color: saved ? "#1ED760" : "rgba(255,255,255,0.35)",
-                  "&:hover": { color: "#1ED760" },
-                }}
+                sx={{ color: saved ? "primary.main" : "text.secondary", "&:hover": { color: "primary.main" } }}
               >
-                {saved ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+                {saved ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
               </IconButton>
             </Tooltip>
           )}
 
-          {/* Add to playlist — so para tracks */}
           {isTrack && (
-            <Tooltip title="Adicionar a Playlist" placement="top">
+            <Tooltip title="Adicionar à Playlist" placement="top">
               <IconButton
                 onClick={handleOpenPlaylistModal}
-                size="medium"
-                sx={{ color: "rgba(255,255,255,0.35)", "&:hover": { color: "#fff" } }}
+                sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}
               >
-                <PlaylistAddIcon />
+                <PlaylistAddIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
 
-          {/* Add to queue — so para tracks */}
           {isTrack && (
             <Tooltip title="Adicionar à Fila" placement="top">
               <IconButton
                 onClick={handleAddToQueue}
-                size="medium"
-                sx={{ color: "rgba(255,255,255,0.35)", "&:hover": { color: "#fff" } }}
+                sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}
               >
-                <QueueMusicIcon />
+                <QueueMusicIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
 
-          {/* Abrir no Spotify */}
           <Tooltip title="Abrir no Spotify" placement="top">
             <IconButton
               component="a"
               href={spotifyUrl}
               target="_blank"
               rel="noopener noreferrer"
-              size="medium"
               disabled={!currentContext}
-              sx={{ color: "#1ED760", "&:hover": { bgcolor: "rgba(30,215,96,0.15)" } }}
+              sx={{ color: "primary.main" }}
             >
-              <OpenInNewIcon />
+              <OpenInNewIcon fontSize="small" />
             </IconButton>
           </Tooltip>
 
-          {/* Fechar */}
           <Tooltip title="Fechar" placement="top">
             <IconButton
               onClick={closePlayer}
-              size="medium"
-              sx={{ color: "rgba(255,255,255,0.3)", "&:hover": { color: "#fff" } }}
+              sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}
             >
-              <CloseIcon />
+              <CloseIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Box>
       </Box>
 
-      {/* Modal: Adicionar a Playlist */}
-      <Dialog
-        open={playlistModal}
-        onClose={() => setPlaylistModal(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{ sx: { bgcolor: "#1a1a1a", backgroundImage: "none", borderRadius: 3 } }}
-      >
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "#fff" }}>
-          <Typography fontWeight="bold">Adicionar a Playlist</Typography>
-          <IconButton onClick={() => setPlaylistModal(false)} sx={{ color: "rgba(255,255,255,0.5)" }}>
+      <Dialog open={playlistModal} onClose={() => setPlaylistModal(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Typography variant="h6">Adicionar à Playlist</Typography>
+          <IconButton onClick={() => setPlaylistModal(false)} size="small">
             <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
@@ -297,31 +258,26 @@ export default function GlobalPlayer() {
             <List disablePadding>
               {playlists.map((pl, i) => (
                 <React.Fragment key={pl.id}>
-                  {i > 0 && <Divider sx={{ borderColor: "rgba(255,255,255,0.06)" }} />}
-                  <ListItem
-                    button
+                  {i > 0 && <Divider />}
+                  <ListItemButton
                     onClick={() => handleAddToPlaylist(pl.id, pl.name)}
                     disabled={addingToPlaylist === pl.id}
-                    sx={{ "&:hover": { bgcolor: "rgba(255,255,255,0.05)" }, py: 1 }}
+                    sx={{ py: 1.25 }}
                   >
                     <ListItemAvatar>
                       {addingToPlaylist === pl.id ? (
                         <CircularProgress size={36} />
                       ) : (
-                        <Avatar
-                          variant="square"
-                          src={pl.imageUrl}
-                          sx={{ width: 40, height: 40, borderRadius: 1 }}
-                        />
+                        <Avatar variant="rounded" src={pl.imageUrl} sx={{ width: 42, height: 42 }} />
                       )}
                     </ListItemAvatar>
                     <ListItemText
                       primary={pl.name}
                       secondary={`${pl.tracksTotal} músicas`}
-                      primaryTypographyProps={{ color: "#fff", fontWeight: 500, fontSize: 14 }}
-                      secondaryTypographyProps={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}
+                      primaryTypographyProps={{ fontWeight: 600, fontSize: 14 }}
+                      secondaryTypographyProps={{ fontSize: 12 }}
                     />
-                  </ListItem>
+                  </ListItemButton>
                 </React.Fragment>
               ))}
             </List>
@@ -329,11 +285,10 @@ export default function GlobalPlayer() {
         </DialogContent>
       </Dialog>
 
-      {/* Snackbar de feedback */}
       <Snackbar
         open={snack.open}
         autoHideDuration={3000}
-        onClose={() => setSnack(s => ({ ...s, open: false }))}
+        onClose={() => setSnack((s) => ({ ...s, open: false }))}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
         sx={{ bottom: 100 }}
       >

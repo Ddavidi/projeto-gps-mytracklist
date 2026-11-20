@@ -4,6 +4,8 @@ import { UserController } from '../controllers/UserController';
 import { ReviewController } from '../controllers/ReviewController';
 import { SocialController } from '../controllers/SocialController';
 import { FavoriteController } from '../controllers/FavoriteController';
+import { ListController } from '../controllers/ListController';
+import { ListenLaterController } from '../controllers/ListenLaterController';
 
 export class ControllerFactory {
   private static db: IDatabase | null = null;
@@ -39,6 +41,16 @@ export class ControllerFactory {
     return new FavoriteController(database);
   }
 
+  static createListController(db?: IDatabase): ListController {
+    const database = db || this.getDatabase();
+    return new ListController(database);
+  }
+
+  static createListenLaterController(db?: IDatabase): ListenLaterController {
+    const database = db || this.getDatabase();
+    return new ListenLaterController(database);
+  }
+
   /**
    * Inicializa o banco de dados e cria as tabelas.
    * SQL compatível com PostgreSQL (SERIAL, TIMESTAMPTZ, etc.)
@@ -64,6 +76,7 @@ export class ControllerFactory {
           avatar_url TEXT,
           cover_url TEXT,
           bio TEXT,
+          favorite_genres TEXT,
           is_admin BOOLEAN DEFAULT FALSE,
           spotify_access_token TEXT,
           spotify_refresh_token TEXT,
@@ -82,6 +95,7 @@ export class ControllerFactory {
           ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_url TEXT;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS favorite_genres TEXT;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS spotify_access_token TEXT;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS spotify_refresh_token TEXT;
@@ -127,6 +141,10 @@ export class ControllerFactory {
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS item_name TEXT`);
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS item_image_url TEXT`);
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS item_preview_url TEXT`);
+        await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS listened_at TEXT`);
+        await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_relisten BOOLEAN DEFAULT FALSE`);
+        await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS vibe_tags TEXT`);
+        await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS has_spoiler BOOLEAN DEFAULT FALSE`);
       } catch (e) {}
       try {
         // Drop old unique constraint and add new one
@@ -231,6 +249,65 @@ export class ControllerFactory {
         )
       `);
 
+      // PostgreSQL schema — listas customizadas (estilo Musicboard/Letterboxd)
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS custom_lists (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          is_ranked BOOLEAN DEFAULT TRUE,
+          is_public BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      `);
+
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS custom_list_items (
+          id SERIAL PRIMARY KEY,
+          list_id INTEGER NOT NULL,
+          item_id TEXT NOT NULL,
+          item_type TEXT NOT NULL,
+          item_name TEXT NOT NULL,
+          item_artist TEXT,
+          item_image_url TEXT,
+          position INTEGER DEFAULT 0,
+          note TEXT,
+          added_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (list_id) REFERENCES custom_lists (id) ON DELETE CASCADE
+        )
+      `);
+
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS custom_list_likes (
+          id SERIAL PRIMARY KEY,
+          list_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (list_id) REFERENCES custom_lists (id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+          UNIQUE (list_id, user_id)
+        )
+      `);
+
+      // PostgreSQL schema — Quero Ouvir (Listen Later)
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS listen_later (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          item_id TEXT NOT NULL,
+          item_type TEXT NOT NULL,
+          item_name TEXT NOT NULL,
+          item_artist TEXT,
+          item_image_url TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+          UNIQUE (user_id, item_id, item_type)
+        )
+      `);
+
       // Username e e-mail únicos sem diferenciar maiúsculas/minúsculas ("Manga" == "manga")
       try {
         await database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_unique ON users (LOWER(username))`);
@@ -257,6 +334,7 @@ export class ControllerFactory {
           avatar_url TEXT,
           cover_url TEXT,
           bio TEXT,
+          favorite_genres TEXT,
           is_admin BOOLEAN DEFAULT FALSE,
           spotify_access_token TEXT,
           spotify_refresh_token TEXT,
@@ -273,6 +351,7 @@ export class ControllerFactory {
       try { await database.exec('ALTER TABLE users ADD COLUMN avatar_url TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN cover_url TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN bio TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN favorite_genres TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN spotify_access_token TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN spotify_refresh_token TEXT;'); } catch (e) {}
@@ -304,6 +383,10 @@ export class ControllerFactory {
       try { await database.exec('ALTER TABLE reviews ADD COLUMN item_name TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE reviews ADD COLUMN item_image_url TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE reviews ADD COLUMN item_preview_url TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN listened_at TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN is_relisten BOOLEAN DEFAULT 0;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN vibe_tags TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN has_spoiler BOOLEAN DEFAULT 0;'); } catch (e) {}
 
       // SQLite schema — activity_logs
       await database.exec(`
@@ -396,6 +479,63 @@ export class ControllerFactory {
           expires_at INTEGER NOT NULL,
           last_sent_at INTEGER NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS custom_lists (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          is_ranked BOOLEAN DEFAULT 1,
+          is_public BOOLEAN DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+      `);
+
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS custom_list_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          list_id INTEGER NOT NULL,
+          item_id TEXT NOT NULL,
+          item_type TEXT NOT NULL,
+          item_name TEXT NOT NULL,
+          item_artist TEXT,
+          item_image_url TEXT,
+          position INTEGER DEFAULT 0,
+          note TEXT,
+          added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (list_id) REFERENCES custom_lists (id) ON DELETE CASCADE
+        );
+      `);
+
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS custom_list_likes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          list_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (list_id) REFERENCES custom_lists (id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+          UNIQUE (list_id, user_id)
+        );
+      `);
+
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS listen_later (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          item_id TEXT NOT NULL,
+          item_type TEXT NOT NULL,
+          item_name TEXT NOT NULL,
+          item_artist TEXT,
+          item_image_url TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+          UNIQUE (user_id, item_id, item_type)
         );
       `);
     }

@@ -32,17 +32,30 @@ export const getUserReviewForTrack = async (trackId) => {
  * @param {number|null} existingReviewId - ID da avaliação existente (para update)
  * @param {Object} metadata - Dados do item (itemName, itemImageUrl, itemPreviewUrl)
  */
-export const saveReview = async (itemType, itemId, rating, reviewText = null, existingReviewId = null, metadata = {}) => {
+export const saveReview = async (
+  itemType,
+  itemId,
+  rating,
+  reviewText = null,
+  existingReviewId = null,
+  metadata = {},
+  extras = {}
+) => {
   if (existingReviewId) {
-    const response = await api.put(`/reviews/${existingReviewId}`, { rating, reviewText });
+    const response = await api.put(`/reviews/${existingReviewId}`, {
+      rating,
+      reviewText,
+      ...extras,
+    });
     return response.data;
   } else {
-    const response = await api.post('/reviews', { 
-      itemType, 
-      itemId, 
-      rating, 
+    const response = await api.post('/reviews', {
+      itemType,
+      itemId,
+      rating,
       reviewText,
-      ...metadata
+      ...metadata,
+      ...extras,
     });
     return response.data;
   }
@@ -102,5 +115,22 @@ export const getReviewComments = async (reviewId) => {
  */
 export const addReviewComment = async (reviewId, content) => {
   const response = await api.post(`/reviews/${reviewId}/comments`, { content });
+  return response.data;
+};
+
+export const getCommunityCharts = async ({ type = 'album', period = 'all', vibe = '', sort = 'rating', limit = 24 } = {}) => {
+  const response = await api.get('/reviews/charts', {
+    params: { type, period, ...(vibe ? { vibe } : {}), sort, limit },
+  });
+  return response.data || [];
+};
+
+export const getUserDiary = async (userId) => {
+  const response = await api.get(`/reviews/diary/${userId}`);
+  return response.data || [];
+};
+
+export const getUserWrapped = async (userId, year = new Date().getFullYear()) => {
+  const response = await api.get(`/reviews/wrapped/${userId}`, { params: { year } });
   return response.data;
 };

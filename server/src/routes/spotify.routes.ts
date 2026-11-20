@@ -1,7 +1,15 @@
 import { Router, Request, Response } from 'express';
-import { SpotifyService } from '../services/SpotifyService';
+import { SpotifyService, SpotifyApiError } from '../services/SpotifyService';
 import { UserController } from '../controllers/UserController';
 import { requireAuth } from '../middleware/auth';
+
+function sendSpotifyError(res: Response, err: any, fallback: string) {
+  if (err instanceof SpotifyApiError) {
+    res.status(err.status).json({ error: err.message, code: err.code });
+    return;
+  }
+  res.status(500).json({ error: err?.message || fallback });
+}
 
 export function createSpotifyRouter(spotifyService: SpotifyService, userController: UserController): Router {
   const router = Router();
@@ -173,34 +181,43 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
 
   router.get('/user/:userId/playlists', async (req: Request, res: Response) => {
     try {
-      const accessToken = await spotifyService.getValidUserAccessToken(Number(req.params.userId), userController);
-      const playlists = await spotifyService.getUserPlaylists(accessToken);
+      const playlists = await spotifyService.withUserToken(
+        Number(req.params.userId),
+        userController,
+        (accessToken) => spotifyService.getUserPlaylists(accessToken)
+      );
       res.json(playlists);
     } catch (err: any) {
       console.error('Erro ao obter playlists do usuário:', err.message);
-      res.status(500).json({ error: err.message || 'Falha ao obter playlists.' });
+      sendSpotifyError(res, err, 'Falha ao obter playlists.');
     }
   });
 
   router.get('/user/:userId/playlists/:playlistId/tracks', async (req: Request, res: Response) => {
     try {
-      const accessToken = await spotifyService.getValidUserAccessToken(Number(req.params.userId), userController);
-      const tracks = await spotifyService.getPlaylistTracks(accessToken, req.params.playlistId as string);
+      const tracks = await spotifyService.withUserToken(
+        Number(req.params.userId),
+        userController,
+        (accessToken) => spotifyService.getPlaylistTracks(accessToken, req.params.playlistId as string)
+      );
       res.json(tracks);
     } catch (err: any) {
       console.error('Erro ao obter faixas da playlist:', err.message);
-      res.status(500).json({ error: err.message || 'Falha ao obter faixas da playlist.' });
+      sendSpotifyError(res, err, 'Falha ao obter faixas da playlist.');
     }
   });
 
   router.get('/user/:userId/recent', async (req: Request, res: Response) => {
     try {
-      const accessToken = await spotifyService.getValidUserAccessToken(Number(req.params.userId), userController);
-      const recent = await spotifyService.getUserRecentlyPlayed(accessToken);
+      const recent = await spotifyService.withUserToken(
+        Number(req.params.userId),
+        userController,
+        (accessToken) => spotifyService.getUserRecentlyPlayed(accessToken)
+      );
       res.json(recent);
     } catch (err: any) {
       console.error('Erro ao obter músicas recentes do usuário:', err.message);
-      res.status(500).json({ error: err.message || 'Falha ao obter músicas recentes.' });
+      sendSpotifyError(res, err, 'Falha ao obter músicas recentes.');
     }
   });
 
@@ -214,12 +231,15 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     }
 
     try {
-      const accessToken = await spotifyService.getValidUserAccessToken(Number(req.params.userId), userController);
-      const topItems = await spotifyService.getUserTopItems(accessToken, type, timeRange as 'short_term'|'medium_term'|'long_term');
+      const topItems = await spotifyService.withUserToken(
+        Number(req.params.userId),
+        userController,
+        (accessToken) => spotifyService.getUserTopItems(accessToken, type, timeRange as 'short_term'|'medium_term'|'long_term')
+      );
       res.json(topItems);
     } catch (err: any) {
       console.error(`Erro ao obter top ${type} do usuário:`, err.message);
-      res.status(500).json({ error: err.message || `Falha ao obter top ${type}.` });
+      sendSpotifyError(res, err, `Falha ao obter top ${type}.`);
     }
   });
 
@@ -234,11 +254,14 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
   router.get('/me/playlists', async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.userId;
-      const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
-      const playlists = await spotifyService.getUserPlaylists(accessToken);
+      const playlists = await spotifyService.withUserToken(
+        userId,
+        userController,
+        (accessToken) => spotifyService.getUserPlaylists(accessToken)
+      );
       res.json(playlists);
     } catch (err: any) {
-      res.status(500).json({ error: err.message || 'Falha ao obter playlists.' });
+      sendSpotifyError(res, err, 'Falha ao obter playlists.');
     }
   });
 
@@ -251,11 +274,14 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     if (!trackId) { res.status(400).json({ error: 'id é obrigatório' }); return; }
     try {
       const userId = (req as any).user?.userId;
-      const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
-      const saved = await spotifyService.checkSavedTrack(accessToken, trackId);
+      const saved = await spotifyService.withUserToken(
+        userId,
+        userController,
+        (accessToken) => spotifyService.checkSavedTrack(accessToken, trackId)
+      );
       res.json({ saved });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      sendSpotifyError(res, err, 'Falha ao verificar música salva.');
     }
   });
 
@@ -269,11 +295,14 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     if (!trackId) { res.status(400).json({ error: 'trackId é obrigatório' }); return; }
     try {
       const userId = (req as any).user?.userId;
-      const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
-      await spotifyService.saveTrack(accessToken, trackId);
+      await spotifyService.withUserToken(
+        userId,
+        userController,
+        (accessToken) => spotifyService.saveTrack(accessToken, trackId)
+      );
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      sendSpotifyError(res, err, 'Falha ao salvar música.');
     }
   });
 
@@ -287,11 +316,14 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     if (!trackId) { res.status(400).json({ error: 'trackId é obrigatório' }); return; }
     try {
       const userId = (req as any).user?.userId;
-      const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
-      await spotifyService.unsaveTrack(accessToken, trackId);
+      await spotifyService.withUserToken(
+        userId,
+        userController,
+        (accessToken) => spotifyService.unsaveTrack(accessToken, trackId)
+      );
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      sendSpotifyError(res, err, 'Falha ao remover música.');
     }
   });
 
@@ -305,11 +337,14 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     if (!trackId) { res.status(400).json({ error: 'trackId é obrigatório' }); return; }
     try {
       const userId = (req as any).user?.userId;
-      const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
-      await spotifyService.addToQueue(accessToken, `spotify:track:${trackId}`);
+      await spotifyService.withUserToken(
+        userId,
+        userController,
+        (accessToken) => spotifyService.addToQueue(accessToken, `spotify:track:${trackId}`)
+      );
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      sendSpotifyError(res, err, 'Falha ao adicionar à fila.');
     }
   });
 
@@ -324,11 +359,14 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     if (!trackId) { res.status(400).json({ error: 'trackId é obrigatório' }); return; }
     try {
       const userId = (req as any).user?.userId;
-      const accessToken = await spotifyService.getValidUserAccessToken(userId, userController);
-      await spotifyService.addTrackToPlaylist(accessToken, playlistId as string, `spotify:track:${trackId}`);
+      await spotifyService.withUserToken(
+        userId,
+        userController,
+        (accessToken) => spotifyService.addTrackToPlaylist(accessToken, playlistId as string, `spotify:track:${trackId}`)
+      );
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      sendSpotifyError(res, err, 'Falha ao adicionar música à playlist.');
     }
   });
 

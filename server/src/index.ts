@@ -15,6 +15,8 @@ import { createSocialRouter } from './routes/social.routes';
 import { createSpotifyAuthRouter } from './routes/spotify.auth.routes';
 import { createUploadRouter } from './routes/upload.routes';
 import { createFavoriteRouter } from './routes/favorites.routes';
+import { createListRouter } from './routes/lists.routes';
+import { createListenLaterRouter } from './routes/listenLater.routes';
 import { createAdminRouter } from './routes/admin.routes';
 import { AdminController } from './controllers/AdminController';
 
@@ -99,6 +101,8 @@ async function startServer() {
     const reviewController = ControllerFactory.createReviewController();
     const socialController = ControllerFactory.createSocialController();
     const favoriteController = ControllerFactory.createFavoriteController();
+    const listController = ControllerFactory.createListController();
+    const listenLaterController = ControllerFactory.createListenLaterController();
     const adminController = new AdminController(ControllerFactory.getDatabase());
     const spotifyService = new SpotifyService();
 
@@ -111,6 +115,8 @@ async function startServer() {
     app.use('/api/v1/social', createSocialRouter(socialController));
     app.use('/api/v1/upload', createUploadRouter(userController));
     app.use('/api/v1/favorites', createFavoriteRouter(favoriteController));
+    app.use('/api/v1/lists', createListRouter(listController));
+    app.use('/api/v1/listen-later', createListenLaterRouter(listenLaterController));
     app.use('/api/v1/admin', createAdminRouter(adminController));
 
     // Iniciar servidor

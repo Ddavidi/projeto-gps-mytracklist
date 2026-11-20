@@ -34,6 +34,57 @@ export function createReviewRouter(reviewController: ReviewController): Router {
     }
   });
 
+  /**
+   * GET /reviews/charts?type=album&period=week|month|all&vibe=...&sort=rating|popular
+   * Charts públicos da comunidade.
+   */
+  router.get('/charts', async (req: Request, res: Response) => {
+    const itemType = (req.query.type as string) || 'album';
+    if (!VALID_ITEM_TYPES.includes(itemType as ItemType)) {
+      res.status(400).json({ error: 'Tipo de item inválido.' });
+      return;
+    }
+    const period = (['week', 'month', 'all'].includes(String(req.query.period)) ? req.query.period : 'all') as 'week' | 'month' | 'all';
+    const vibe = req.query.vibe ? String(req.query.vibe) : undefined;
+    const sort = req.query.sort === 'popular' ? 'popular' : 'rating';
+    const limit = req.query.limit ? Math.min(parseInt(String(req.query.limit), 10) || 24, 50) : 24;
+
+    const result = await reviewController.getCommunityCharts(itemType as ItemType, period, vibe, sort, limit);
+    if (result.success) res.json(result.items);
+    else res.status(500).json({ error: result.message });
+  });
+
+  /**
+   * GET /reviews/diary/:userId
+   * Diário musical de um usuário.
+   */
+  router.get('/diary/:userId', async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+    if (isNaN(userId)) {
+      res.status(400).json({ error: 'ID inválido.' });
+      return;
+    }
+    const result = await reviewController.getUserDiary(userId);
+    if (result.success) res.json(result.entries);
+    else res.status(500).json({ error: result.message });
+  });
+
+  /**
+   * GET /reviews/wrapped/:userId?year=2026
+   * Retrospectiva anual do usuário.
+   */
+  router.get('/wrapped/:userId', async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+    if (isNaN(userId)) {
+      res.status(400).json({ error: 'ID inválido.' });
+      return;
+    }
+    const year = Number(req.query.year) || new Date().getFullYear();
+    const result = await reviewController.getUserWrapped(userId, year);
+    if (result.success) res.json(result.wrapped);
+    else res.status(500).json({ error: result.message });
+  });
+
   // Todas as rotas de reviews abaixo requerem autenticação
   router.use(requireAuth);
 
@@ -129,7 +180,19 @@ export function createReviewRouter(reviewController: ReviewController): Router {
    * Body: { itemId, itemType, rating, reviewText? }
    */
   router.post('/', async (req: Request, res: Response) => {
-    const { itemId, itemType, rating, reviewText, itemName, itemImageUrl, itemPreviewUrl } = req.body;
+    const {
+      itemId,
+      itemType,
+      rating,
+      reviewText,
+      itemName,
+      itemImageUrl,
+      itemPreviewUrl,
+      listenedAt,
+      isRelisten,
+      vibeTags,
+      hasSpoiler,
+    } = req.body;
 
     if (!itemId) {
       res.status(400).json({ error: 'ID do item é obrigatório.' });
@@ -148,7 +211,8 @@ export function createReviewRouter(reviewController: ReviewController): Router {
       reviewText,
       itemName,
       itemImageUrl,
-      itemPreviewUrl
+      itemPreviewUrl,
+      { listenedAt, isRelisten, vibeTags, hasSpoiler }
     );
 
     if (result.success) {
@@ -161,14 +225,16 @@ export function createReviewRouter(reviewController: ReviewController): Router {
   /**
    * PUT /reviews/:reviewId
    * Atualiza uma avaliação existente.
-   * Body: { rating, reviewText? }
+   * Body: { rating, reviewText?, listenedAt?, isRelisten?, vibeTags?, hasSpoiler? }
    */
   router.put('/:reviewId', async (req: Request, res: Response) => {
+    const { rating, reviewText, listenedAt, isRelisten, vibeTags, hasSpoiler } = req.body;
     const result = await reviewController.updateReview(
       Number(req.params.reviewId!),
       req.user!.userId,
-      Number(req.body.rating),
-      req.body.reviewText
+      Number(rating),
+      reviewText,
+      { listenedAt, isRelisten, vibeTags, hasSpoiler }
     );
 
     if (result.success) {

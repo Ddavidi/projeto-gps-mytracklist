@@ -147,8 +147,8 @@ export function createAuthRouter(userController: UserController): Router {
       res.json({
         message: 'Login realizado com sucesso!',
         token,
-        user: { 
-          id: result.userId, 
+        user: {
+          id: result.userId,
           username: user?.username || identifier,
           avatar_url: user?.avatar_url,
           cover_url: user?.cover_url,
@@ -168,7 +168,21 @@ export function createAuthRouter(userController: UserController): Router {
     const user = await userController.getUserById(req.user!.userId);
 
     if (user) {
-      res.json({ id: user.id, username: user.username, email: (user as any).email, name: (user as any).name, gender: (user as any).gender, birth_date: (user as any).birth_date, avatar_url: user.avatar_url, cover_url: user.cover_url, bio: (user as any).bio, is_admin: (user as any).is_admin, spotify_connected: (user as any).spotify_connected === 1 });
+      res.json({
+        id: user.id,
+        username: user.username,
+        email: (user as any).email,
+        name: (user as any).name,
+        gender: (user as any).gender,
+        birth_date: (user as any).birth_date,
+        avatar_url: user.avatar_url,
+        cover_url: user.cover_url,
+        bio: (user as any).bio,
+        favorite_genres: (user as any).favorite_genres || [],
+        is_admin: (user as any).is_admin,
+        created_at: (user as any).created_at,
+        spotify_connected: Boolean((user as any).spotify_connected),
+      });
     } else {
       res.status(404).json({ error: 'Utilizador não encontrado.' });
     }
@@ -176,20 +190,22 @@ export function createAuthRouter(userController: UserController): Router {
 
   /**
    * PUT /auth/profile
-   * Atualiza as informações de perfil (nome, gênero, data de nascimento).
+   * Atualiza as informações de perfil (aceita atualização parcial para onboarding/configurações).
    */
   router.put('/profile', requireAuth, async (req: Request, res: Response) => {
-    const { name, gender, birthDate, bio } = req.body;
-    
-    if (!name || !gender || !birthDate) {
-      res.status(400).json({ error: 'Nome, gênero e data de nascimento são obrigatórios.' });
-      return;
-    }
+    const { name, gender, birthDate, bio, favoriteGenres } = req.body;
 
-    const result = await userController.updateUserProfile(req.user!.userId, name, gender, birthDate, bio || '');
-    
+    const result = await userController.updateUserProfile(req.user!.userId, {
+      name,
+      gender,
+      birthDate,
+      bio,
+      favoriteGenres,
+    });
+
     if (result.success) {
-      res.json({ message: 'Perfil atualizado com sucesso!' });
+      const updated = await userController.getUserById(req.user!.userId);
+      res.json({ message: 'Perfil atualizado com sucesso!', user: updated });
     } else {
       res.status(500).json({ error: result.message });
     }

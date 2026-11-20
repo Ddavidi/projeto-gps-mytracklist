@@ -183,10 +183,31 @@ export class UserController {
     }
   }
 
+  private parseFavoriteGenres(raw: any): string[] {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
   async getUserById(userId: number) {
     try {
-      const user = await this.db.get('SELECT id, username, avatar_url, cover_url, is_admin, bio, created_at, (CASE WHEN spotify_access_token IS NOT NULL THEN 1 ELSE 0 END) as spotify_connected FROM users WHERE id = ?', [userId]);
-      return user || null;
+      const user = await this.db.get(
+        `SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, favorite_genres, is_admin, created_at,
+         (CASE WHEN spotify_access_token IS NOT NULL AND spotify_access_token != '' THEN 1 ELSE 0 END) as spotify_connected
+         FROM users WHERE id = ?`,
+        [userId]
+      );
+      if (!user) return null;
+      return {
+        ...user,
+        favorite_genres: this.parseFavoriteGenres(user.favorite_genres),
+        spotify_connected: Number(user.spotify_connected) === 1,
+      };
     } catch (error) {
       console.error('Erro ao buscar utilizador:', error);
       return null;
@@ -196,10 +217,17 @@ export class UserController {
   async getUserByUsername(username: string) {
     try {
       const user = await this.db.get(
-        'SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, is_admin, created_at, (CASE WHEN spotify_access_token IS NOT NULL THEN 1 ELSE 0 END) as spotify_connected FROM users WHERE LOWER(username) = LOWER(?)',
+        `SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, favorite_genres, is_admin, created_at,
+         (CASE WHEN spotify_access_token IS NOT NULL AND spotify_access_token != '' THEN 1 ELSE 0 END) as spotify_connected
+         FROM users WHERE LOWER(username) = LOWER(?)`,
         [username.trim()]
       );
-      return user || null;
+      if (!user) return null;
+      return {
+        ...user,
+        favorite_genres: this.parseFavoriteGenres(user.favorite_genres),
+        spotify_connected: Number(user.spotify_connected) === 1,
+      };
     } catch (error) {
       console.error('Erro ao buscar utilizador por nome:', error);
       return null;
@@ -221,12 +249,41 @@ export class UserController {
     }
   }
 
-  async updateUserProfile(userId: number, name: string, gender: string, birthDate: string, bio: string) {
+  async updateUserProfile(
+    userId: number,
+    fields: { name?: string; gender?: string; birthDate?: string; bio?: string; favoriteGenres?: string[] }
+  ) {
     try {
-      await this.db.run(
-        'UPDATE users SET name = ?, gender = ?, birth_date = ?, bio = ? WHERE id = ?',
-        [name, gender, birthDate, bio, userId]
-      );
+      const updates: string[] = [];
+      const params: any[] = [];
+
+      if (fields.name !== undefined) {
+        updates.push('name = ?');
+        params.push(fields.name);
+      }
+      if (fields.gender !== undefined) {
+        updates.push('gender = ?');
+        params.push(fields.gender);
+      }
+      if (fields.birthDate !== undefined) {
+        updates.push('birth_date = ?');
+        params.push(fields.birthDate || null);
+      }
+      if (fields.bio !== undefined) {
+        updates.push('bio = ?');
+        params.push(fields.bio);
+      }
+      if (fields.favoriteGenres !== undefined) {
+        updates.push('favorite_genres = ?');
+        params.push(JSON.stringify(Array.isArray(fields.favoriteGenres) ? fields.favoriteGenres : []));
+      }
+
+      if (updates.length === 0) {
+        return { success: true };
+      }
+
+      params.push(userId);
+      await this.db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
       return { success: true };
     } catch (error) {
       console.error('Erro ao atualizar perfil do utilizador:', error);
@@ -272,11 +329,17 @@ export class UserController {
 
   async getUserReviews(userId: number) {
     try {
-      const reviews = await this.db.all(
-        'SELECT id, item_id, item_type, item_name, item_image_url, rating, review_text, "createdAt", "updatedAt" FROM reviews WHERE "userId" = ? ORDER BY "createdAt" DESC',
+      const rows = await this.db.all(
+        'SELECT id, item_id, item_type, item_name, item_image_url, rating, review_text, listened_at, is_relisten, vibe_tags, has_spoiler, "createdAt", "updatedAt" FROM reviews WHERE "userId" = ? ORDER BY "createdAt" DESC',
         [userId]
       );
-      return { success: true, reviews: reviews || [] };
+      const reviews = (rows || []).map((r: any) => ({
+        ...r,
+        vibe_tags: this.parseFavoriteGenres(r.vibe_tags),
+        is_relisten: Boolean(r.is_relisten),
+        has_spoiler: Boolean(r.has_spoiler),
+      }));
+      return { success: true, reviews };
     } catch (error) {
       console.error('Falha ao buscar avaliações do utilizador:', error);
       return { success: false, message: 'Falha ao buscar avaliações.' };

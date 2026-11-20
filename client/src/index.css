@@ -1,11 +1,14 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  --mtl-bg: #0B0E11;
+  --mtl-surface: #12171D;
+  --mtl-elevated: #19212A;
+  --mtl-primary: #1ED760;
+  --mtl-primary-contrast: #06140A;
+  --mtl-secondary: #F59E0B;
+  --mtl-text: #F2F5F7;
+  --mtl-text-muted: #8D9AA8;
+  --mtl-border: rgba(242, 245, 247, 0.08);
+  --mtl-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,56 +16,113 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-body {
+html,
+body,
+#root {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  padding: 0;
+  width: 100%;
   min-height: 100vh;
+  background-color: var(--mtl-bg);
+  color: var(--mtl-text);
+  overflow-x: hidden;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+::selection {
+  background-color: var(--mtl-primary);
+  color: var(--mtl-primary-contrast);
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+/* Scrollbar temática */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+::-webkit-scrollbar-track {
+  background: var(--mtl-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--mtl-elevated);
+  border-radius: 999px;
+  border: 2px solid var(--mtl-bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--mtl-text-muted);
+}
+
+/* Foco acessível visível */
+:focus-visible {
+  outline: 2px solid var(--mtl-primary);
+  outline-offset: 2px;
+}
+
+/* Números tabulares para notas, durações e rankings */
+.mtl-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Animação de entrada suave (exponencial ease-out a partir de estado já legível) */
+@keyframes mtlReveal {
+  from {
+    opacity: 0.01;
+    transform: translateY(14px);
   }
-  a:hover {
-    color: #747bff;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+.mtl-reveal {
+  animation: mtlReveal 0.45s var(--mtl-ease) both;
+}
+
+/* Card de mídia interativo estilo capa de disco / Musicboard / Letterboxd */
+.mtl-album-card {
+  transition: transform 0.28s var(--mtl-ease), border-color 0.24s ease, box-shadow 0.28s var(--mtl-ease);
+}
+
+.mtl-album-card:hover {
+  transform: translateY(-2px);
+}
+
+.mtl-album-card .mtl-cover-img {
+  transition: transform 0.42s var(--mtl-ease);
+}
+
+.mtl-album-card:hover .mtl-cover-img {
+  transform: scale(1.03);
+}
+
+.mtl-album-card .mtl-hover-play {
+  opacity: 0;
+  transform: translateY(8px) scale(0.92);
+  transition: opacity 0.22s var(--mtl-ease), transform 0.26s var(--mtl-ease);
+}
+
+.mtl-album-card:hover .mtl-hover-play,
+.mtl-album-card:focus-within .mtl-hover-play {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mtl-reveal,
+  .mtl-album-card,
+  .mtl-album-card .mtl-cover-img,
+  .mtl-album-card .mtl-hover-play {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
   }
 }

@@ -1,30 +1,55 @@
-import React, { useState, useRef } from 'react';
-import { Card, CardHeader, CardContent, CardActions, Avatar, Typography, IconButton, Box, Rating, Divider, Collapse, TextField, CircularProgress } from '@mui/material';
+import React, { useState } from 'react';
+import {
+  Card,
+  Avatar,
+  Typography,
+  IconButton,
+  Box,
+  Rating,
+  Divider,
+  Collapse,
+  TextField,
+  CircularProgress,
+  Chip,
+  alpha,
+} from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import SendIcon from '@mui/icons-material/Send';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PauseIcon from '@mui/icons-material/Pause';
+import AlbumIcon from '@mui/icons-material/Album';
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
+import RepeatIcon from '@mui/icons-material/Repeat';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { getReviewComments, addReviewComment } from '../services/reviews';
 import { formatDateShort, formatDateTime } from '../utils/date';
+import PlayButton from './PlayButton';
+import ShareCardModal from './ShareCardModal';
+
+const TYPE_LABEL = {
+  track: 'Música',
+  album: 'Álbum',
+  artist: 'Artista',
+};
 
 function ReviewCard({ review }) {
   const [liked, setLiked] = useState(Boolean(review.is_liked));
   const [likesCount, setLikesCount] = useState(Number(review.likes_count) || 0);
   const [likeLoading, setLikeLoading] = useState(false);
-  
-  const [commentsCount, setCommentsCount] = useState(Number(review.comments_count) || 0);
 
+  const [commentsCount, setCommentsCount] = useState(Number(review.comments_count) || 0);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
+  const [spoilerRevealed, setSpoilerRevealed] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef(null);
+  const authorUsername = review.user_username || review.author_username || review.user?.username || 'Usuário';
+  const authorAvatar = review.user_avatar || review.author_avatar || review.user?.avatar_url;
+  const vibes = Array.isArray(review.vibe_tags) ? review.vibe_tags : [];
 
   const handleLike = async () => {
     if (likeLoading) return;
@@ -49,7 +74,7 @@ function ReviewCard({ review }) {
   const getTargetLink = () => {
     if (review.item_type === 'album') return `/album/${review.item_id}`;
     if (review.item_type === 'artist') return `/artist/${review.item_id}`;
-    return `/music/${review.item_id}`; // Default track
+    return `/track/${review.item_id}`;
   };
 
   const toggleComments = async () => {
@@ -59,7 +84,7 @@ function ReviewCard({ review }) {
       try {
         const data = await getReviewComments(review.id);
         setComments(data || []);
-      } catch(err) {
+      } catch {
         console.error('Failed to load comments');
       } finally {
         setLoadingComments(false);
@@ -74,169 +99,309 @@ function ReviewCard({ review }) {
     try {
       await addReviewComment(review.id, newComment);
       setNewComment('');
-      // Recarrega os comentários para mostrar o novo
       const data = await getReviewComments(review.id);
       setComments(data || []);
-      setCommentsCount(prev => prev + 1);
-    } catch(err) {
+      setCommentsCount((prev) => prev + 1);
+    } catch {
       console.error('Failed to send comment');
     }
   };
 
-  const togglePlay = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
+  const itemType = review.item_type || 'track';
 
   return (
-    <Card sx={{ mb: 3, borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-      {/* Reviewer Header */}
-      <CardHeader
-        avatar={
-          <Avatar 
-            component={Link} 
-            to={`/user/${review.user_username || review.user?.username}`} 
-            src={review.user_avatar || review.user?.avatar_url} 
-            sx={{ cursor: 'pointer', textDecoration: 'none' }}
-          />
-        }
-        title={
-          <Typography 
-            component={Link} 
-            to={`/user/${review.user_username || review.user?.username}`} 
-            variant="subtitle2" 
-            fontWeight="bold" 
-            sx={{ color: 'text.primary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+    <Card
+      sx={{
+        mb: 2.5,
+        overflow: 'hidden',
+        transition: 'border-color 0.2s ease',
+        '&:hover': {
+          borderColor: (theme) => alpha(theme.palette.primary.main, 0.35),
+        },
+      }}
+    >
+      {/* Cabeçalho do Autor */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2.5, py: 1.75 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+          <Avatar
+            component={Link}
+            to={`/user/${authorUsername}`}
+            src={authorAvatar}
+            sx={{
+              width: 36,
+              height: 36,
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
           >
-            {review.user_username || review.user?.username || 'Usuário'}
-          </Typography>
-        }
-        subheader={formatDateShort(review.createdAt)}
-      />
-
-      <Divider />
-
-      {/* Track / Album context */}
-      <Box sx={{ display: 'flex', p: 2, bgcolor: 'background.default', alignItems: 'center' }}>
-        <Box 
-          component={Link} 
-          to={getTargetLink()}
-          sx={{ display: 'block', mr: 2, flexShrink: 0, textDecoration: 'none' }}
-        >
-          {review.item_image_url ? (
-            <Avatar variant="square" src={review.item_image_url} sx={{ width: 64, height: 64, borderRadius: 2 }} />
-          ) : (
-            <Box sx={{ width: 64, height: 64, bgcolor: 'divider', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Typography variant="caption" color="text.secondary">Mídia</Typography>
-            </Box>
-          )}
-        </Box>
-        <Box sx={{ flex: 1 }}>
-          <Typography 
-            component={Link} 
-            to={getTargetLink()}
-            variant="subtitle1" 
-            fontWeight="bold" 
-            sx={{ color: 'text.primary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-          >
-            {review.item_name || 'Item Desconhecido'}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-            <Rating value={review.rating / 2} precision={0.5} readOnly size="small" />
-            <Typography variant="body2" sx={{ ml: 1, fontWeight: 'bold' }}>
-              {review.rating}/10
+            {authorUsername.charAt(0).toUpperCase()}
+          </Avatar>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              component={Link}
+              to={`/user/${authorUsername}`}
+              variant="subtitle2"
+              fontWeight={700}
+              noWrap
+              sx={{ color: 'text.primary', textDecoration: 'none', '&:hover': { color: 'primary.main' }, display: 'block' }}
+            >
+              {authorUsername}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {formatDateShort(review.createdAt)}
             </Typography>
           </Box>
         </Box>
 
-        {/* Audio Preview */}
-        {review.item_preview_url && (
-          <Box sx={{ ml: 2 }}>
-            <IconButton onClick={togglePlay} color="primary" sx={{ bgcolor: 'action.hover' }}>
-              {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
-            </IconButton>
-            <audio 
-              ref={audioRef} 
-              src={review.item_preview_url} 
-              onEnded={() => setIsPlaying(false)} 
-              onPause={() => setIsPlaying(false)}
-              onPlay={() => setIsPlaying(true)}
-              style={{ display: 'none' }} 
+        <Chip
+          size="small"
+          label={TYPE_LABEL[itemType] || 'Música'}
+          variant="outlined"
+          sx={{ fontSize: '0.7rem', height: 22, borderColor: 'divider' }}
+        />
+      </Box>
+
+      {/* Bloco da Mídia Avaliada */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          mx: 2.5,
+          p: 1.5,
+          borderRadius: 2.5,
+          bgcolor: (theme) => alpha(theme.palette.text.primary, 0.03),
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Box
+          component={Link}
+          to={getTargetLink()}
+          sx={{
+            width: 64,
+            height: 64,
+            borderRadius: itemType === 'artist' ? '50%' : 2,
+            overflow: 'hidden',
+            flexShrink: 0,
+            bgcolor: 'action.hover',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {review.item_image_url ? (
+            <Box
+              component="img"
+              src={review.item_image_url}
+              alt={review.item_name}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
+          ) : (
+            <AlbumIcon color="disabled" />
+          )}
+        </Box>
+
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            component={Link}
+            to={getTargetLink()}
+            variant="subtitle1"
+            fontWeight={700}
+            noWrap
+            sx={{ color: 'text.primary', textDecoration: 'none', '&:hover': { color: 'primary.main' }, display: 'block' }}
+          >
+            {review.item_name || 'Item Desconhecido'}
+          </Typography>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+            <Rating value={Number(review.rating) / 2} precision={0.5} readOnly size="small" />
+            <Box
+              component="span"
+              className="mtl-mono"
+              sx={{
+                px: 0.9,
+                py: 0.2,
+                borderRadius: 1,
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.15),
+                color: 'primary.main',
+              }}
+            >
+              {review.rating}/10
+            </Box>
           </Box>
+        </Box>
+
+        {itemType !== 'artist' && review.item_id && (
+          <PlayButton
+            track={{
+              type: itemType === 'album' ? 'album' : 'track',
+              id: review.item_id,
+              name: review.item_name,
+              imageUrl: review.item_image_url,
+              previewUrl: review.item_preview_url,
+            }}
+            size="small"
+            filled
+          />
         )}
       </Box>
 
-      {/* Review Text */}
-      {review.review_text && (
-        <CardContent sx={{ pt: 1 }}>
-          <Typography variant="body1" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-            {review.review_text}
-          </Typography>
-        </CardContent>
+      {/* Texto da Review (com proteção de spoiler) e Vibes */}
+      {(review.review_text || vibes.length > 0 || review.is_relisten) && (
+        <Box sx={{ px: 2.5, pt: 1.75, pb: 0.5 }}>
+          {review.review_text && (
+            review.has_spoiler && !spoilerRevealed ? (
+              <Box
+                onClick={() => setSpoilerRevealed(true)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && setSpoilerRevealed(true)}
+                sx={{
+                  p: 1.75,
+                  borderRadius: 2,
+                  border: '1px dashed',
+                  borderColor: 'warning.main',
+                  bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  cursor: 'pointer',
+                  mb: vibes.length > 0 ? 1.25 : 0,
+                }}
+              >
+                <VisibilityOffOutlinedIcon fontSize="small" color="warning" />
+                <Typography variant="body2" color="warning.main" fontWeight={600}>
+                  Esta review contém spoilers — clique para revelar
+                </Typography>
+              </Box>
+            ) : (
+              <Typography variant="body1" color="text.primary" sx={{ whiteSpace: 'pre-line', lineHeight: 1.65, mb: vibes.length > 0 || review.is_relisten ? 1.25 : 0 }}>
+                {review.review_text}
+              </Typography>
+            )
+          )}
+
+          {(vibes.length > 0 || review.is_relisten) && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+              {review.is_relisten && (
+                <Chip
+                  size="small"
+                  icon={<RepeatIcon sx={{ fontSize: 14 }} />}
+                  label="Re-audição"
+                  variant="outlined"
+                  color="primary"
+                  sx={{ height: 22, fontSize: '0.7rem' }}
+                />
+              )}
+              {vibes.map((tag) => (
+                <Chip
+                  key={tag}
+                  size="small"
+                  label={tag}
+                  sx={{
+                    height: 22,
+                    fontSize: '0.7rem',
+                    bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.14),
+                    color: 'secondary.main',
+                  }}
+                />
+              ))}
+            </Box>
+          )}
+        </Box>
       )}
 
-      {/* Interactions */}
-      <CardActions disableSpacing sx={{ px: 2, pb: 2, display: 'flex', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <IconButton aria-label="like review" onClick={handleLike} disabled={likeLoading} color={liked ? 'error' : 'default'}>
-            {liked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-          </IconButton>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5, fontWeight: 600 }}>
-            {likesCount}
-          </Typography>
+      {/* Ações Sociais */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.25 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton
+              aria-label="Curtir avaliação"
+              onClick={handleLike}
+              disabled={likeLoading}
+              size="small"
+              color={liked ? 'error' : 'default'}
+            >
+              {liked ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
+            </IconButton>
+            <Typography variant="caption" className="mtl-mono" color="text.secondary" fontWeight={700} sx={{ ml: 0.5 }}>
+              {likesCount}
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton aria-label="Comentários" onClick={toggleComments} size="small">
+              <ChatBubbleOutlineIcon fontSize="small" />
+            </IconButton>
+            <Typography variant="caption" className="mtl-mono" color="text.secondary" fontWeight={700} sx={{ ml: 0.5 }}>
+              {commentsCount}
+            </Typography>
+          </Box>
         </Box>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <IconButton aria-label="comment" onClick={toggleComments}>
-            <ChatBubbleOutlineIcon />
-          </IconButton>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5, fontWeight: 600 }}>
-            {commentsCount}
-          </Typography>
-        </Box>
-      </CardActions>
+
+        <IconButton aria-label="Compartilhar card" onClick={() => setShareOpen(true)} size="small" sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}>
+          <ShareOutlinedIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      <ShareCardModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        review={{ ...review, user_username: authorUsername }}
+      />
 
       {/* Comentários Expandíveis */}
       <Collapse in={showComments} timeout="auto" unmountOnExit>
         <Divider />
-        <CardContent sx={{ bgcolor: 'background.default', pt: 2, pb: 2 }}>
+        <Box sx={{ px: 2.5, py: 2, bgcolor: (theme) => alpha(theme.palette.text.primary, 0.02) }}>
           {loadingComments ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-              <CircularProgress size={24} />
+              <CircularProgress size={22} />
             </Box>
           ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
               {comments.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" align="center">
-                  Seja o primeiro a comentar!
+                  Seja o primeiro a comentar.
                 </Typography>
               ) : (
                 comments.map((comment) => (
                   <Box key={comment.id} sx={{ display: 'flex', gap: 1.5 }}>
-                    <Avatar 
-                      src={comment.user_avatar} 
-                      sx={{ width: 32, height: 32, cursor: 'pointer' }} 
+                    <Avatar
+                      src={comment.user_avatar}
+                      sx={{ width: 30, height: 30, cursor: 'pointer', fontSize: '0.8rem' }}
                       component={Link}
                       to={`/user/${comment.user_username}`}
-                    />
-                    <Box sx={{ flex: 1, bgcolor: 'background.paper', p: 1.5, borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                        <Typography 
-                          variant="subtitle2" 
-                          fontWeight="bold"
+                    >
+                      {comment.user_username?.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Box
+                      sx={{
+                        flex: 1,
+                        bgcolor: 'background.paper',
+                        p: 1.5,
+                        borderRadius: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, gap: 1 }}>
+                        <Typography
+                          variant="caption"
+                          fontWeight={700}
                           component={Link}
                           to={`/user/${comment.user_username}`}
-                          sx={{ textDecoration: 'none', color: 'inherit', '&:hover': { textDecoration: 'underline' } }}
+                          sx={{ textDecoration: 'none', color: 'text.primary', '&:hover': { color: 'primary.main' } }}
                         >
                           {comment.user_username}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                           {formatDateTime(comment.created_at)}
                         </Typography>
                       </Box>
@@ -248,31 +413,25 @@ function ReviewCard({ review }) {
             </Box>
           )}
 
-          {/* Campo de Novo Comentário */}
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 2 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <TextField
               fullWidth
               size="small"
-              placeholder="Adicionar um comentário..."
+              placeholder="Escreva um comentário..."
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSendComment();
                 }
               }}
-              sx={{ bgcolor: 'background.paper', borderRadius: 1 }}
             />
-            <IconButton 
-              color="primary" 
-              onClick={handleSendComment}
-              disabled={!newComment.trim()}
-            >
-              <SendIcon />
+            <IconButton color="primary" onClick={handleSendComment} disabled={!newComment.trim()} aria-label="Enviar comentário">
+              <SendIcon fontSize="small" />
             </IconButton>
           </Box>
-        </CardContent>
+        </Box>
       </Collapse>
     </Card>
   );
