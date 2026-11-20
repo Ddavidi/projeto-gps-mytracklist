@@ -3,6 +3,7 @@ import { Container, Typography, Box, Paper, Tabs, Tab, TextField, Button, Alert,
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import BirthDateField from '../components/BirthDateField';
 
 function SettingsPage() {
   const { user, login } = useAuth(); // We might just use the token in api interceptors
@@ -169,13 +170,11 @@ function SettingsPage() {
                   <MenuItem value="Outro">Outro</MenuItem>
                   <MenuItem value="Prefiro não dizer">Prefiro não dizer</MenuItem>
                 </TextField>
-                <TextField
+                <BirthDateField
                   fullWidth
-                  type="date"
                   label="Data de Nascimento"
-                  InputLabelProps={{ shrink: true }}
                   value={profileData.birthDate}
-                  onChange={(e) => setProfileData({ ...profileData, birthDate: e.target.value })}
+                  onChange={(iso) => setProfileData({ ...profileData, birthDate: iso })}
                 />
               </Box>
 

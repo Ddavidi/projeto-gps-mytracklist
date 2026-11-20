@@ -13,6 +13,7 @@ import { Drawer, List, ListItemText, ListItemButton } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import SearchBar from './SearchBar';
 import api from '../services/api';
+import { formatDateTime } from '../utils/date';
 
 function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
@@ -345,7 +346,7 @@ function Navbar() {
                     {notif.type === 'like' ? 'curtiu sua avaliação.' : 'começou a te seguir.'}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {new Date(notif.created_at).toLocaleDateString()}
+                    {formatDateTime(notif.created_at)}
                   </Typography>
                 </Box>
               </Box>

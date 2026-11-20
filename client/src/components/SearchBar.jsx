@@ -24,6 +24,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import PeopleIcon from '@mui/icons-material/People';
 import { searchMulti } from '../services/spotify';
 import api from '../services/api';
+import { formatCalendarDate } from '../utils/date';
 
 function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou artistas..." }) {
   const [query, setQuery] = useState('');
@@ -260,7 +261,7 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
                         </ListItemAvatar>
                         <ListItemText
                           primary={album.name}
-                          secondary={`${album.artist} ${album.releaseDate ? `• ${album.releaseDate}` : ''}`}
+                          secondary={`${album.artist} ${album.releaseDate ? `• ${formatCalendarDate(album.releaseDate)}` : ''}`}
                           primaryTypographyProps={{ variant: 'body2', fontWeight: 600, noWrap: true }}
                           secondaryTypographyProps={{ variant: 'caption', noWrap: true }}
                         />

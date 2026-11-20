@@ -21,6 +21,7 @@ import FriendsReviews from '../components/FriendsReviews';
 import ScoreDistribution from '../components/ScoreDistribution';
 import PlayButton from '../components/PlayButton';
 import { Link as RouterLink } from 'react-router-dom';
+import { formatCalendarDate } from '../utils/date';
 
 function TrackDetailsPage() {
   const { id: trackId } = useParams();
@@ -95,7 +96,7 @@ function TrackDetailsPage() {
               {track.releaseDate && (
                 <Box>
                   <Typography variant="caption" color="text.secondary" display="block">Lançamento</Typography>
-                  <Typography variant="body2">{track.releaseDate}</Typography>
+                  <Typography variant="body2">{formatCalendarDate(track.releaseDate)}</Typography>
                 </Box>
               )}
               {track.popularity > 0 && (

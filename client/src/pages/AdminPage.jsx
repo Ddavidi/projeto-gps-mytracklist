@@ -3,6 +3,7 @@ import { Container, Typography, Box, Grid, Card, CardContent, CircularProgress, 
 import PeopleIcon from '@mui/icons-material/People';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 import { getAdminStats } from '../services/admin';
+import { formatDate, formatDateTime } from '../utils/date';
 
 function AdminPage() {
   const [stats, setStats] = useState(null);
@@ -91,7 +92,7 @@ function AdminPage() {
                 </TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>{user.username}</TableCell>
                 <TableCell>{user.email || '-'}</TableCell>
-                <TableCell>{new Date(user.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                <TableCell>{formatDate(user.created_at)}</TableCell>
               </TableRow>
             ))}
             {stats?.recentUsers?.length === 0 && (
@@ -124,7 +125,7 @@ function AdminPage() {
                 <TableCell>{review.item_type}</TableCell>
                 <TableCell>{review.item_id}</TableCell>
                 <TableCell>{review.rating}</TableCell>
-                <TableCell>{new Date(review.created_at).toLocaleString('pt-BR')}</TableCell>
+                <TableCell>{formatDateTime(review.created_at)}</TableCell>
               </TableRow>
             ))}
             {stats?.recentReviews?.length === 0 && (

@@ -20,6 +20,7 @@ import AlbumIcon from '@mui/icons-material/Album';
 import PersonIcon from '@mui/icons-material/Person';
 import SearchBar from '../components/SearchBar';
 import PlayButton from '../components/PlayButton';
+import { formatCalendarDate } from '../utils/date';
 
 function SearchResultsPage() {
   const [searchParams] = useSearchParams();
@@ -185,7 +186,7 @@ function SearchResultsPage() {
                           {album.artist}
                         </Typography>
                         <Typography variant="caption" color="text.disabled">
-                          {album.releaseDate ? `${album.releaseDate} • ` : ''}{album.totalTracks} faixas
+                          {album.releaseDate ? `${formatCalendarDate(album.releaseDate)} • ` : ''}{album.totalTracks} faixas
                         </Typography>
                       </Box>
                     </Box>

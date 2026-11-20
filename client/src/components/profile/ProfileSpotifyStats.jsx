@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Grid, Paper, CircularProgress, Alert, List, ListItem, ListItemAvatar, Avatar, ListItemText, Divider, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import api from '../../services/api';
+import { formatTime } from '../../utils/date';
 
 export default function ProfileSpotifyStats({ userId }) {
   const [timeRange, setTimeRange] = useState('short_term'); // short_term, medium_term, long_term
@@ -121,7 +122,7 @@ export default function ProfileSpotifyStats({ userId }) {
                     </ListItemAvatar>
                     <ListItemText 
                       primary={track.name} 
-                      secondary={`${track.artist} • ${new Date(track.playedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
+                      secondary={`${track.artist} • ${formatTime(track.playedAt)}`}
                       primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold', noWrap: true }}
                       secondaryTypographyProps={{ variant: 'caption', noWrap: true }}
                     />

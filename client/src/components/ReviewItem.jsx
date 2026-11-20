@@ -9,6 +9,7 @@ import {
   Box,
 } from '@mui/material';
 import RatingInput from './RatingInput';
+import { formatDate } from '../utils/date';
 
 /**
  * Componente genérico que exibe uma avaliação (track, album ou artist).
@@ -67,7 +68,7 @@ function ReviewItem({ review, itemData }) {
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                <RatingInput value={review.rating} readOnly={true} size="small" />
                <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
-                 • Avaliado em {new Date(review.createdAt || review.updatedAt || Date.now()).toLocaleDateString()}
+                 • Avaliado em {formatDate(review.createdAt || review.updatedAt || Date.now())}
                </Typography>
             </Box>
 

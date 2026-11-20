@@ -27,6 +27,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReviewSection from '../components/ReviewSection';
 import FriendsReviews from '../components/FriendsReviews';
 import ScoreDistribution from '../components/ScoreDistribution';
+import { formatCalendarDate } from '../utils/date';
 
 function ArtistDetailsPage() {
   const { id } = useParams();
@@ -237,7 +238,7 @@ function ArtistDetailsPage() {
                             {album.name}
                           </Typography>
                           <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem' }}>
-                            {album.releaseDate}
+                            {formatCalendarDate(album.releaseDate)}
                           </Typography>
                         </Box>
                       </CardActionArea>

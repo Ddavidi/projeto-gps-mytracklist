@@ -9,6 +9,7 @@ import PauseIcon from '@mui/icons-material/Pause';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { getReviewComments, addReviewComment } from '../services/reviews';
+import { formatDateShort, formatDateTime } from '../utils/date';
 
 function ReviewCard({ review }) {
   const [liked, setLiked] = useState(Boolean(review.is_liked));
@@ -115,7 +116,7 @@ function ReviewCard({ review }) {
             {review.user_username || review.user?.username || 'Usuário'}
           </Typography>
         }
-        subheader={new Date(review.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+        subheader={formatDateShort(review.createdAt)}
       />
 
       <Divider />
@@ -236,7 +237,7 @@ function ReviewCard({ review }) {
                           {comment.user_username}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {new Date(comment.created_at).toLocaleDateString()}
+                          {formatDateTime(comment.created_at)}
                         </Typography>
                       </Box>
                       <Typography variant="body2">{comment.content}</Typography>

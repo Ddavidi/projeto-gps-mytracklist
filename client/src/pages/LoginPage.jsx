@@ -21,6 +21,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import api from '../services/api';
+import BirthDateField from '../components/BirthDateField';
 
 function LoginPage() {
   const [step, setStep] = useState(1);
@@ -29,6 +30,7 @@ function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [name, setName] = useState('');
   const [gender, setGender] = useState('');
@@ -37,6 +39,7 @@ function LoginPage() {
   const [isLoginFlow, setIsLoginFlow] = useState(false);
   
   const [error, setError] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const navigate = useNavigate();
@@ -100,9 +103,15 @@ function LoginPage() {
           return;
         }
 
-        const response = await api.post('/auth/register', { email, username, password });
-        setAuth(response.data.token, response.data.user);
-        setStep(3); // Go to profile step
+        const response = await api.post('/auth/register/request-code', {
+          email,
+          username,
+          password,
+          confirmPassword,
+        });
+        setVerificationCode('');
+        setInfoMessage(response.data?.message || 'Enviamos um código de 6 dígitos para o seu e-mail.');
+        setStep('verify');
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Ocorreu um erro.');
@@ -111,9 +120,55 @@ function LoginPage() {
     }
   };
 
+  const handleVerifyCodeSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setInfoMessage('');
+
+    const cleanCode = verificationCode.replace(/\D/g, '');
+    if (cleanCode.length !== 6) {
+      setError('Digite o código de 6 dígitos enviado para o seu e-mail.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await api.post('/auth/register/verify', { email, code: cleanCode });
+      setAuth(response.data.token, response.data.user);
+      setStep(3);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Código inválido ou expirado.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setError('');
+    setInfoMessage('');
+    setIsSubmitting(true);
+    try {
+      const response = await api.post('/auth/register/request-code', {
+        email,
+        username,
+        password,
+        confirmPassword,
+      });
+      setInfoMessage(response.data?.message || 'Novo código enviado para o seu e-mail.');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Não foi possível reenviar o código.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!birthDate) {
+      setError('Informe uma data de nascimento válida no formato DD/MM/AAAA.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await api.put('/auth/profile', { name, gender, birthDate });
@@ -140,10 +195,12 @@ function LoginPage() {
             {step === 1 && 'Entrar ou Criar Conta'}
             {step === 2 && isLoginFlow && 'Bem-vindo de volta!'}
             {step === 2 && !isLoginFlow && 'Crie sua Conta'}
+            {step === 'verify' && 'Verificação em Duas Etapas'}
             {step === 3 && 'Complete seu Perfil'}
           </Typography>
           
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {infoMessage && <Alert severity="info" sx={{ mb: 2 }}>{infoMessage}</Alert>}
           
           {step === 1 && (
             <Box component="form" onSubmit={handleIdentifierSubmit}>
@@ -191,7 +248,10 @@ function LoginPage() {
                 <>
                   <TextField
                     margin="normal" required fullWidth name="confirmPassword" label="Confirmar Senha" type="password" id="confirmPassword"
+                    autoComplete="new-password"
                     value={confirmPassword}
+                    error={Boolean(confirmPassword && password !== confirmPassword)}
+                    helperText={confirmPassword && password !== confirmPassword ? 'As senhas não coincidem.' : ''}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
 
@@ -232,11 +292,41 @@ function LoginPage() {
                 fullWidth 
                 variant="contained" 
                 sx={{ mt: 1, mb: 2 }} 
-                disabled={isSubmitting || (!isLoginFlow && (!allRequirementsMet || !termsAccepted))}
+                disabled={isSubmitting || (!isLoginFlow && (!allRequirementsMet || password !== confirmPassword || !termsAccepted))}
               >
-                {isSubmitting ? 'Aguarde...' : (isLoginFlow ? 'Entrar' : 'Criar Conta')}
+                {isSubmitting ? 'Aguarde...' : (isLoginFlow ? 'Entrar' : 'Enviar Código de Verificação')}
               </Button>
-              <Button fullWidth variant="text" onClick={() => setStep(1)} disabled={isSubmitting}>
+              <Button fullWidth variant="text" onClick={() => { setError(''); setInfoMessage(''); setStep(1); }} disabled={isSubmitting}>
+                Voltar
+              </Button>
+            </Box>
+          )}
+
+          {step === 'verify' && (
+            <Box component="form" onSubmit={handleVerifyCodeSubmit}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Digite o código de 6 dígitos enviado para <strong>{email}</strong>.
+              </Typography>
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="verificationCode"
+                label="Código de Verificação (6 dígitos)"
+                name="verificationCode"
+                autoFocus
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                inputProps={{ inputMode: 'numeric', maxLength: 6, style: { letterSpacing: '6px', textAlign: 'center', fontSize: '1.25rem' } }}
+              />
+              <Button type="submit" fullWidth variant="contained" sx={{ mt: 2, mb: 1 }} disabled={isSubmitting || verificationCode.length !== 6}>
+                {isSubmitting ? 'Verificando...' : 'Verificar e Criar Conta'}
+              </Button>
+              <Button fullWidth variant="outlined" sx={{ mb: 1 }} onClick={handleResendCode} disabled={isSubmitting}>
+                Reenviar Código
+              </Button>
+              <Button fullWidth variant="text" onClick={() => { setError(''); setInfoMessage(''); setStep(2); }} disabled={isSubmitting}>
                 Voltar
               </Button>
             </Box>
@@ -258,9 +348,14 @@ function LoginPage() {
                 <MenuItem value="Outro">Outro</MenuItem>
                 <MenuItem value="Prefiro não dizer">Prefiro não dizer</MenuItem>
               </TextField>
-              <TextField
-                margin="normal" required fullWidth id="birthDate" label="Data de Nascimento" name="birthDate"
-                type="date" InputLabelProps={{ shrink: true }} value={birthDate} onChange={(e) => setBirthDate(e.target.value)}
+              <BirthDateField
+                margin="normal"
+                required
+                fullWidth
+                id="birthDate"
+                name="birthDate"
+                value={birthDate}
+                onChange={setBirthDate}
               />
               
               <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} disabled={isSubmitting}>

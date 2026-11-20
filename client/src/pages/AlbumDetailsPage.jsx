@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import { getAlbumDetails } from '../services/spotify';
 import api from '../services/api';
@@ -31,6 +31,7 @@ import ReviewSection from '../components/ReviewSection';
 import FriendsReviews from '../components/FriendsReviews';
 import ScoreDistribution from '../components/ScoreDistribution';
 import PlayButton from '../components/PlayButton';
+import { formatCalendarDate } from '../utils/date';
 
 function AlbumDetailsPage() {
   const { id } = useParams();
@@ -131,7 +132,7 @@ function AlbumDetailsPage() {
               {album.releaseDate && (
                 <Box>
                   <Typography variant="caption" color="text.secondary" display="block">Lançamento</Typography>
-                  <Typography variant="body2">{album.releaseDate}</Typography>
+                  <Typography variant="body2">{formatCalendarDate(album.releaseDate)}</Typography>
                 </Box>
               )}
               {album.label && (

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getFriendsReviews } from '../services/social';
 import { Box, Typography, Card, CardHeader, CardContent, Avatar, Rating, CircularProgress } from '@mui/material';
+import { formatDateShort } from '../utils/date';
 
 function FriendsReviews({ itemType, itemId }) {
   const { isAuthenticated } = useAuth();
@@ -55,7 +56,7 @@ function FriendsReviews({ itemType, itemId }) {
                     {review.author_username}
                   </Typography>
                 }
-                subheader={new Date(review.createdAt).toLocaleDateString()}
+                subheader={formatDateShort(review.createdAt)}
                 action={
                   <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mr: 1 }}>
                     <Rating value={review.rating / 2} precision={0.5} readOnly size="small" />

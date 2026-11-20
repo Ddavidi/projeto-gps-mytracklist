@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
+import { formatDate } from '../utils/date';
 
 function UserSearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -102,7 +103,7 @@ function UserSearchPage() {
               </ListItemAvatar>
               <ListItemText 
                 primary={user.username} 
-                secondary={`Membro desde ${new Date(user.created_at).toLocaleDateString()}`}
+                secondary={`Membro desde ${formatDate(user.created_at)}`}
               />
             </ListItem>
           ))}
