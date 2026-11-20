@@ -18,6 +18,7 @@ export const PALETTES = [
     text: '#F2F5F7',
     textMuted: '#8D9AA8',
     border: 'rgba(242, 245, 247, 0.08)',
+    swatches: ['#0B0E11', '#12171D', '#1ED760', '#F59E0B'],
   },
   {
     id: 'crimson-studio',
@@ -34,6 +35,7 @@ export const PALETTES = [
     text: '#FAF5F6',
     textMuted: '#A8949B',
     border: 'rgba(250, 245, 246, 0.08)',
+    swatches: ['#0D0A0C', '#161114', '#F43F5E', '#FBBF24'],
   },
   {
     id: 'midnight-cobalt',
@@ -50,6 +52,7 @@ export const PALETTES = [
     text: '#EDF3FC',
     textMuted: '#8BA0BC',
     border: 'rgba(237, 243, 252, 0.08)',
+    swatches: ['#0B111C', '#121C2C', '#38BDF8', '#A78BFA'],
   },
   {
     id: 'amber-analog',
@@ -66,6 +69,7 @@ export const PALETTES = [
     text: '#F7F3EE',
     textMuted: '#A89B8E',
     border: 'rgba(247, 243, 238, 0.09)',
+    swatches: ['#100E0C', '#1A1613', '#F97316', '#EAB308'],
   },
   {
     id: 'velvet-plum',
@@ -82,6 +86,7 @@ export const PALETTES = [
     text: '#F6F2FA',
     textMuted: '#A396B5',
     border: 'rgba(246, 242, 250, 0.09)',
+    swatches: ['#0E0B14', '#171222', '#E879F9', '#2DD4BF'],
   },
   {
     id: 'ivory-press',
@@ -98,6 +103,7 @@ export const PALETTES = [
     text: '#161614',
     textMuted: '#5C5A52',
     border: 'rgba(22, 22, 20, 0.10)',
+    swatches: ['#F5F2EB', '#FFFFFF', '#15803D', '#C2410C'],
   },
 ];
 

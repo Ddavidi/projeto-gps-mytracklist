@@ -256,7 +256,16 @@ export class UserController {
 
   async updateUserProfile(
     userId: number,
-    fields: { name?: string; gender?: string; birthDate?: string; bio?: string; favoriteGenres?: string[]; is_private?: boolean; listen_later_is_public?: boolean }
+    fields: {
+      name?: string;
+      gender?: string;
+      birthDate?: string;
+      bio?: string;
+      favoriteGenres?: string[];
+      is_private?: boolean;
+      listen_later_is_public?: boolean;
+      listen_later_visibility?: string;
+    }
   ) {
     try {
       const updates: string[] = [];
@@ -284,11 +293,15 @@ export class UserController {
       }
       if (fields.is_private !== undefined) {
         updates.push('is_private = ?');
-        params.push(fields.is_private);
+        params.push(Boolean(fields.is_private));
       }
       if (fields.listen_later_is_public !== undefined) {
         updates.push('listen_later_is_public = ?');
-        params.push(fields.listen_later_is_public);
+        params.push(Boolean(fields.listen_later_is_public));
+      }
+      if (fields.listen_later_visibility !== undefined) {
+        updates.push('listen_later_visibility = ?');
+        params.push(fields.listen_later_visibility);
       }
 
       if (updates.length === 0) {

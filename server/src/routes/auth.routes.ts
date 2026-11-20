@@ -180,6 +180,9 @@ export function createAuthRouter(userController: UserController): Router {
         bio: (user as any).bio,
         favorite_genres: (user as any).favorite_genres || [],
         is_admin: (user as any).is_admin,
+        is_private: Boolean((user as any).is_private),
+        listen_later_is_public: (user as any).listen_later_is_public !== false,
+        listen_later_visibility: (user as any).listen_later_visibility || ((user as any).listen_later_is_public === false ? 'private' : 'public'),
         created_at: (user as any).created_at,
         spotify_connected: Boolean((user as any).spotify_connected),
       });
@@ -193,7 +196,7 @@ export function createAuthRouter(userController: UserController): Router {
    * Atualiza as informações de perfil (aceita atualização parcial para onboarding/configurações).
    */
   router.put('/profile', requireAuth, async (req: Request, res: Response) => {
-    const { name, gender, birthDate, bio, favoriteGenres, is_private, listen_later_is_public } = req.body;
+    const { name, gender, birthDate, bio, favoriteGenres, is_private, listen_later_is_public, listen_later_visibility } = req.body;
 
     const result = await userController.updateUserProfile(req.user!.userId, {
       name,
@@ -203,6 +206,7 @@ export function createAuthRouter(userController: UserController): Router {
       favoriteGenres,
       is_private,
       listen_later_is_public,
+      listen_later_visibility,
     });
 
     if (result.success) {

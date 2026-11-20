@@ -461,7 +461,7 @@ function SettingsPage() {
                           }}
                         >
                           <Box sx={{ display: 'flex', gap: 1 }}>
-                            {item.swatches.map((hex, idx) => (
+                            {(item.swatches || [item.bg, item.surface, item.primary, item.secondary]).map((hex, idx) => (
                               <Box
                                 key={`${item.id}-${idx}`}
                                 sx={{
@@ -551,17 +551,35 @@ function SettingsPage() {
                       : 'Qualquer pessoa da comunidade pode visitar seu perfil e explorar suas avaliações e listas públicas.'}
                   </Typography>
                 </Box>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={Boolean(profileData.is_private)}
-                      onChange={(e) => handleToggleAccountPrivacy(e.target.checked)}
-                      disabled={privacySaving}
-                      color="warning"
-                    />
-                  }
-                  label={profileData.is_private ? 'Privado' : 'Público'}
-                />
+                <ToggleButtonGroup
+                  size="small"
+                  exclusive
+                  value={profileData.is_private ? 'private' : 'public'}
+                  onChange={(e, val) => {
+                    if (val !== null) {
+                      handleToggleAccountPrivacy(val === 'private');
+                    }
+                  }}
+                  disabled={privacySaving}
+                >
+                  <ToggleButton value="public" sx={{ textTransform: 'none', gap: 0.6, px: 2 }}>
+                    <PublicOutlinedIcon sx={{ fontSize: 16 }} /> Público
+                  </ToggleButton>
+                  <ToggleButton
+                    value="private"
+                    sx={{
+                      textTransform: 'none',
+                      gap: 0.6,
+                      px: 2,
+                      '&.Mui-selected': {
+                        bgcolor: (theme) => alpha(theme.palette.warning.main, 0.16),
+                        color: 'warning.main',
+                      },
+                    }}
+                  >
+                    <LockOutlinedIcon sx={{ fontSize: 16 }} /> Privado
+                  </ToggleButton>
+                </ToggleButtonGroup>
               </Paper>
 
               {/* Card 2: Visibilidade de Quero Ouvir */}
