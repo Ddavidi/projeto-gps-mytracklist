@@ -21,13 +21,20 @@ import { AdminController } from './controllers/AdminController';
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+// Confia no proxy reverso (Render / Vercel / Nginx) para IP real no rate limiter
+app.set('trust proxy', 1);
+
 // ========================
 // Middlewares Globais
 // ========================
 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
+  : false;
+
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? process.env.ALLOWED_ORIGINS?.split(',') || false
+    ? allowedOrigins
     : true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -57,8 +64,24 @@ app.use(express.json());
 // Health check
 // ========================
 
-app.get('/api/v1/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/api/v1/health', async (_req, res) => {
+  try {
+    const db = ControllerFactory.getDatabase();
+    await db.get('SELECT 1');
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      environment: process.env.APP_ENV || process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      database: 'disconnected',
+      environment: process.env.APP_ENV || process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // ========================

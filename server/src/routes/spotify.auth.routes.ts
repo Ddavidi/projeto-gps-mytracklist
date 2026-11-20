@@ -2,7 +2,12 @@ import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { SpotifyService } from '../services/SpotifyService';
 import { UserController } from '../controllers/UserController';
-import jwt from 'jsonwebtoken';
+import { generateOAuthStateToken, verifyOAuthStateToken } from '../utils/jwt';
+
+function getFrontendUrl(): string {
+  const url = process.env.FRONTEND_URL || 'http://localhost:5173';
+  return url.replace(/\/+$/, '');
+}
 
 export function createSpotifyAuthRouter(spotifyService: SpotifyService, userController: UserController): Router {
   const router = Router();
@@ -15,12 +20,8 @@ export function createSpotifyAuthRouter(spotifyService: SpotifyService, userCont
    */
   router.get('/url', requireAuth, (req: Request, res: Response) => {
     // req.user contains the decoded JWT { userId, username }
-    const stateToken = jwt.sign(
-      { userId: req.user!.userId },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: '15m' } // Token expira em 15 minutos (suficiente pro fluxo OAuth)
-    );
-    
+    const stateToken = generateOAuthStateToken(req.user!.userId);
+
     const url = spotifyService.getAuthorizationUrl(stateToken);
     res.json({ url });
   });
@@ -33,19 +34,20 @@ export function createSpotifyAuthRouter(spotifyService: SpotifyService, userCont
    */
   router.get('/callback', async (req: Request, res: Response) => {
     const { code, state, error } = req.query;
+    const frontendUrl = getFrontendUrl();
 
     if (error) {
       console.error('Erro na autorização do Spotify:', error);
-      return res.redirect('http://localhost:5173/settings?spotify_error=access_denied');
+      return res.redirect(`${frontendUrl}/settings?spotify_error=access_denied`);
     }
 
     if (!code || !state) {
-      return res.redirect('http://localhost:5173/settings?spotify_error=missing_params');
+      return res.redirect(`${frontendUrl}/settings?spotify_error=missing_params`);
     }
 
     try {
       // 1. Validar qual usuário fez a requisição decodificando o state
-      const decoded = jwt.verify(state as string, process.env.JWT_SECRET || 'secret') as any;
+      const decoded = verifyOAuthStateToken(state as string);
       const userId = decoded.userId;
 
       // 2. Trocar o código pelo token
@@ -60,10 +62,10 @@ export function createSpotifyAuthRouter(spotifyService: SpotifyService, userCont
       await userController.updateSpotifyTokens(userId, accessToken, refreshToken, expiresAt);
 
       // 4. Redirecionar de volta para o frontend com sucesso
-      return res.redirect('http://localhost:5173/settings?spotify_connected=true');
+      return res.redirect(`${frontendUrl}/settings?spotify_connected=true`);
     } catch (err) {
       console.error('Falha ao processar callback do Spotify:', err);
-      return res.redirect('http://localhost:5173/settings?spotify_error=auth_failed');
+      return res.redirect(`${frontendUrl}/settings?spotify_error=auth_failed`);
     }
   });
 

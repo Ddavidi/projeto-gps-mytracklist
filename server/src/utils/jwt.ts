@@ -1,6 +1,16 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET é obrigatória em produção.');
+    }
+    return 'dev-secret-change-in-production';
+  }
+  return secret;
+}
+
 const JWT_EXPIRES_IN = '7d';
 
 export interface JwtPayload {
@@ -12,7 +22,7 @@ export interface JwtPayload {
  * Gera um JWT a partir dos dados do utilizador.
  */
 export function generateToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
 }
 
 /**
@@ -21,9 +31,23 @@ export function generateToken(payload: JwtPayload): string {
  */
 export function verifyToken(token: string): JwtPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const decoded = jwt.verify(token, getJwtSecret()) as JwtPayload;
     return decoded;
   } catch (error) {
     return null;
   }
+}
+
+/**
+ * Gera um token temporário (15m) para o parâmetro `state` do fluxo OAuth.
+ */
+export function generateOAuthStateToken(userId: number): string {
+  return jwt.sign({ userId }, getJwtSecret(), { expiresIn: '15m' });
+}
+
+/**
+ * Verifica e decodifica o token de `state` do fluxo OAuth.
+ */
+export function verifyOAuthStateToken(token: string): { userId: number } {
+  return jwt.verify(token, getJwtSecret()) as { userId: number };
 }

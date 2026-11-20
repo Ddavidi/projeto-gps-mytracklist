@@ -13,9 +13,14 @@ export class PostgresDatabase implements IDatabase {
   }
 
   async connect(): Promise<void> {
+    const isLocalDb =
+      this.connectionString.includes('localhost') ||
+      this.connectionString.includes('127.0.0.1');
+    const useSsl = process.env.NODE_ENV === 'production' || !isLocalDb;
+
     this.pool = new Pool({
       connectionString: this.connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+      ssl: useSsl ? { rejectUnauthorized: false } : undefined,
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
