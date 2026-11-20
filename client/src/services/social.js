@@ -21,15 +21,41 @@ export const unfollowUser = async (targetUserId) => {
 };
 
 /**
- * Verifica se o utilizador autenticado segue outro.
+ * Verifica se o utilizador autenticado segue outro ou tem solicitação pendente.
  */
-export const checkIsFollowing = async (targetUserId) => {
+export const checkFollowStatus = async (targetUserId) => {
   try {
     const response = await api.get(`/social/is-following/${targetUserId}`);
-    return response.data.isFollowing;
+    return {
+      isFollowing: Boolean(response.data?.isFollowing),
+      isRequested: Boolean(response.data?.isRequested),
+    };
   } catch {
-    return false;
+    return { isFollowing: false, isRequested: false };
   }
+};
+
+export const checkIsFollowing = async (targetUserId) => {
+  const status = await checkFollowStatus(targetUserId);
+  return status.isFollowing;
+};
+
+/**
+ * Solicitações pendentes para seguir (contas privadas).
+ */
+export const getFollowRequests = async () => {
+  const response = await api.get('/social/follow-requests');
+  return response.data.requests || [];
+};
+
+export const acceptFollowRequest = async (requesterId) => {
+  const response = await api.post(`/social/follow-requests/${requesterId}/accept`);
+  return response.data;
+};
+
+export const rejectFollowRequest = async (requesterId) => {
+  const response = await api.delete(`/social/follow-requests/${requesterId}`);
+  return response.data;
 };
 
 /**

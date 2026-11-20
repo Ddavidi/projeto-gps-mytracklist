@@ -10,25 +10,71 @@ export class SocialController {
   // =====================
 
   /**
-   * Segue um utilizador.
+   * Segue um utilizador (ou cria solicitação pendente se o perfil alvo for privado).
    */
   async followUser(followerId: number, followingId: number) {
     if (followerId === followingId) {
       return { success: false, message: 'Não pode seguir a si mesmo.' };
     }
     try {
+      const targetUser = await this.db.get(
+        'SELECT id, is_private FROM users WHERE id = ?',
+        [followingId]
+      );
+      if (!targetUser) {
+        return { success: false, message: 'Utilizador não encontrado.' };
+      }
+
+      const alreadyFollowing = await this.db.get(
+        'SELECT id FROM follows WHERE "followerId" = ? AND "followingId" = ?',
+        [followerId, followingId]
+      );
+      if (alreadyFollowing) {
+        return { success: true, status: 'following' as const };
+      }
+
+      if (Boolean(targetUser.is_private)) {
+        const existingReq = await this.db.get(
+          'SELECT id FROM follow_requests WHERE requester_id = ? AND target_id = ?',
+          [followerId, followingId]
+        );
+        if (!existingReq) {
+          await this.db.run(
+            'INSERT INTO follow_requests (requester_id, target_id, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+            [followerId, followingId]
+          );
+          try {
+            await this.db.run(
+              'INSERT INTO notifications (user_id, actor_id, type, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
+              [followingId, followerId, 'follow_request']
+            );
+          } catch {
+            // Não bloqueia se notificação falhar
+          }
+        }
+        return { success: true, status: 'requested' as const };
+      }
+
       await this.db.run(
         'INSERT INTO follows ("followerId", "followingId", "createdAt") VALUES (?, ?, CURRENT_TIMESTAMP)',
         [followerId, followingId]
       );
-      return { success: true };
+      try {
+        await this.db.run(
+          'INSERT INTO notifications (user_id, actor_id, type, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
+          [followingId, followerId, 'follow']
+        );
+      } catch {
+        // Não bloqueia
+      }
+      return { success: true, status: 'following' as const };
     } catch (error: any) {
       if (
         error.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
         error.code === '23505' ||
         (error.message && error.message.includes('unique'))
       ) {
-        return { success: false, message: 'Já segue este utilizador.' };
+        return { success: true, status: 'following' as const };
       }
       console.error('Erro ao seguir utilizador:', error);
       return { success: false, message: 'Falha ao seguir utilizador.' };
@@ -36,16 +82,20 @@ export class SocialController {
   }
 
   /**
-   * Deixa de seguir um utilizador.
+   * Deixa de seguir um utilizador ou cancela solicitação pendente.
    */
   async unfollowUser(followerId: number, followingId: number) {
     try {
-      const result = await this.db.run(
+      const followRes = await this.db.run(
         'DELETE FROM follows WHERE "followerId" = ? AND "followingId" = ?',
         [followerId, followingId]
       );
-      if (result.changes === 0) {
-        return { success: false, message: 'Não estava a seguir este utilizador.' };
+      const reqRes = await this.db.run(
+        'DELETE FROM follow_requests WHERE requester_id = ? AND target_id = ?',
+        [followerId, followingId]
+      );
+      if (followRes.changes === 0 && reqRes.changes === 0) {
+        return { success: false, message: 'Não estava a seguir nem havia solicitação pendente.' };
       }
       return { success: true };
     } catch (error) {
@@ -95,18 +145,106 @@ export class SocialController {
   }
 
   /**
-   * Verifica se um utilizador segue outro (para botão Seguir/Seguindo).
+   * Verifica se um utilizador segue outro ou tem solicitação pendente.
    */
   async isFollowing(followerId: number, followingId: number) {
     try {
-      const row = await this.db.get(
-        'SELECT id FROM follows WHERE "followerId" = ? AND "followingId" = ?',
-        [followerId, followingId]
-      );
-      return { success: true, isFollowing: !!row };
+      const [followRow, requestRow] = await Promise.all([
+        this.db.get(
+          'SELECT id FROM follows WHERE "followerId" = ? AND "followingId" = ?',
+          [followerId, followingId]
+        ),
+        this.db.get(
+          'SELECT id FROM follow_requests WHERE requester_id = ? AND target_id = ?',
+          [followerId, followingId]
+        ),
+      ]);
+      return { success: true, isFollowing: !!followRow, isRequested: !!requestRow };
     } catch (error) {
       console.error('Erro ao verificar seguimento:', error);
       return { success: false, message: 'Falha ao verificar seguimento.' };
+    }
+  }
+
+  /**
+   * Lista solicitações pendentes recebidas pelo utilizador (perfil privado).
+   */
+  async getFollowRequests(userId: number) {
+    try {
+      const requests = await this.db.all(
+        `SELECT fr.id, fr.requester_id, fr.created_at,
+                u.username, u.name, u.avatar_url
+         FROM follow_requests fr
+         JOIN users u ON u.id = fr.requester_id
+         WHERE fr.target_id = ?
+         ORDER BY fr.created_at DESC`,
+        [userId]
+      );
+      return { success: true, requests: requests || [] };
+    } catch (error) {
+      console.error('Erro ao buscar solicitações de seguimento:', error);
+      return { success: false, message: 'Falha ao buscar solicitações.' };
+    }
+  }
+
+  /**
+   * Aceita uma solicitação: o solicitante vira seguidor do dono (unidirecional).
+   */
+  async acceptFollowRequest(targetUserId: number, requesterId: number) {
+    try {
+      const existing = await this.db.get(
+        'SELECT id FROM follow_requests WHERE requester_id = ? AND target_id = ?',
+        [requesterId, targetUserId]
+      );
+      if (!existing) {
+        return { success: false, message: 'Solicitação não encontrada.' };
+      }
+
+      try {
+        await this.db.run(
+          'INSERT INTO follows ("followerId", "followingId", "createdAt") VALUES (?, ?, CURRENT_TIMESTAMP)',
+          [requesterId, targetUserId]
+        );
+      } catch (err: any) {
+        if (err.code !== 'SQLITE_CONSTRAINT_UNIQUE' && err.code !== '23505') {
+          throw err;
+        }
+      }
+
+      await this.db.run(
+        'DELETE FROM follow_requests WHERE requester_id = ? AND target_id = ?',
+        [requesterId, targetUserId]
+      );
+
+      try {
+        await this.db.run(
+          'INSERT INTO notifications (user_id, actor_id, type, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
+          [requesterId, targetUserId, 'follow_accepted']
+        );
+      } catch {
+        // Não bloqueia
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao aceitar solicitação:', error);
+      return { success: false, message: 'Falha ao aceitar solicitação.' };
+    }
+  }
+
+  /**
+   * Recusa e remove uma solicitação pendente.
+   */
+  async rejectFollowRequest(targetUserId: number, requesterId: number) {
+    try {
+      await this.db.run(
+        'DELETE FROM follow_requests WHERE requester_id = ? AND target_id = ?',
+        [requesterId, targetUserId]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao recusar solicitação:', error);
+      return { success: false, message: 'Falha ao recusar solicitação.' };
     }
   }
 

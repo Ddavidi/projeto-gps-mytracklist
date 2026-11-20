@@ -338,6 +338,18 @@ export class ControllerFactory {
         )
       `);
 
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS follow_requests (
+          id SERIAL PRIMARY KEY,
+          requester_id INTEGER NOT NULL,
+          target_id INTEGER NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (requester_id) REFERENCES users (id) ON DELETE CASCADE,
+          FOREIGN KEY (target_id) REFERENCES users (id) ON DELETE CASCADE,
+          UNIQUE (requester_id, target_id)
+        )
+      `);
+
       // Username e e-mail únicos sem diferenciar maiúsculas/minúsculas ("Manga" == "manga")
       try {
         await database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_unique ON users (LOWER(username))`);
@@ -586,6 +598,18 @@ export class ControllerFactory {
           FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
           FOREIGN KEY (friend_id) REFERENCES users (id) ON DELETE CASCADE,
           UNIQUE (user_id, friend_id)
+        );
+      `);
+
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS follow_requests (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          requester_id INTEGER NOT NULL,
+          target_id INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (requester_id) REFERENCES users (id) ON DELETE CASCADE,
+          FOREIGN KEY (target_id) REFERENCES users (id) ON DELETE CASCADE,
+          UNIQUE (requester_id, target_id)
         );
       `);
     }

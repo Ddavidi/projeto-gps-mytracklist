@@ -3,9 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { getMyReviews } from '../services/reviews';
 import { getMultipleTrackDetails, getMultipleAlbumDetails, getMultipleArtistDetails } from '../services/spotify';
 import { getUserFavorites } from '../services/favorites';
-import { getFollowers, getFollowing } from '../services/social';
+import { getFollowers, getFollowing, getFollowRequests, acceptFollowRequest, rejectFollowRequest } from '../services/social';
 import { useAuth } from '../context/AuthContext';
-import { Container, Box, Paper, CircularProgress, Alert } from '@mui/material';
+import { Container, Box, Paper, CircularProgress, Alert, Typography, Avatar, Button, Chip, alpha } from '@mui/material';
+import { Link } from 'react-router-dom';
+import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 
 import ProfileHeader from '../components/profile/ProfileHeader';
 import ProfileTabs from '../components/profile/ProfileTabs';
@@ -30,6 +34,8 @@ function ProfilePage() {
 
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [followRequests, setFollowRequests] = useState([]);
+  const [reqBusyId, setReqBusyId] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -81,17 +87,19 @@ function ProfilePage() {
       if (!background) setLoading(true);
       setError('');
 
-      const [myReviews, myFavs, followers, following] = await Promise.all([
+      const [myReviews, myFavs, followers, following, requests] = await Promise.all([
         getMyReviews(),
         getUserFavorites(uid),
         getFollowers(uid),
         getFollowing(uid),
+        getFollowRequests().catch(() => []),
       ]);
 
       setReviews(myReviews || []);
       setFavorites(myFavs || []);
       setFollowersCount((followers || []).length);
       setFollowingCount((following || []).length);
+      setFollowRequests(requests || []);
 
       if (myReviews?.length > 0) await enrichDataWithSpotify(myReviews, false);
       if (myFavs?.length > 0) await enrichDataWithSpotify(myFavs, true);
@@ -113,6 +121,31 @@ function ProfilePage() {
   if (error) {
     return <Container maxWidth="lg" sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Container>;
   }
+
+  const handleAcceptRequest = async (requesterId) => {
+    setReqBusyId(requesterId);
+    try {
+      await acceptFollowRequest(requesterId);
+      setFollowRequests((prev) => prev.filter((r) => r.requester_id !== requesterId));
+      setFollowersCount((prev) => prev + 1);
+    } catch (err) {
+      console.error('Erro ao aceitar solicitação:', err);
+    } finally {
+      setReqBusyId(null);
+    }
+  };
+
+  const handleRejectRequest = async (requesterId) => {
+    setReqBusyId(requesterId);
+    try {
+      await rejectFollowRequest(requesterId);
+      setFollowRequests((prev) => prev.filter((r) => r.requester_id !== requesterId));
+    } catch (err) {
+      console.error('Erro ao recusar solicitação:', err);
+    } finally {
+      setReqBusyId(null);
+    }
+  };
 
   const handleTabChange = (event, newValue) => {
     setTabIndex(newValue);
@@ -146,7 +179,16 @@ function ProfilePage() {
       case 5:
         return <ProfileListsAndBacklog userId={uid} isOwner />;
       case 6:
-        return <ProfileSocial userId={uid} />;
+        return (
+          <ProfileSocial
+            userId={uid}
+            isOwner
+            followRequests={followRequests}
+            onAcceptRequest={handleAcceptRequest}
+            onRejectRequest={handleRejectRequest}
+            reqBusyId={reqBusyId}
+          />
+        );
       case 7:
         return <ProfileStatus reviews={reviews} profileUser={user} />;
       case 8:
@@ -172,6 +214,95 @@ function ProfilePage() {
         />
 
         <Box sx={{ px: { xs: 2.5, sm: 4 } }}>
+          {followRequests.length > 0 && (
+            <Paper
+              elevation={0}
+              sx={{
+                mb: 3,
+                p: 2,
+                borderRadius: 3,
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.06),
+                border: '1px solid',
+                borderColor: (theme) => alpha(theme.palette.primary.main, 0.25),
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PersonAddAlt1OutlinedIcon color="primary" fontSize="small" />
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Solicitações para seguir você
+                  </Typography>
+                  <Chip size="small" label={followRequests.length} color="primary" sx={{ fontWeight: 700, height: 22 }} />
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  Ao aprovar, a pessoa passa a seguir você e ver seu perfil privado.
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {followRequests.map((req) => (
+                  <Box
+                    key={req.requester_id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1.5,
+                      p: 1.25,
+                      borderRadius: 2,
+                      bgcolor: 'background.paper',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Box
+                      component={Link}
+                      to={`/user/${req.username}`}
+                      sx={{ display: 'flex', alignItems: 'center', gap: 1.5, textDecoration: 'none', color: 'inherit', minWidth: 0 }}
+                    >
+                      <Avatar src={req.avatar_url} sx={{ width: 38, height: 38, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}>
+                        {req.username?.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="body2" fontWeight={700} noWrap>
+                          {req.name || req.username}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" noWrap>
+                          @{req.username}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="primary"
+                        disabled={reqBusyId === req.requester_id}
+                        startIcon={<CheckIcon fontSize="small" />}
+                        onClick={() => handleAcceptRequest(req.requester_id)}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                      >
+                        Aceitar
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="inherit"
+                        disabled={reqBusyId === req.requester_id}
+                        startIcon={<CloseIcon fontSize="small" />}
+                        onClick={() => handleRejectRequest(req.requester_id)}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                      >
+                        Recusar
+                      </Button>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Paper>
+          )}
+
           <ProfileTabs value={tabIndex} onChange={handleTabChange} />
           {renderTabContent()}
         </Box>

@@ -3,6 +3,7 @@ import { Box, Typography, Avatar, Button, Chip, alpha } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined';
 import CheckIcon from '@mui/icons-material/Check';
+import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
@@ -17,6 +18,9 @@ export default function ProfileHeader({
   onFollowToggle,
   onOpenListenLater,
   isFollowing,
+  isRequested = false,
+  isPrivateLocked = false,
+  socialLoading = false,
 }) {
   if (!user) return null;
 
@@ -161,7 +165,7 @@ export default function ProfileHeader({
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {onOpenListenLater && (
+              {onOpenListenLater && !isPrivateLocked && (
                 <Button
                   variant="outlined"
                   size="small"
@@ -179,21 +183,36 @@ export default function ProfileHeader({
                 </Button>
               ) : (
                 <Button
-                  variant={isFollowing ? 'outlined' : 'contained'}
-                  color="primary"
-                  startIcon={isFollowing ? <CheckIcon fontSize="small" /> : <PersonAddAlt1OutlinedIcon fontSize="small" />}
+                  variant={isFollowing || isRequested ? 'outlined' : 'contained'}
+                  color={isRequested ? 'inherit' : 'primary'}
+                  disabled={socialLoading}
+                  startIcon={
+                    isFollowing ? (
+                      <CheckIcon fontSize="small" />
+                    ) : isRequested ? (
+                      <ScheduleOutlinedIcon fontSize="small" />
+                    ) : (
+                      <PersonAddAlt1OutlinedIcon fontSize="small" />
+                    )
+                  }
                   onClick={onFollowToggle}
-                  sx={{ borderRadius: 2 }}
+                  sx={{ borderRadius: 2, fontWeight: 700 }}
                 >
-                  {isFollowing ? 'Seguindo' : 'Seguir'}
+                  {isFollowing
+                    ? 'Seguindo'
+                    : isRequested
+                    ? 'Solicitado'
+                    : user.is_private
+                    ? 'Solicitar para seguir'
+                    : 'Seguir'}
                 </Button>
               )}
             </Box>
           </Box>
         </Box>
 
-        {/* Gêneros Favoritos */}
-        {genres.length > 0 && (
+        {/* Gêneros Favoritos (oculto se conta privada trancada) */}
+        {!isPrivateLocked && genres.length > 0 && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 2.5 }}>
             {genres.map((genre) => (
               <Chip

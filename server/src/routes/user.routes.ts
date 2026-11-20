@@ -73,7 +73,9 @@ export function createUserRouter(userController: UserController): Router {
           is_private: Boolean((targetUser as any).is_private),
           listen_later_is_public: (targetUser as any).listen_later_is_public !== false,
         },
-        reviews: result.reviews
+        reviews: result.reviews,
+        reviewsCount: (result as any).reviewsCount ?? (result.reviews?.length || 0),
+        isPrivateLocked: Boolean((result as any).isPrivateLocked),
       });
     } else {
       res.status(500).json({ error: result.message });

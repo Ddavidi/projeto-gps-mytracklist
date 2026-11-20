@@ -21,7 +21,11 @@ export function createSocialRouter(socialController: SocialController): Router {
     const result = await socialController.followUser(req.user!.userId, followingId);
 
     if (result.success) {
-      res.status(201).json({ message: 'A seguir utilizador com sucesso.' });
+      const status = (result as any).status || 'following';
+      res.status(201).json({
+        message: status === 'requested' ? 'Solicitação enviada com sucesso.' : 'A seguir utilizador com sucesso.',
+        status,
+      });
     } else {
       res.status(400).json({ error: result.message });
     }
@@ -78,9 +82,50 @@ export function createSocialRouter(socialController: SocialController): Router {
       Number(req.params.targetUserId)
     );
     if (result.success) {
-      res.json({ isFollowing: result.isFollowing });
+      res.json({ isFollowing: result.isFollowing, isRequested: Boolean((result as any).isRequested) });
     } else {
       res.status(500).json({ error: result.message });
+    }
+  });
+
+  // =====================
+  // Follow Requests (Contas Privadas)
+  // =====================
+
+  router.get('/follow-requests', requireAuth, async (req: Request, res: Response) => {
+    const result = await socialController.getFollowRequests(req.user!.userId);
+    if (result.success) {
+      res.json({ requests: result.requests });
+    } else {
+      res.status(500).json({ error: result.message });
+    }
+  });
+
+  router.post('/follow-requests/:requesterId/accept', requireAuth, async (req: Request, res: Response) => {
+    const requesterId = Number(req.params.requesterId);
+    if (isNaN(requesterId)) {
+      res.status(400).json({ error: 'ID inválido.' });
+      return;
+    }
+    const result = await socialController.acceptFollowRequest(req.user!.userId, requesterId);
+    if (result.success) {
+      res.json({ success: true, message: 'Solicitação aceita.' });
+    } else {
+      res.status(400).json({ error: result.message });
+    }
+  });
+
+  router.delete('/follow-requests/:requesterId', requireAuth, async (req: Request, res: Response) => {
+    const requesterId = Number(req.params.requesterId);
+    if (isNaN(requesterId)) {
+      res.status(400).json({ error: 'ID inválido.' });
+      return;
+    }
+    const result = await socialController.rejectFollowRequest(req.user!.userId, requesterId);
+    if (result.success) {
+      res.json({ success: true, message: 'Solicitação recusada.' });
+    } else {
+      res.status(400).json({ error: result.message });
     }
   });
 

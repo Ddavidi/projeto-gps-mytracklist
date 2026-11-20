@@ -487,7 +487,7 @@ function Navbar() {
                 <Box
                   key={notif.id}
                   component={Link}
-                  to={`/user/${notif.actor_username}`}
+                  to={notif.type === 'follow_request' ? '/profile?tab=social' : `/user/${notif.actor_username}`}
                   onClick={() => setNotificationsOpen(false)}
                   sx={{
                     display: 'flex',
@@ -506,7 +506,13 @@ function Navbar() {
                   <Box>
                     <Typography variant="body2">
                       <Box component="span" fontWeight={700}>{notif.actor_username}</Box>{' '}
-                      {notif.type === 'like' ? 'curtiu sua avaliação.' : 'começou a te seguir.'}
+                      {notif.type === 'like'
+                        ? 'curtiu sua avaliação.'
+                        : notif.type === 'follow_request'
+                        ? 'solicitou para te seguir.'
+                        : notif.type === 'follow_accepted'
+                        ? 'aceitou sua solicitação para seguir.'
+                        : 'começou a te seguir.'}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {formatDateTime(notif.created_at)}

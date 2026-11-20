@@ -356,6 +356,30 @@ export class UserController {
   async getUserReviews(userId: number, requesterId?: number) {
     try {
       const isOwner = requesterId === userId;
+      if (!isOwner) {
+        const target = await this.db.get('SELECT is_private FROM users WHERE id = ?', [userId]);
+        if (target && Boolean(target.is_private)) {
+          const isFollower = requesterId
+            ? await this.db.get(
+                'SELECT id FROM follows WHERE "followerId" = ? AND "followingId" = ?',
+                [requesterId, userId]
+              )
+            : null;
+          if (!isFollower) {
+            const countRow = await this.db.get(
+              'SELECT COUNT(*) as cnt FROM reviews WHERE "userId" = ?',
+              [userId]
+            );
+            return {
+              success: true,
+              reviews: [],
+              reviewsCount: Number(countRow?.cnt || 0),
+              isPrivateLocked: true,
+            };
+          }
+        }
+      }
+
       let rows: any[];
       if (isOwner) {
         rows = await this.db.all(

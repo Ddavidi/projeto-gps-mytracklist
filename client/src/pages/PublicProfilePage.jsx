@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { getUserReviewsByUsername } from '../services/reviews';
 import { getUserFavorites } from '../services/favorites';
-import { followUser, unfollowUser, checkIsFollowing, getFollowers, getFollowing } from '../services/social';
+import { followUser, unfollowUser, checkFollowStatus, getFollowers, getFollowing } from '../services/social';
 import { getMultipleTrackDetails, getMultipleAlbumDetails, getMultipleArtistDetails } from '../services/spotify';
-import { Container, Box, Paper, CircularProgress, Alert } from '@mui/material';
+import { Container, Box, Paper, CircularProgress, Alert, Typography, Button, Divider, alpha } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 
 import ProfileHeader from '../components/profile/ProfileHeader';
@@ -21,7 +21,7 @@ import ListenLaterModal from '../components/profile/ListenLaterModal';
 import TasteMatchCard from '../components/TasteMatchCard';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined';
-import { Button } from '@mui/material';
+import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 
 function PublicProfilePage() {
   const { username } = useParams();
@@ -29,6 +29,7 @@ function PublicProfilePage() {
 
   const [targetUser, setTargetUser] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [reviewsCount, setReviewsCount] = useState(0);
   const [favorites, setFavorites] = useState([]);
   const [itemDetails, setItemDetails] = useState({});
   const [favoriteDetails, setFavoriteDetails] = useState({});
@@ -37,6 +38,7 @@ function PublicProfilePage() {
   const [error, setError] = useState('');
 
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isRequested, setIsRequested] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [socialLoading, setSocialLoading] = useState(false);
@@ -69,22 +71,26 @@ function PublicProfilePage() {
         const response = await getUserReviewsByUsername(username);
         setTargetUser(response.user);
         setReviews(response.reviews || []);
+        setReviewsCount(response.reviewsCount ?? (response.reviews?.length || 0));
 
         if (response.user) {
-          const [myFavs, followers, following, followingStatus] = await Promise.all([
-            getUserFavorites(response.user.id),
-            getFollowers(response.user.id),
-            getFollowing(response.user.id),
-            currentUser ? checkIsFollowing(response.user.id) : Promise.resolve(false),
+          const [myFavs, followers, following, followStatus] = await Promise.all([
+            response.isPrivateLocked ? Promise.resolve([]) : getUserFavorites(response.user.id).catch(() => []),
+            getFollowers(response.user.id).catch(() => []),
+            getFollowing(response.user.id).catch(() => []),
+            currentUser ? checkFollowStatus(response.user.id) : Promise.resolve({ isFollowing: false, isRequested: false }),
           ]);
 
           setFavorites(myFavs || []);
           setFollowersCount((followers || []).length);
           setFollowingCount((following || []).length);
-          setIsFollowing(followingStatus);
+          setIsFollowing(Boolean(followStatus?.isFollowing));
+          setIsRequested(Boolean(followStatus?.isRequested));
 
-          if (response.reviews?.length > 0) await enrichDataWithSpotify(response.reviews, false);
-          if (myFavs?.length > 0) await enrichDataWithSpotify(myFavs, true);
+          if (!response.isPrivateLocked) {
+            if (response.reviews?.length > 0) await enrichDataWithSpotify(response.reviews, false);
+            if (myFavs?.length > 0) await enrichDataWithSpotify(myFavs, true);
+          }
         }
       } catch (err) {
         if (err.response?.status === 404) setError('Utilizador não encontrado.');
@@ -105,11 +111,20 @@ function PublicProfilePage() {
       if (isFollowing) {
         await unfollowUser(targetUser.id);
         setIsFollowing(false);
+        setIsRequested(false);
         setFollowersCount((prev) => Math.max(0, prev - 1));
+      } else if (isRequested) {
+        await unfollowUser(targetUser.id);
+        setIsRequested(false);
       } else {
-        await followUser(targetUser.id);
-        setIsFollowing(true);
-        setFollowersCount((prev) => prev + 1);
+        const res = await followUser(targetUser.id);
+        if (res?.status === 'requested') {
+          setIsRequested(true);
+        } else {
+          setIsFollowing(true);
+          setIsRequested(false);
+          setFollowersCount((prev) => prev + 1);
+        }
       }
     } catch (err) {
       console.error('Erro ao seguir/deixar de seguir:', err);
@@ -169,50 +184,59 @@ function PublicProfilePage() {
       <Paper sx={{ borderRadius: 4, overflow: 'hidden', pb: 5 }}>
         <ProfileHeader
           user={targetUser}
-          isOwner={false}
-          reviewsCount={reviews.length}
+          isOwner={Boolean(isOwnProfile)}
+          reviewsCount={reviewsCount}
           followersCount={followersCount}
           followingCount={followingCount}
           isFollowing={isFollowing}
+          isRequested={isRequested}
+          isPrivateLocked={isPrivateAndHidden}
+          socialLoading={socialLoading}
           onFollowToggle={handleToggleFollow}
           onOpenListenLater={() => setListenLaterOpen(true)}
         />
 
         <Box sx={{ px: { xs: 2.5, sm: 4 } }}>
           {isPrivateAndHidden ? (
-            <Box sx={{ textAlign: 'center', py: { xs: 6, sm: 8 }, px: 3 }}>
-              <Box
-                sx={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: '50%',
-                  bgcolor: (theme) => alpha(theme.palette.text.primary, 0.05),
-                  border: '2px solid',
-                  borderColor: 'divider',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mb: 2,
-                }}
-              >
-                <LockOutlinedIcon sx={{ fontSize: 38, color: 'text.secondary' }} />
+            <>
+              <Divider sx={{ mb: 4 }} />
+              <Box sx={{ textAlign: 'center', py: { xs: 5, sm: 7 }, px: 2 }}>
+                <Box
+                  sx={{
+                    width: 82,
+                    height: 82,
+                    borderRadius: '50%',
+                    bgcolor: (theme) => alpha(theme.palette.text.primary, 0.04),
+                    border: '2px solid',
+                    borderColor: 'divider',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: 2.5,
+                  }}
+                >
+                  <LockOutlinedIcon sx={{ fontSize: 38, color: 'text.secondary' }} />
+                </Box>
+                <Typography variant="h5" fontWeight={800} gutterBottom>
+                  Este perfil é privado
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: '44ch', mx: 'auto', mb: 3 }}>
+                  {isRequested
+                    ? `Sua solicitação para seguir @${targetUser.username} foi enviada. Assim que for aprovada, você poderá ver avaliações, tier lists e atividades.`
+                    : `Envie uma solicitação para seguir @${targetUser.username} e ver suas avaliações, tier lists, diário musical e atividades.`}
+                </Typography>
+                <Button
+                  variant={isRequested ? 'outlined' : 'contained'}
+                  color={isRequested ? 'inherit' : 'primary'}
+                  disabled={socialLoading}
+                  startIcon={isRequested ? <ScheduleOutlinedIcon /> : <PersonAddAlt1OutlinedIcon />}
+                  onClick={handleToggleFollow}
+                  sx={{ borderRadius: 2.5, px: 3.5, py: 1.1, fontWeight: 700 }}
+                >
+                  {isRequested ? 'Solicitação enviada (Cancelar)' : 'Solicitar para seguir'}
+                </Button>
               </Box>
-              <Typography variant="h5" fontWeight={800} gutterBottom>
-                Esta conta é privada
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: '42ch', mx: 'auto', mb: 3 }}>
-                Siga @{targetUser.username} para ter acesso às avaliações, tier lists, diário musical e retrospectiva.
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<PersonAddAlt1OutlinedIcon />}
-                onClick={handleToggleFollow}
-                sx={{ borderRadius: 2.5, px: 3.5, py: 1, fontWeight: 700 }}
-              >
-                Seguir perfil
-              </Button>
-            </Box>
+            </>
           ) : (
             <>
               {!isOwnProfile && targetUser && (
