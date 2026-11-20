@@ -198,6 +198,14 @@ export function createReviewRouter(reviewController: ReviewController): Router {
       res.status(400).json({ error: 'ID do item é obrigatório.' });
       return;
     }
+    if (rating === undefined || rating === null || rating === '' || isNaN(Number(rating))) {
+      res.status(400).json({ error: 'É obrigatório selecionar uma nota de 0 a 10 para avaliar.' });
+      return;
+    }
+    if (Number(rating) < 0 || Number(rating) > 10) {
+      res.status(400).json({ error: 'A nota deve estar entre 0 e 10.' });
+      return;
+    }
     if (!itemType || !VALID_ITEM_TYPES.includes(itemType as ItemType)) {
       res.status(400).json({ error: 'Tipo de item inválido. Use: track, album ou artist.' });
       return;
@@ -229,6 +237,10 @@ export function createReviewRouter(reviewController: ReviewController): Router {
    */
   router.put('/:reviewId', async (req: Request, res: Response) => {
     const { rating, reviewText, listenedAt, isRelisten, vibeTags, hasSpoiler } = req.body;
+    if (rating !== undefined && (rating === null || rating === '' || isNaN(Number(rating)) || Number(rating) < 0 || Number(rating) > 10)) {
+      res.status(400).json({ error: 'A avaliação deve ser uma nota válida de 0 a 10.' });
+      return;
+    }
     const result = await reviewController.updateReview(
       Number(req.params.reviewId!),
       req.user!.userId,

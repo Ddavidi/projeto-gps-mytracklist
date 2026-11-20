@@ -100,6 +100,8 @@ export class ControllerFactory {
           ALTER TABLE users ADD COLUMN IF NOT EXISTS spotify_access_token TEXT;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS spotify_refresh_token TEXT;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS spotify_token_expires_at TIMESTAMPTZ;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS listen_later_is_public BOOLEAN DEFAULT TRUE;
         `);
       } catch (e) {
         console.log('Postgres migration info (user columns might already exist):', e);
@@ -256,6 +258,7 @@ export class ControllerFactory {
           user_id INTEGER NOT NULL,
           title TEXT NOT NULL,
           description TEXT,
+          list_type TEXT NOT NULL DEFAULT 'album',
           is_ranked BOOLEAN DEFAULT TRUE,
           is_public BOOLEAN DEFAULT TRUE,
           created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -263,6 +266,10 @@ export class ControllerFactory {
           FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
       `);
+
+      try {
+        await database.exec(`ALTER TABLE custom_lists ADD COLUMN IF NOT EXISTS list_type TEXT NOT NULL DEFAULT 'album'`);
+      } catch (e) {}
 
       await database.exec(`
         CREATE TABLE IF NOT EXISTS custom_list_items (
@@ -302,11 +309,16 @@ export class ControllerFactory {
           item_name TEXT NOT NULL,
           item_artist TEXT,
           item_image_url TEXT,
+          position INTEGER DEFAULT 0,
           created_at TIMESTAMPTZ DEFAULT NOW(),
           FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
           UNIQUE (user_id, item_id, item_type)
         )
       `);
+
+      try {
+        await database.exec(`ALTER TABLE listen_later ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0`);
+      } catch (e) {}
 
       // Username e e-mail únicos sem diferenciar maiúsculas/minúsculas ("Manga" == "manga")
       try {
@@ -356,6 +368,8 @@ export class ControllerFactory {
       try { await database.exec('ALTER TABLE users ADD COLUMN spotify_access_token TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN spotify_refresh_token TEXT;'); } catch (e) {}
       try { await database.exec('ALTER TABLE users ADD COLUMN spotify_token_expires_at TEXT;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN is_private BOOLEAN DEFAULT 0;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN listen_later_is_public BOOLEAN DEFAULT 1;'); } catch (e) {}
 
       // SQLite schema — reviews (generic: track, album, artist)
       await database.exec(`
@@ -488,6 +502,7 @@ export class ControllerFactory {
           user_id INTEGER NOT NULL,
           title TEXT NOT NULL,
           description TEXT,
+          list_type TEXT NOT NULL DEFAULT 'album',
           is_ranked BOOLEAN DEFAULT 1,
           is_public BOOLEAN DEFAULT 1,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -495,6 +510,7 @@ export class ControllerFactory {
           FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
       `);
+      try { await database.exec("ALTER TABLE custom_lists ADD COLUMN list_type TEXT NOT NULL DEFAULT 'album';"); } catch (e) {}
 
       await database.exec(`
         CREATE TABLE IF NOT EXISTS custom_list_items (
@@ -533,11 +549,13 @@ export class ControllerFactory {
           item_name TEXT NOT NULL,
           item_artist TEXT,
           item_image_url TEXT,
+          position INTEGER DEFAULT 0,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
           UNIQUE (user_id, item_id, item_type)
         );
       `);
+      try { await database.exec("ALTER TABLE listen_later ADD COLUMN position INTEGER DEFAULT 0;"); } catch (e) {}
     }
 
     console.log('Banco de dados inicializado com todas as tabelas.');

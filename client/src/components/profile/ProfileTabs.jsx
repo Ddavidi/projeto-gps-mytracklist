@@ -31,8 +31,8 @@ export default function ProfileTabs({ value, onChange }) {
         <Tab label="Músicas" />
         <Tab label="Álbuns" />
         <Tab label="Artistas" />
-        <Tab label="Diário & Wrapped" />
-        <Tab label="Listas & Quero Ouvir" />
+        <Tab label="Diário" />
+        <Tab label="Tier List" />
         <Tab label="Social" />
         <Tab label="Estatísticas" />
         <Tab label="Playlists" />

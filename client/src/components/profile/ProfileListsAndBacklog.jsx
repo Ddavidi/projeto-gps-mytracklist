@@ -13,29 +13,31 @@ import {
   DialogActions,
   TextField,
   FormControlLabel,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  Radio,
   Switch,
   Chip,
-  Divider,
   alpha,
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import BookmarkRemoveOutlinedIcon from '@mui/icons-material/BookmarkRemoveOutlined';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import AlbumIcon from '@mui/icons-material/Album';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { getUserLists, createList, deleteList } from '../../services/lists';
-import { getUserListenLater, removeListenLater } from '../../services/listenLater';
 
 export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
   const [lists, setLists] = useState([]);
-  const [backlog, setBacklog] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [listType, setListType] = useState('album'); // 'album' | 'track'
   const [isRanked, setIsRanked] = useState(true);
   const [isPublic, setIsPublic] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -44,12 +46,8 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
     if (!userId) return;
     setLoading(true);
     try {
-      const [userLists, listenLater] = await Promise.all([
-        getUserLists(userId),
-        getUserListenLater(userId),
-      ]);
+      const userLists = await getUserLists(userId);
       setLists(userLists || []);
-      setBacklog(listenLater || []);
     } finally {
       setLoading(false);
     }
@@ -64,9 +62,16 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
     if (!title.trim()) return;
     setSubmitting(true);
     try {
-      await createList({ title: title.trim(), description: description.trim(), isRanked, isPublic });
+      await createList({
+        title: title.trim(),
+        description: description.trim(),
+        isRanked,
+        isPublic,
+        listType,
+      });
       setTitle('');
       setDescription('');
+      setListType('album');
       setCreateOpen(false);
       loadData();
     } finally {
@@ -80,11 +85,6 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
     loadData();
   };
 
-  const handleRemoveBacklog = async (itemType, itemId) => {
-    await removeListenLater(itemType, itemId);
-    setBacklog((prev) => prev.filter((i) => !(i.item_type === itemType && i.item_id === itemId)));
-  };
-
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -95,195 +95,172 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
 
   return (
     <Box>
-      {/* Seção 1: Listas Customizadas */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
         <Box>
-          <Typography variant="h6">Listas Customizadas</Typography>
+          <Typography variant="h6" fontWeight={700}>
+            Tier Lists & Coleções
+          </Typography>
           <Typography variant="caption" color="text.secondary">
-            Rankings temáticos, recomendações e coleções musicais.
+            Rankings de álbuns ou músicas com posições e avaliações personalizadas.
           </Typography>
         </Box>
         {isOwner && (
           <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
-            Nova Lista
+            Nova Tier List
           </Button>
         )}
       </Box>
 
       {lists.length === 0 ? (
-        <Paper sx={{ p: 3.5, borderRadius: 3, mb: 4, textAlign: 'center', bgcolor: (theme) => alpha(theme.palette.text.primary, 0.02) }}>
+        <Paper sx={{ p: 4, borderRadius: 3, textAlign: 'center', bgcolor: (theme) => alpha(theme.palette.text.primary, 0.02) }}>
+          <Typography variant="body1" fontWeight={600} gutterBottom>
+            Nenhuma Tier List criada ainda
+          </Typography>
           <Typography variant="body2" color="text.secondary">
             {isOwner
-              ? 'Você ainda não criou nenhuma lista. Monte um "Top 10 Álbuns da Vida" ou uma seleção por vibe!'
+              ? 'Crie sua primeira lista para organizar seu Top 10 de Álbuns ou Melhores Músicas da Vida!'
               : 'Este usuário ainda não publicou listas.'}
           </Typography>
         </Paper>
       ) : (
-        <Grid container spacing={2.5} sx={{ mb: 5 }}>
-          {lists.map((list) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={list.id}>
-              <Paper
-                className="mtl-album-card"
-                sx={{
-                  p: 2,
-                  borderRadius: 3,
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Box component={Link} to={`/lists/${list.id}`} sx={{ textDecoration: 'none', color: 'inherit' }}>
-                  {/* Colagem de até 4 capas */}
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(4, 1fr)',
-                      gap: 0.5,
-                      height: 82,
-                      borderRadius: 2,
-                      overflow: 'hidden',
-                      bgcolor: 'action.hover',
-                      mb: 1.5,
-                    }}
-                  >
-                    {[0, 1, 2, 3].map((slot) => (
-                      <Box
-                        key={slot}
-                        sx={{
-                          bgcolor: (theme) => alpha(theme.palette.text.primary, 0.06),
-                          backgroundImage: list.preview_covers?.[slot] ? `url(${list.preview_covers[slot]})` : 'none',
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {!list.preview_covers?.[slot] && <AlbumIcon sx={{ fontSize: 18, opacity: 0.25 }} />}
-                      </Box>
-                    ))}
-                  </Box>
+        <Grid container spacing={2.5}>
+          {lists.map((list) => {
+            const isTrackList = list.list_type === 'track';
 
-                  <Typography variant="subtitle1" fontWeight={700} noWrap>
-                    {list.title}
-                  </Typography>
-                  {list.description && (
-                    <Typography variant="caption" color="text.secondary" noWrap display="block">
-                      {list.description}
-                    </Typography>
-                  )}
-                </Box>
-
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Chip size="small" label={`${list.items_count} itens`} variant="outlined" sx={{ height: 22, fontSize: '0.7rem' }} />
-                    {list.is_ranked && <FormatListNumberedIcon color="primary" sx={{ fontSize: 16 }} />}
-                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, color: 'text.secondary' }}>
-                      <FavoriteIcon sx={{ fontSize: 13 }} />
-                      <Typography variant="caption" className="mtl-mono">{list.likes_count}</Typography>
-                    </Box>
-                  </Box>
-                  {isOwner && (
-                    <IconButton size="small" color="error" onClick={() => handleDeleteList(list.id)} aria-label="Apagar lista">
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </Box>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
-      <Divider sx={{ my: 4 }} />
-
-      {/* Seção 2: Quero Ouvir (Listen Later) */}
-      <Box sx={{ mb: 2.5 }}>
-        <Typography variant="h6">Quero Ouvir ({backlog.length})</Typography>
-        <Typography variant="caption" color="text.secondary">
-          Álbuns e faixas salvos na fila para escutar e avaliar depois.
-        </Typography>
-      </Box>
-
-      {backlog.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          Nenhum item salvo na fila Quero Ouvir ainda.
-        </Typography>
-      ) : (
-        <Grid container spacing={2}>
-          {backlog.map((item) => (
-            <Grid size={{ xs: 6, sm: 4, md: 3 }} key={item.id}>
-              <Paper className="mtl-album-card" sx={{ p: 1.25, borderRadius: 3, height: '100%' }}>
-                <Box
-                  component={Link}
-                  to={`/${item.item_type}/${item.item_id}`}
-                  sx={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+            return (
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={list.id}>
+                <Paper
+                  className="mtl-album-card"
+                  sx={{
+                    p: 2,
+                    borderRadius: 3,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
                 >
-                  <Box
-                    sx={{
-                      width: '100%',
-                      aspectRatio: '1 / 1',
-                      borderRadius: 2,
-                      overflow: 'hidden',
-                      bgcolor: 'action.hover',
-                      mb: 1,
-                    }}
-                  >
-                    {item.item_image_url ? (
-                      <Box
-                        component="img"
-                        src={item.item_image_url}
-                        alt={item.item_name}
-                        className="mtl-cover-img"
-                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  <Box component={Link} to={`/lists/${list.id}`} sx={{ textDecoration: 'none', color: 'inherit' }}>
+                    {/* Colagem de até 4 capas */}
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gap: 0.5,
+                        height: 86,
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        bgcolor: 'action.hover',
+                        mb: 1.5,
+                      }}
+                    >
+                      {[0, 1, 2, 3].map((slot) => (
+                        <Box
+                          key={slot}
+                          sx={{
+                            bgcolor: (theme) => alpha(theme.palette.text.primary, 0.06),
+                            backgroundImage: list.preview_covers?.[slot] ? `url(${list.preview_covers[slot]})` : 'none',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {!list.preview_covers?.[slot] && (
+                            isTrackList ? <MusicNoteIcon sx={{ fontSize: 18, opacity: 0.25 }} /> : <AlbumIcon sx={{ fontSize: 18, opacity: 0.25 }} />
+                          )}
+                        </Box>
+                      ))}
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
+                      <Chip
+                        size="small"
+                        icon={isTrackList ? <MusicNoteIcon sx={{ fontSize: 13 }} /> : <AlbumIcon sx={{ fontSize: 13 }} />}
+                        label={isTrackList ? 'Músicas' : 'Álbuns'}
+                        color="primary"
+                        variant="outlined"
+                        sx={{ height: 22, fontSize: '0.68rem', fontWeight: 700 }}
                       />
-                    ) : (
-                      <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <AlbumIcon color="disabled" />
-                      </Box>
+                      {list.is_ranked && (
+                        <Chip size="small" label="Ranqueada" sx={{ height: 22, fontSize: '0.68rem' }} />
+                      )}
+                      {!list.is_public && (
+                        <Chip size="small" label="Privada" color="warning" variant="outlined" sx={{ height: 22, fontSize: '0.68rem' }} />
+                      )}
+                    </Box>
+
+                    <Typography variant="subtitle1" fontWeight={700} noWrap>
+                      {list.title}
+                    </Typography>
+                    {list.description && (
+                      <Typography variant="caption" color="text.secondary" noWrap display="block">
+                        {list.description}
+                      </Typography>
                     )}
                   </Box>
-                  <Typography variant="body2" fontWeight={700} noWrap>
-                    {item.item_name}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap display="block">
-                    {item.item_artist || (item.item_type === 'album' ? 'Álbum' : 'Música')}
-                  </Typography>
-                </Box>
 
-                {isOwner && (
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.75 }}>
-                    <Button
-                      size="small"
-                      color="inherit"
-                      startIcon={<BookmarkRemoveOutlinedIcon sx={{ fontSize: 15 }} />}
-                      onClick={() => handleRemoveBacklog(item.item_type, item.item_id)}
-                      sx={{ fontSize: '0.72rem', color: 'text.secondary', py: 0.2 }}
-                    >
-                      Remover
-                    </Button>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                      <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                        {list.items_count} {list.items_count === 1 ? 'item' : 'itens'}
+                      </Typography>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, color: 'text.secondary' }}>
+                        <FavoriteIcon sx={{ fontSize: 13 }} />
+                        <Typography variant="caption" className="mtl-mono">{list.likes_count}</Typography>
+                      </Box>
+                    </Box>
+                    {isOwner && (
+                      <IconButton size="small" color="error" onClick={() => handleDeleteList(list.id)} aria-label="Apagar lista">
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    )}
                   </Box>
-                )}
-              </Paper>
-            </Grid>
-          ))}
+                </Paper>
+              </Grid>
+            );
+          })}
         </Grid>
       )}
 
-      {/* Modal Criar Lista */}
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="xs" fullWidth>
+      {/* Modal Criar Tier List / Lista com seleção obrigatória de tipo */}
+      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3.5 } }}>
         <Box component="form" onSubmit={handleCreate}>
-          <DialogTitle>Nova Lista Musical</DialogTitle>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
+          <DialogTitle sx={{ pb: 1, fontWeight: 800 }}>Nova Tier List / Lista</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '10px !important' }}>
             <TextField
               label="Título da Lista"
-              placeholder="Ex: Melhores discos para ouvir à noite"
+              placeholder="Ex: Top 10 Álbuns da Minha Vida"
               required
               fullWidth
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
+
+            {/* Escolha do Tipo de Lista: Álbuns OU Músicas (sem misturar) */}
+            <FormControl component="fieldset" sx={{ p: 1.5, borderRadius: 2, bgcolor: (theme) => alpha(theme.palette.text.primary, 0.03), border: '1px solid', borderColor: 'divider' }}>
+              <FormLabel component="legend" sx={{ fontSize: '0.78rem', fontWeight: 700, mb: 0.5, color: 'text.primary' }}>
+                Formato dos itens da lista (não misturados):
+              </FormLabel>
+              <RadioGroup
+                row
+                value={listType}
+                onChange={(e) => setListType(e.target.value)}
+              >
+                <FormControlLabel
+                  value="album"
+                  control={<Radio size="small" color="primary" />}
+                  label={<Typography variant="body2" fontWeight={600}>💿 Apenas Álbuns</Typography>}
+                />
+                <FormControlLabel
+                  value="track"
+                  control={<Radio size="small" color="primary" />}
+                  label={<Typography variant="body2" fontWeight={600}>🎵 Apenas Músicas</Typography>}
+                />
+              </RadioGroup>
+            </FormControl>
+
             <TextField
               label="Descrição (opcional)"
               multiline
@@ -294,11 +271,11 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
             />
             <FormControlLabel
               control={<Switch checked={isRanked} onChange={(e) => setIsRanked(e.target.checked)} color="primary" />}
-              label="Lista ranqueada (1º, 2º, 3º...)"
+              label="Lista ranqueada com posições (1º, 2º, 3º...)"
             />
             <FormControlLabel
               control={<Switch checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} color="primary" />}
-              label="Visível para a comunidade"
+              label="Pública para a comunidade"
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2.5 }}>
@@ -312,4 +289,3 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
     </Box>
   );
 }
-

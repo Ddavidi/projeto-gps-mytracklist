@@ -17,7 +17,11 @@ import ProfilePlaylists from '../components/profile/ProfilePlaylists';
 import ProfileSpotifyStats from '../components/profile/ProfileSpotifyStats';
 import ProfileDiaryWrapped from '../components/profile/ProfileDiaryWrapped';
 import ProfileListsAndBacklog from '../components/profile/ProfileListsAndBacklog';
+import ListenLaterModal from '../components/profile/ListenLaterModal';
 import TasteMatchCard from '../components/TasteMatchCard';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined';
+import { Button } from '@mui/material';
 
 function PublicProfilePage() {
   const { username } = useParams();
@@ -38,6 +42,7 @@ function PublicProfilePage() {
   const [socialLoading, setSocialLoading] = useState(false);
 
   const [tabIndex, setTabIndex] = useState(0);
+  const [listenLaterOpen, setListenLaterOpen] = useState(false);
 
   const enrichDataWithSpotify = useCallback(async (items, isFavorites = false) => {
     const trackIds = [...new Set(items.filter((i) => i.item_type === 'track').map((i) => i.item_id))];
@@ -157,6 +162,8 @@ function PublicProfilePage() {
     }
   };
 
+  const isPrivateAndHidden = Boolean(targetUser?.is_private) && !isOwnProfile && !isFollowing;
+
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 2.5, md: 4 } }} className="mtl-reveal">
       <Paper sx={{ borderRadius: 4, overflow: 'hidden', pb: 5 }}>
@@ -168,16 +175,62 @@ function PublicProfilePage() {
           followingCount={followingCount}
           isFollowing={isFollowing}
           onFollowToggle={handleToggleFollow}
+          onOpenListenLater={() => setListenLaterOpen(true)}
         />
 
         <Box sx={{ px: { xs: 2.5, sm: 4 } }}>
-          {!isOwnProfile && targetUser && (
-            <TasteMatchCard targetUserId={targetUser.id} targetUsername={targetUser.username} />
+          {isPrivateAndHidden ? (
+            <Box sx={{ textAlign: 'center', py: { xs: 6, sm: 8 }, px: 3 }}>
+              <Box
+                sx={{
+                  width: 76,
+                  height: 76,
+                  borderRadius: '50%',
+                  bgcolor: (theme) => alpha(theme.palette.text.primary, 0.05),
+                  border: '2px solid',
+                  borderColor: 'divider',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 2,
+                }}
+              >
+                <LockOutlinedIcon sx={{ fontSize: 38, color: 'text.secondary' }} />
+              </Box>
+              <Typography variant="h5" fontWeight={800} gutterBottom>
+                Esta conta é privada
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: '42ch', mx: 'auto', mb: 3 }}>
+                Siga @{targetUser.username} para ter acesso às avaliações, tier lists, diário musical e retrospectiva.
+              </Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<PersonAddAlt1OutlinedIcon />}
+                onClick={handleToggleFollow}
+                sx={{ borderRadius: 2.5, px: 3.5, py: 1, fontWeight: 700 }}
+              >
+                Seguir perfil
+              </Button>
+            </Box>
+          ) : (
+            <>
+              {!isOwnProfile && targetUser && (
+                <TasteMatchCard targetUserId={targetUser.id} targetUsername={targetUser.username} />
+              )}
+              <ProfileTabs value={tabIndex} onChange={(e, val) => setTabIndex(val)} />
+              {renderTabContent()}
+            </>
           )}
-          <ProfileTabs value={tabIndex} onChange={(e, val) => setTabIndex(val)} />
-          {renderTabContent()}
         </Box>
       </Paper>
+
+      <ListenLaterModal
+        open={listenLaterOpen}
+        onClose={() => setListenLaterOpen(false)}
+        userId={targetUser?.id}
+        isOwner={false}
+      />
     </Container>
   );
 }

@@ -49,13 +49,14 @@ export function createListRouter(listController: ListController): Router {
   router.use(requireAuth);
 
   router.post('/', async (req: Request, res: Response) => {
-    const { title, description, isRanked, isPublic } = req.body;
+    const { title, description, isRanked, isPublic, listType } = req.body;
     const result = await listController.createList(
       req.user!.userId,
       title || '',
       description || '',
       isRanked !== false,
-      isPublic !== false
+      isPublic !== false,
+      listType || 'album'
     );
     if (result.success) res.status(201).json(result);
     else res.status(400).json({ error: result.message });

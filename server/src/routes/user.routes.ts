@@ -70,6 +70,8 @@ export function createUserRouter(userController: UserController): Router {
           favorite_genres: (targetUser as any).favorite_genres || [],
           created_at: (targetUser as any).created_at,
           spotify_connected: Boolean((targetUser as any).spotify_connected),
+          is_private: Boolean((targetUser as any).is_private),
+          listen_later_is_public: (targetUser as any).listen_later_is_public !== false,
         },
         reviews: result.reviews
       });

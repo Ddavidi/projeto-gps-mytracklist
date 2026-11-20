@@ -6,7 +6,7 @@ export class ListController {
   async getPublicLists(limit: number = 24, userId?: number) {
     try {
       const lists = await this.db.all(
-        `SELECT l.id, l.user_id, l.title, l.description, l.is_ranked, l.is_public, l.created_at, l.updated_at,
+        `SELECT l.id, l.user_id, l.title, l.description, l.list_type, l.is_ranked, l.is_public, l.created_at, l.updated_at,
                 u.username as author_username, u.avatar_url as author_avatar,
                 (SELECT COUNT(*) FROM custom_list_items li WHERE li.list_id = l.id) as items_count,
                 (SELECT COUNT(*) FROM custom_list_likes ll WHERE ll.list_id = l.id) as likes_count
@@ -38,6 +38,7 @@ export class ListController {
           }
           return {
             ...list,
+            list_type: list.list_type || 'album',
             is_ranked: Boolean(list.is_ranked),
             is_public: Boolean(list.is_public),
             items_count: Number(list.items_count || 0),
@@ -63,7 +64,7 @@ export class ListController {
         : 'l.user_id = ? AND (l.is_public = true OR l.is_public = 1)';
 
       const lists = await this.db.all(
-        `SELECT l.id, l.user_id, l.title, l.description, l.is_ranked, l.is_public, l.created_at, l.updated_at,
+        `SELECT l.id, l.user_id, l.title, l.description, l.list_type, l.is_ranked, l.is_public, l.created_at, l.updated_at,
                 u.username as author_username, u.avatar_url as author_avatar,
                 (SELECT COUNT(*) FROM custom_list_items li WHERE li.list_id = l.id) as items_count,
                 (SELECT COUNT(*) FROM custom_list_likes ll WHERE ll.list_id = l.id) as likes_count
@@ -82,6 +83,7 @@ export class ListController {
           );
           return {
             ...list,
+            list_type: list.list_type || 'album',
             is_ranked: Boolean(list.is_ranked),
             is_public: Boolean(list.is_public),
             items_count: Number(list.items_count || 0),
@@ -101,7 +103,7 @@ export class ListController {
   async getListById(listId: number, requesterId?: number) {
     try {
       const list = await this.db.get(
-        `SELECT l.id, l.user_id, l.title, l.description, l.is_ranked, l.is_public, l.created_at, l.updated_at,
+        `SELECT l.id, l.user_id, l.title, l.description, l.list_type, l.is_ranked, l.is_public, l.created_at, l.updated_at,
                 u.username as author_username, u.avatar_url as author_avatar,
                 (SELECT COUNT(*) FROM custom_list_likes ll WHERE ll.list_id = l.id) as likes_count
          FROM custom_lists l
@@ -136,6 +138,7 @@ export class ListController {
         success: true,
         list: {
           ...list,
+          list_type: list.list_type || 'album',
           is_ranked: Boolean(list.is_ranked),
           is_public: Boolean(list.is_public),
           likes_count: Number(list.likes_count || 0),
@@ -149,15 +152,16 @@ export class ListController {
     }
   }
 
-  async createList(userId: number, title: string, description: string = '', isRanked: boolean = true, isPublic: boolean = true) {
+  async createList(userId: number, title: string, description: string = '', isRanked: boolean = true, isPublic: boolean = true, listType: string = 'album') {
     try {
       const cleanTitle = title.trim();
       if (!cleanTitle) return { success: false, message: 'O título da lista é obrigatório.' };
+      const normalizedType = listType === 'track' ? 'track' : 'album';
 
       const result = await this.db.run(
-        `INSERT INTO custom_lists (user_id, title, description, is_ranked, is_public, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        [userId, cleanTitle, description.trim(), isRanked, isPublic]
+        `INSERT INTO custom_lists (user_id, title, description, list_type, is_ranked, is_public, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [userId, cleanTitle, description.trim(), normalizedType, isRanked, isPublic]
       );
 
       return { success: true, listId: result.lastInsertRowid };
@@ -189,9 +193,17 @@ export class ListController {
     item: { itemId: string; itemType: string; itemName: string; itemArtist?: string; itemImageUrl?: string; note?: string }
   ) {
     try {
-      const list = await this.db.get('SELECT id, user_id FROM custom_lists WHERE id = ?', [listId]);
+      const list = await this.db.get('SELECT id, user_id, list_type FROM custom_lists WHERE id = ?', [listId]);
       if (!list || list.user_id !== userId) {
         return { success: false, message: 'Lista não encontrada ou sem permissão.' };
+      }
+
+      const allowedType = list.list_type || 'album';
+      if (item.itemType !== allowedType) {
+        return {
+          success: false,
+          message: `Esta lista aceita exclusivamente ${allowedType === 'album' ? 'álbuns' : 'músicas'}. Não é permitido misturar formatos na mesma lista.`,
+        };
       }
 
       const existing = await this.db.get(

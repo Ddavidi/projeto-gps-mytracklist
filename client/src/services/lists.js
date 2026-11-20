@@ -15,8 +15,8 @@ export const getListById = async (listId) => {
   return res.data;
 };
 
-export const createList = async ({ title, description, isRanked = true, isPublic = true }) => {
-  const res = await api.post('/lists', { title, description, isRanked, isPublic });
+export const createList = async ({ title, description, isRanked = true, isPublic = true, listType = 'album' }) => {
+  const res = await api.post('/lists', { title, description, isRanked, isPublic, listType });
   return res.data;
 };
 

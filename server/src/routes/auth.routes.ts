@@ -193,7 +193,7 @@ export function createAuthRouter(userController: UserController): Router {
    * Atualiza as informações de perfil (aceita atualização parcial para onboarding/configurações).
    */
   router.put('/profile', requireAuth, async (req: Request, res: Response) => {
-    const { name, gender, birthDate, bio, favoriteGenres } = req.body;
+    const { name, gender, birthDate, bio, favoriteGenres, is_private, listen_later_is_public } = req.body;
 
     const result = await userController.updateUserProfile(req.user!.userId, {
       name,
@@ -201,6 +201,8 @@ export function createAuthRouter(userController: UserController): Router {
       birthDate,
       bio,
       favoriteGenres,
+      is_private,
+      listen_later_is_public,
     });
 
     if (result.success) {

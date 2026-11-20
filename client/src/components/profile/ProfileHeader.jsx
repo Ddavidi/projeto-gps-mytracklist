@@ -4,6 +4,8 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined';
 import CheckIcon from '@mui/icons-material/Check';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 
 export default function ProfileHeader({
   user,
@@ -13,6 +15,7 @@ export default function ProfileHeader({
   followingCount = 0,
   onEditClick,
   onFollowToggle,
+  onOpenListenLater,
   isFollowing,
 }) {
   if (!user) return null;
@@ -86,6 +89,16 @@ export default function ProfileHeader({
               <Typography variant="h4" sx={{ fontSize: { xs: '1.6rem', sm: '2rem' } }}>
                 {user.name || user.username}
               </Typography>
+              {user.is_private && (
+                <Chip
+                  size="small"
+                  icon={<LockOutlinedIcon sx={{ fontSize: 13 }} />}
+                  label="Privado"
+                  variant="outlined"
+                  color="warning"
+                  sx={{ height: 24, fontSize: '0.72rem', fontWeight: 600 }}
+                />
+              )}
               {user.spotify_connected && (
                 <Chip
                   size="small"
@@ -107,12 +120,12 @@ export default function ProfileHeader({
             )}
           </Box>
 
-          {/* Contadores e Botão de Ação */}
+          {/* Contadores e Botões de Ação */}
           <Box
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: { xs: 2.5, sm: 3.5 },
+              gap: { xs: 2, sm: 3 },
               flexWrap: 'wrap',
               width: { xs: '100%', md: 'auto' },
               justifyContent: { xs: 'space-between', md: 'flex-end' },
@@ -147,20 +160,35 @@ export default function ProfileHeader({
               </Box>
             </Box>
 
-            {isOwner ? (
-              <Button variant="outlined" startIcon={<EditOutlinedIcon fontSize="small" />} onClick={onEditClick}>
-                Editar perfil
-              </Button>
-            ) : (
-              <Button
-                variant={isFollowing ? 'outlined' : 'contained'}
-                color="primary"
-                startIcon={isFollowing ? <CheckIcon fontSize="small" /> : <PersonAddAlt1OutlinedIcon fontSize="small" />}
-                onClick={onFollowToggle}
-              >
-                {isFollowing ? 'Seguindo' : 'Seguir'}
-              </Button>
-            )}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {onOpenListenLater && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<BookmarkBorderIcon fontSize="small" />}
+                  onClick={onOpenListenLater}
+                  sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                >
+                  Quero Ouvir
+                </Button>
+              )}
+
+              {isOwner ? (
+                <Button variant="outlined" startIcon={<EditOutlinedIcon fontSize="small" />} onClick={onEditClick} sx={{ borderRadius: 2 }}>
+                  Editar perfil
+                </Button>
+              ) : (
+                <Button
+                  variant={isFollowing ? 'outlined' : 'contained'}
+                  color="primary"
+                  startIcon={isFollowing ? <CheckIcon fontSize="small" /> : <PersonAddAlt1OutlinedIcon fontSize="small" />}
+                  onClick={onFollowToggle}
+                  sx={{ borderRadius: 2 }}
+                >
+                  {isFollowing ? 'Seguindo' : 'Seguir'}
+                </Button>
+              )}
+            </Box>
           </Box>
         </Box>
 

@@ -74,11 +74,11 @@ export default function ListDetailsPage() {
     setSearching(true);
     try {
       const res = await searchMulti(query.trim());
-      const combined = [
-        ...(res.albums || []).slice(0, 4).map((a) => ({ itemId: a.id, itemType: 'album', itemName: a.name, itemArtist: a.artist, itemImageUrl: a.imageUrl })),
-        ...(res.tracks || []).slice(0, 4).map((t) => ({ itemId: t.id, itemType: 'track', itemName: t.name, itemArtist: t.artist, itemImageUrl: t.imageUrl })),
-      ];
-      setSearchResults(combined);
+      const targetType = list?.list_type || 'album';
+      const filtered = targetType === 'album'
+        ? (res.albums || []).slice(0, 6).map((a) => ({ itemId: a.id, itemType: 'album', itemName: a.name, itemArtist: a.artist, itemImageUrl: a.imageUrl }))
+        : (res.tracks || []).slice(0, 6).map((t) => ({ itemId: t.id, itemType: 'track', itemName: t.name, itemArtist: t.artist, itemImageUrl: t.imageUrl }));
+      setSearchResults(filtered);
     } finally {
       setSearching(false);
     }
@@ -125,7 +125,14 @@ export default function ListDetailsPage() {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-              {list.is_ranked && <Chip size="small" label="Lista Ranqueada" color="primary" variant="outlined" />}
+              <Chip
+                size="small"
+                label={list.list_type === 'track' ? '🎵 Lista de Músicas' : '💿 Lista de Álbuns'}
+                color="primary"
+                variant="outlined"
+                sx={{ fontWeight: 700 }}
+              />
+              {list.is_ranked && <Chip size="small" label="Ranqueada" variant="outlined" />}
               {!list.is_public && <Chip size="small" label="Privada" variant="outlined" />}
             </Box>
             <Typography variant="h3" sx={{ fontSize: { xs: '1.8rem', sm: '2.3rem' }, mb: 1 }}>

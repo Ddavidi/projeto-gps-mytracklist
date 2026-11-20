@@ -17,6 +17,7 @@ import ProfilePlaylists from '../components/profile/ProfilePlaylists';
 import ProfileSpotifyStats from '../components/profile/ProfileSpotifyStats';
 import ProfileDiaryWrapped from '../components/profile/ProfileDiaryWrapped';
 import ProfileListsAndBacklog from '../components/profile/ProfileListsAndBacklog';
+import ListenLaterModal from '../components/profile/ListenLaterModal';
 import EditProfileModal from '../components/profile/EditProfileModal';
 
 function ProfilePage() {
@@ -35,6 +36,7 @@ function ProfilePage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [listenLaterOpen, setListenLaterOpen] = useState(false);
 
   const getInitialTab = useCallback(() => {
     const tab = searchParams.get('tab');
@@ -166,6 +168,7 @@ function ProfilePage() {
           followersCount={followersCount}
           followingCount={followingCount}
           onEditClick={() => setEditModalOpen(true)}
+          onOpenListenLater={() => setListenLaterOpen(true)}
         />
 
         <Box sx={{ px: { xs: 2.5, sm: 4 } }}>
@@ -173,6 +176,13 @@ function ProfilePage() {
           {renderTabContent()}
         </Box>
       </Paper>
+
+      <ListenLaterModal
+        open={listenLaterOpen}
+        onClose={() => setListenLaterOpen(false)}
+        userId={uid}
+        isOwner={true}
+      />
 
       <EditProfileModal
         open={editModalOpen}

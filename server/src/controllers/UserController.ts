@@ -197,7 +197,7 @@ export class UserController {
   async getUserById(userId: number) {
     try {
       const user = await this.db.get(
-        `SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, favorite_genres, is_admin, created_at,
+        `SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, favorite_genres, is_admin, is_private, listen_later_is_public, created_at,
          (CASE WHEN spotify_access_token IS NOT NULL AND spotify_access_token != '' THEN 1 ELSE 0 END) as spotify_connected
          FROM users WHERE id = ?`,
         [userId]
@@ -205,6 +205,8 @@ export class UserController {
       if (!user) return null;
       return {
         ...user,
+        is_private: Boolean(user.is_private),
+        listen_later_is_public: user.listen_later_is_public === null || user.listen_later_is_public === undefined ? true : Boolean(user.listen_later_is_public),
         favorite_genres: this.parseFavoriteGenres(user.favorite_genres),
         spotify_connected: Number(user.spotify_connected) === 1,
       };
@@ -217,7 +219,7 @@ export class UserController {
   async getUserByUsername(username: string) {
     try {
       const user = await this.db.get(
-        `SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, favorite_genres, is_admin, created_at,
+        `SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, favorite_genres, is_admin, is_private, listen_later_is_public, created_at,
          (CASE WHEN spotify_access_token IS NOT NULL AND spotify_access_token != '' THEN 1 ELSE 0 END) as spotify_connected
          FROM users WHERE LOWER(username) = LOWER(?)`,
         [username.trim()]
@@ -225,6 +227,8 @@ export class UserController {
       if (!user) return null;
       return {
         ...user,
+        is_private: Boolean(user.is_private),
+        listen_later_is_public: user.listen_later_is_public === null || user.listen_later_is_public === undefined ? true : Boolean(user.listen_later_is_public),
         favorite_genres: this.parseFavoriteGenres(user.favorite_genres),
         spotify_connected: Number(user.spotify_connected) === 1,
       };
@@ -251,7 +255,7 @@ export class UserController {
 
   async updateUserProfile(
     userId: number,
-    fields: { name?: string; gender?: string; birthDate?: string; bio?: string; favoriteGenres?: string[] }
+    fields: { name?: string; gender?: string; birthDate?: string; bio?: string; favoriteGenres?: string[]; is_private?: boolean; listen_later_is_public?: boolean }
   ) {
     try {
       const updates: string[] = [];
@@ -276,6 +280,14 @@ export class UserController {
       if (fields.favoriteGenres !== undefined) {
         updates.push('favorite_genres = ?');
         params.push(JSON.stringify(Array.isArray(fields.favoriteGenres) ? fields.favoriteGenres : []));
+      }
+      if (fields.is_private !== undefined) {
+        updates.push('is_private = ?');
+        params.push(fields.is_private);
+      }
+      if (fields.listen_later_is_public !== undefined) {
+        updates.push('listen_later_is_public = ?');
+        params.push(fields.listen_later_is_public);
       }
 
       if (updates.length === 0) {

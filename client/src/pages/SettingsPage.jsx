@@ -14,11 +14,14 @@ import {
   MenuItem,
   Grid,
   Chip,
+  FormControlLabel,
+  Switch,
   alpha,
 } from '@mui/material';
 import PaletteIcon from '@mui/icons-material/Palette';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
 import LinkIcon from '@mui/icons-material/Link';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CheckIcon from '@mui/icons-material/Check';
@@ -41,6 +44,7 @@ function SettingsPage() {
     birthDate: '',
     bio: '',
     favoriteGenres: [],
+    is_private: false,
   });
   const [passwordData, setPasswordData] = useState({
     oldPassword: '',
@@ -77,6 +81,7 @@ function SettingsPage() {
         birthDate: user.birth_date || '',
         bio: user.bio || '',
         favoriteGenres: Array.isArray(user.favorite_genres) ? user.favorite_genres : [],
+        is_private: Boolean(user.is_private),
       });
       setSpotifyConnected(Boolean(user.spotify_connected));
     }
@@ -271,8 +276,56 @@ function SettingsPage() {
                 })}
               </Box>
 
+              <Divider sx={{ my: 3.5 }} />
+
+              {/* Privacidade do Perfil (Estilo Instagram) */}
+              <Typography variant="h6" mb={1} fontWeight={700}>Privacidade da Conta</Typography>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: 3,
+                  bgcolor: (theme) => alpha(theme.palette.text.primary, 0.03),
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <Box sx={{ maxWidth: '56ch' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                    {profileData.is_private ? (
+                      <LockOutlinedIcon color="warning" fontSize="small" />
+                    ) : (
+                      <PublicOutlinedIcon color="primary" fontSize="small" />
+                    )}
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      {profileData.is_private ? 'Perfil Privado' : 'Perfil Público'}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    {profileData.is_private
+                      ? 'Quando sua conta é privada, apenas quem você segue e quem segue você tem acesso às suas avaliações, tier lists e diário. Para visitantes de fora, apenas sua foto e capa são visíveis.'
+                      : 'Seu perfil é visível para qualquer pessoa da comunidade explorar seus gostos musicais e tier lists.'}
+                  </Typography>
+                </Box>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={Boolean(profileData.is_private)}
+                      onChange={(e) => setProfileData({ ...profileData, is_private: e.target.checked })}
+                      color="warning"
+                    />
+                  }
+                  label={profileData.is_private ? 'Privado' : 'Público'}
+                />
+              </Paper>
+
               <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button type="submit" variant="contained" disabled={loading}>
+                <Button type="submit" variant="contained" disabled={loading} sx={{ px: 3, py: 1, fontWeight: 700, borderRadius: 2 }}>
                   {loading ? <CircularProgress size={22} color="inherit" /> : 'Salvar Alterações'}
                 </Button>
               </Box>

@@ -1,28 +1,58 @@
 import { Router, Request, Response } from 'express';
 import { ListenLaterController } from '../controllers/ListenLaterController';
 import { requireAuth } from '../middleware/auth';
+import { verifyToken } from '../utils/jwt';
+
+function getOptionalUserId(req: Request): number | undefined {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) return undefined;
+  const payload = verifyToken(header.slice(7));
+  return payload?.userId;
+}
 
 export function createListenLaterRouter(controller: ListenLaterController): Router {
   const router = Router();
 
-  // Público: ver fila "Quero Ouvir" de um perfil
+  // Público: ver fila "Quero Ouvir" de um perfil (respeita se a lista é pública)
   router.get('/user/:userId', async (req: Request, res: Response) => {
     const userId = Number(req.params.userId);
     if (isNaN(userId)) {
       res.status(400).json({ error: 'ID inválido.' });
       return;
     }
-    const result = await controller.getUserItems(userId);
-    if (result.success) res.json(result.items);
-    else res.status(500).json({ error: result.message });
+    const requesterId = getOptionalUserId(req);
+    const result = await controller.getUserItems(userId, requesterId);
+    if (result.success) {
+      res.json({ isPrivate: result.isPrivate, items: result.items });
+    } else {
+      res.status(500).json({ error: result.message });
+    }
   });
 
   router.use(requireAuth);
 
   router.get('/me', async (req: Request, res: Response) => {
-    const result = await controller.getUserItems(req.user!.userId);
-    if (result.success) res.json(result.items);
+    const result = await controller.getUserItems(req.user!.userId, req.user!.userId);
+    if (result.success) res.json({ isPrivate: false, items: result.items });
     else res.status(500).json({ error: result.message });
+  });
+
+  router.put('/reorder', async (req: Request, res: Response) => {
+    const { items } = req.body;
+    if (!Array.isArray(items)) {
+      res.status(400).json({ error: 'items deve ser um array com id e position.' });
+      return;
+    }
+    const result = await controller.reorderItems(req.user!.userId, items);
+    if (result.success) res.json({ success: true });
+    else res.status(400).json({ error: result.message });
+  });
+
+  router.put('/visibility', async (req: Request, res: Response) => {
+    const { isPublic } = req.body;
+    const result = await controller.updateVisibility(req.user!.userId, Boolean(isPublic));
+    if (result.success) res.json({ success: true, isPublic: result.isPublic });
+    else res.status(400).json({ error: result.message });
   });
 
   router.get('/check/:itemType/:itemId', async (req: Request, res: Response) => {

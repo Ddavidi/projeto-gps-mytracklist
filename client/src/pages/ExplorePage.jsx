@@ -53,7 +53,7 @@ export default function ExplorePage() {
       {/* Cabeçalho */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h2" sx={{ fontSize: { xs: '2rem', md: '2.6rem' }, mb: 1 }}>
-          Explorar & Charts
+          Explorar
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: '58ch' }}>
           Descubra os álbuns, músicas e artistas mais bem avaliados pela comunidade, filtre por período ou vibe e explore listas curadas.
