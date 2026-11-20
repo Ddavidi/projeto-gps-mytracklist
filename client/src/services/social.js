@@ -112,3 +112,22 @@ export const getCompatibility = async (targetUserId) => {
   const response = await api.get(`/social/compatibility/${targetUserId}`);
   return response.data;
 };
+
+// =====================
+// Close Friends (Melhores Amigos)
+// =====================
+
+export const getCloseFriends = async () => {
+  const response = await api.get('/social/close-friends');
+  return response.data.closeFriends || [];
+};
+
+export const addCloseFriend = async (friendId) => {
+  const response = await api.post(`/social/close-friends/${friendId}`);
+  return response.data;
+};
+
+export const removeCloseFriend = async (friendId) => {
+  const response = await api.delete(`/social/close-friends/${friendId}`);
+  return response.data;
+};

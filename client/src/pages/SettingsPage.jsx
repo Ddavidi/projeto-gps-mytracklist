@@ -16,12 +16,21 @@ import {
   Chip,
   FormControlLabel,
   Switch,
+  Avatar,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  InputAdornment,
+  IconButton,
   alpha,
 } from '@mui/material';
 import PaletteIcon from '@mui/icons-material/Palette';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
+import StarIcon from '@mui/icons-material/Star';
+import SearchIcon from '@mui/icons-material/Search';
 import LinkIcon from '@mui/icons-material/Link';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CheckIcon from '@mui/icons-material/Check';
@@ -29,6 +38,7 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useThemeMode } from '../context/ThemeContext';
 import api from '../services/api';
+import { getCloseFriends, addCloseFriend, removeCloseFriend, getFollowing, getFollowers } from '../services/social';
 import BirthDateField from '../components/BirthDateField';
 import { MUSIC_GENRES } from '../constants/genres';
 
@@ -57,6 +67,14 @@ function SettingsPage() {
   const [error, setError] = useState(null);
   const [spotifyConnected, setSpotifyConnected] = useState(false);
 
+  // Close Friends state
+  const [closeFriends, setCloseFriends] = useState([]);
+  const [suggestedFriends, setSuggestedFriends] = useState([]);
+  const [cfSearch, setCfSearch] = useState('');
+  const [cfSearchResults, setCfSearchResults] = useState([]);
+  const [cfLoading, setCfLoading] = useState(false);
+  const [cfBusyId, setCfBusyId] = useState(null);
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('spotify_connected') === 'true') {
@@ -70,8 +88,64 @@ function SettingsPage() {
       setTabIndex(1);
     } else if (params.get('tab') === 'connections') {
       setTabIndex(3);
+    } else if (params.get('tab') === 'close-friends') {
+      setTabIndex(4);
     }
   }, [location.search, refreshUser]);
+
+  useEffect(() => {
+    const uid = user?.id || user?.userId;
+    if (tabIndex === 4 && uid) {
+      setCfLoading(true);
+      Promise.all([
+        getCloseFriends().catch(() => []),
+        getFollowing(uid).catch(() => []),
+        getFollowers(uid).catch(() => []),
+      ])
+        .then(([cf, following, followers]) => {
+          setCloseFriends(cf || []);
+          const map = new Map();
+          for (const u of [...(following || []), ...(followers || [])]) {
+            if (u.id !== uid) map.set(u.id, u);
+          }
+          setSuggestedFriends(Array.from(map.values()));
+        })
+        .finally(() => setCfLoading(false));
+    }
+  }, [tabIndex, user]);
+
+  const handleCfSearch = async (e) => {
+    e.preventDefault();
+    if (!cfSearch.trim()) {
+      setCfSearchResults([]);
+      return;
+    }
+    try {
+      const res = await api.get('/users/search', { params: { q: cfSearch.trim() } });
+      const uid = user?.id || user?.userId;
+      setCfSearchResults((res.data || []).filter((u) => u.id !== uid));
+    } catch {
+      setCfSearchResults([]);
+    }
+  };
+
+  const handleToggleCloseFriend = async (targetUser) => {
+    const isAdded = closeFriends.some((cf) => cf.id === targetUser.id);
+    setCfBusyId(targetUser.id);
+    try {
+      if (isAdded) {
+        await removeCloseFriend(targetUser.id);
+        setCloseFriends((prev) => prev.filter((cf) => cf.id !== targetUser.id));
+      } else {
+        await addCloseFriend(targetUser.id);
+        setCloseFriends((prev) => [targetUser, ...prev]);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Falha ao atualizar Close Friends.');
+    } finally {
+      setCfBusyId(null);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -197,6 +271,7 @@ function SettingsPage() {
             <Tab icon={<PaletteIcon fontSize="small" />} iconPosition="start" label="Aparência & Cores" />
             <Tab icon={<LockOutlinedIcon fontSize="small" />} iconPosition="start" label="Segurança" />
             <Tab icon={<LinkIcon fontSize="small" />} iconPosition="start" label="Conexões" />
+            <Tab icon={<StarIcon fontSize="small" sx={{ color: '#22c55e' }} />} iconPosition="start" label="Close Friends" />
           </Tabs>
         </Box>
 
@@ -544,6 +619,180 @@ function SettingsPage() {
               <Alert severity="info" sx={{ mt: 3 }}>
                 Se os seus dados do Spotify não carregarem após vincular, clique em <strong>Reconectar</strong> para renovar as permissões. Em aplicativos no Modo Desenvolvimento do Spotify, a conta Spotify precisa estar cadastrada em <em>User Management</em> no painel do Spotify Developer.
               </Alert>
+            </Box>
+          )}
+
+          {/* ABA 4: CLOSE FRIENDS */}
+          {tabIndex === 4 && (
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
+                <StarIcon sx={{ color: '#22c55e' }} />
+                <Typography variant="h6" fontWeight={700}>
+                  Close Friends ({closeFriends.length})
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                Escolha os amigos que fazem parte da sua lista de <strong>Close Friends</strong>. Sempre que você publicar uma review com visibilidade <em>Close Friends</em>, apenas as pessoas desta lista conseguirão visualizá-la.
+              </Typography>
+
+              {/* Buscar usuários para adicionar */}
+              <Box component="form" onSubmit={handleCfSearch} sx={{ mb: 3 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Pesquisar amigo pelo nome de usuário..."
+                  value={cfSearch}
+                  onChange={(e) => setCfSearch(e.target.value)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton type="submit" size="small" color="primary">
+                          <SearchIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+
+              {cfSearchResults.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" sx={{ mb: 1 }}>
+                    Resultados da pesquisa
+                  </Typography>
+                  <List disablePadding sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2.5, overflow: 'hidden' }}>
+                    {cfSearchResults.map((u) => {
+                      const inList = closeFriends.some((cf) => cf.id === u.id);
+                      return (
+                        <ListItem
+                          key={u.id}
+                          secondaryAction={
+                            <Button
+                              size="small"
+                              variant={inList ? 'contained' : 'outlined'}
+                              disabled={cfBusyId === u.id}
+                              onClick={() => handleToggleCloseFriend(u)}
+                              startIcon={<StarIcon sx={{ fontSize: 15 }} />}
+                              sx={{
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                ...(inList
+                                  ? { bgcolor: '#16a34a', '&:hover': { bgcolor: '#15803d' } }
+                                  : { borderColor: alpha('#22c55e', 0.5), color: '#22c55e' }),
+                              }}
+                            >
+                              {inList ? 'Nos Close Friends' : 'Adicionar'}
+                            </Button>
+                          }
+                        >
+                          <ListItemAvatar>
+                            <Avatar src={u.avatar_url}>{u.username?.charAt(0).toUpperCase()}</Avatar>
+                          </ListItemAvatar>
+                          <ListItemText primary={`@${u.username}`} secondary={u.name || ''} />
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Box>
+              )}
+
+              {cfLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress size={26} />
+                </Box>
+              ) : (
+                <>
+                  {/* Lista Atual de Close Friends */}
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.25 }}>
+                    Sua lista atual ({closeFriends.length})
+                  </Typography>
+                  {closeFriends.length === 0 ? (
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 3,
+                        mb: 3,
+                        borderRadius: 2.5,
+                        textAlign: 'center',
+                        bgcolor: (theme) => alpha(theme.palette.text.primary, 0.02),
+                        border: '1px solid',
+                        borderColor: 'divider',
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        Você ainda não adicionou ninguém aos seus Close Friends.
+                      </Typography>
+                    </Paper>
+                  ) : (
+                    <List disablePadding sx={{ mb: 3, border: '1px solid', borderColor: alpha('#22c55e', 0.35), borderRadius: 2.5, overflow: 'hidden' }}>
+                      {closeFriends.map((friend) => (
+                        <ListItem
+                          key={friend.id}
+                          secondaryAction={
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              disabled={cfBusyId === friend.id}
+                              onClick={() => handleToggleCloseFriend(friend)}
+                              sx={{ borderRadius: 2, textTransform: 'none' }}
+                            >
+                              Remover
+                            </Button>
+                          }
+                        >
+                          <ListItemAvatar>
+                            <Avatar src={friend.avatar_url}>{friend.username?.charAt(0).toUpperCase()}</Avatar>
+                          </ListItemAvatar>
+                          <ListItemText primary={`@${friend.username}`} secondary={friend.name || 'Close Friend'} />
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+
+                  {/* Sugestões (pessoas que você segue / seguidores) */}
+                  {suggestedFriends.filter((s) => !closeFriends.some((cf) => cf.id === s.id)).length > 0 && (
+                    <>
+                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.25 }}>
+                        Sugestões (Seguindo & Seguidores)
+                      </Typography>
+                      <List disablePadding sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2.5, overflow: 'hidden' }}>
+                        {suggestedFriends
+                          .filter((s) => !closeFriends.some((cf) => cf.id === s.id))
+                          .map((u) => (
+                            <ListItem
+                              key={u.id}
+                              secondaryAction={
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  disabled={cfBusyId === u.id}
+                                  onClick={() => handleToggleCloseFriend(u)}
+                                  startIcon={<StarIcon sx={{ fontSize: 15 }} />}
+                                  sx={{
+                                    borderRadius: 2,
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    borderColor: alpha('#22c55e', 0.5),
+                                    color: '#22c55e',
+                                  }}
+                                >
+                                  Adicionar
+                                </Button>
+                              }
+                            >
+                              <ListItemAvatar>
+                                <Avatar src={u.avatar_url}>{u.username?.charAt(0).toUpperCase()}</Avatar>
+                              </ListItemAvatar>
+                              <ListItemText primary={`@${u.username}`} secondary={u.name || ''} />
+                            </ListItem>
+                          ))}
+                      </List>
+                    </>
+                  )}
+                </>
+              )}
             </Box>
           )}
         </Box>

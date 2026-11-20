@@ -13,16 +13,20 @@ import {
   Collapse,
   Paper,
   IconButton,
-  Tooltip,
+  ToggleButtonGroup,
+  ToggleButton,
   alpha,
 } from '@mui/material';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import RateReviewOutlinedIcon from '@mui/icons-material/RateReviewOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import RepeatIcon from '@mui/icons-material/Repeat';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
+import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import StarIcon from '@mui/icons-material/Star';
 import RatingInput from './RatingInput';
 import BirthDateField from './BirthDateField';
@@ -48,7 +52,7 @@ function formatDateDisplay(iso) {
 
 function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAverageInfo = null }) {
   const [currentReview, setCurrentReview] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false); // Sempre colapsado por padrão (avaliado ou não)
   const [isExpanded, setIsExpanded] = useState(false);
 
   const [rating, setRating] = useState(null);
@@ -57,6 +61,7 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
   const [isRelisten, setIsRelisten] = useState(false);
   const [vibeTags, setVibeTags] = useState([]);
   const [hasSpoiler, setHasSpoiler] = useState(false);
+  const [visibility, setVisibility] = useState('public'); // 'public' | 'close_friends' | 'private'
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,7 +80,7 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
       setIsRelisten(Boolean(review.is_relisten));
       setVibeTags(Array.isArray(review.vibe_tags) ? review.vibe_tags : []);
       setHasSpoiler(Boolean(review.has_spoiler));
-      setIsEditing(false); // Já avaliado -> modo leitura por padrão!
+      setVisibility(review.visibility || 'public');
     } else {
       setRating(null);
       setReviewText('');
@@ -83,8 +88,9 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
       setIsRelisten(false);
       setVibeTags([]);
       setHasSpoiler(false);
-      setIsEditing(true); // Ainda não avaliado -> modo edição
+      setVisibility('public');
     }
+    setIsEditing(false); // Sempre começa contraído/leitura até o usuário clicar em Fazer Review ou Editar
   };
 
   useEffect(() => {
@@ -126,6 +132,7 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
         isRelisten,
         vibeTags,
         hasSpoiler,
+        visibility,
       };
 
       const response = await saveReview(
@@ -147,6 +154,7 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
         is_relisten: extras.isRelisten,
         vibe_tags: extras.vibeTags,
         has_spoiler: extras.hasSpoiler,
+        visibility: extras.visibility,
       };
 
       syncReviewState(updated);
@@ -188,9 +196,66 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
   const hasReview = Boolean(currentReview && currentReview.rating !== undefined && currentReview.rating !== null);
 
   // ==========================================
-  // 1. MODO LEITURA (Quando o usuário já avaliou)
+  // 1. MODO COLAPSADO (Ainda não avaliado)
+  // ==========================================
+  if (!hasReview && !isEditing) {
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          borderRadius: 3,
+          bgcolor: (theme) => alpha(theme.palette.text.primary, 0.03),
+          border: '1px solid',
+          borderColor: 'divider',
+          transition: 'all 0.2s ease',
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700} sx={{ letterSpacing: '-0.01em' }}>
+              Sua Avaliação
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Você ainda não avaliou este item.
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<RateReviewOutlinedIcon sx={{ fontSize: 16 }} />}
+              onClick={() => setIsEditing(true)}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 700,
+                px: 2,
+              }}
+            >
+              Fazer Review
+            </Button>
+            <IconButton
+              size="small"
+              onClick={() => setIsEditing(true)}
+              sx={{ color: 'text.secondary', border: '1px solid', borderColor: 'divider' }}
+              title="Expandir para fazer review"
+            >
+              <ExpandMoreIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </Box>
+      </Paper>
+    );
+  }
+
+  // ==========================================
+  // 2. MODO LEITURA (Quando o usuário já avaliou)
   // ==========================================
   if (hasReview && !isEditing) {
+    const revVisibility = currentReview.visibility || 'public';
+
     return (
       <Paper
         elevation={0}
@@ -204,7 +269,7 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5, mb: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap' }}>
             <Typography variant="h6" fontWeight={700} sx={{ letterSpacing: '-0.01em' }}>
               Sua Avaliação
             </Typography>
@@ -227,6 +292,31 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
                 {currentReview.rating}/10
               </Typography>
             </Box>
+
+            {revVisibility === 'close_friends' && (
+              <Chip
+                size="small"
+                label="⭐ Close Friends"
+                sx={{
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  bgcolor: alpha('#16a34a', 0.16),
+                  color: '#22c55e',
+                  border: '1px solid',
+                  borderColor: alpha('#22c55e', 0.4),
+                }}
+              />
+            )}
+            {revVisibility === 'private' && (
+              <Chip
+                size="small"
+                icon={<LockOutlinedIcon sx={{ fontSize: 13 }} />}
+                label="Privada"
+                color="warning"
+                variant="outlined"
+                sx={{ fontSize: '0.72rem', fontWeight: 700 }}
+              />
+            )}
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -349,7 +439,7 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
   }
 
   // ==========================================
-  // 2. MODO EDIÇÃO (Criando ou Editando avaliação)
+  // 3. MODO EDIÇÃO (Criando ou Editando avaliação)
   // ==========================================
   return (
     <Paper
@@ -359,47 +449,54 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
         borderRadius: 3,
         bgcolor: (theme) => alpha(theme.palette.text.primary, 0.03),
         border: '1px solid',
-        borderColor: (theme) => (isEditing && hasReview ? theme.palette.primary.main : 'divider'),
+        borderColor: 'primary.main',
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
         <Typography variant="h6" fontWeight={700}>
-          {hasReview ? 'Editar Sua Avaliação' : 'Avaliar este Álbum ou Faixa'}
+          {hasReview ? 'Editar Sua Avaliação' : 'Fazer Review'}
         </Typography>
 
-        {trackAverageInfo && trackAverageInfo.count > 0 && (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              px: 1.5,
-              py: 0.6,
-              borderRadius: 2,
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-              border: '1px solid',
-              borderColor: (theme) => alpha(theme.palette.primary.main, 0.25),
-            }}
-          >
-            <AutoAwesomeOutlinedIcon color="primary" sx={{ fontSize: 16 }} />
-            <Typography variant="caption" color="text.primary">
-              Média das faixas: <Box component="span" className="mtl-mono" fontWeight={700}>{trackAverageInfo.average.toFixed(1)}</Box>{' '}
-              ({trackAverageInfo.count}/{trackAverageInfo.total})
-            </Typography>
-            <Button
-              size="small"
-              variant="contained"
-              sx={{ py: 0.25, px: 1.1, minWidth: 0, fontSize: '0.72rem' }}
-              disabled={isSubmitting}
-              onClick={() => {
-                const rounded = Math.round(trackAverageInfo.average);
-                setRating(rounded);
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {trackAverageInfo && trackAverageInfo.count > 0 && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 1.5,
+                py: 0.6,
+                borderRadius: 2,
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                border: '1px solid',
+                borderColor: (theme) => alpha(theme.palette.primary.main, 0.25),
               }}
             >
-              Aplicar {Math.round(trackAverageInfo.average)}
-            </Button>
-          </Box>
-        )}
+              <AutoAwesomeOutlinedIcon color="primary" sx={{ fontSize: 16 }} />
+              <Typography variant="caption" color="text.primary">
+                Média das faixas: <Box component="span" className="mtl-mono" fontWeight={700}>{trackAverageInfo.average.toFixed(1)}</Box>{' '}
+                ({trackAverageInfo.count}/{trackAverageInfo.total})
+              </Typography>
+              <Button
+                size="small"
+                variant="contained"
+                sx={{ py: 0.25, px: 1.1, minWidth: 0, fontSize: '0.72rem' }}
+                disabled={isSubmitting}
+                onClick={() => setRating(Math.round(trackAverageInfo.average))}
+              >
+                Aplicar {Math.round(trackAverageInfo.average)}
+              </Button>
+            </Box>
+          )}
+          <IconButton
+            size="small"
+            onClick={handleCancelEdit}
+            sx={{ color: 'text.secondary', border: '1px solid', borderColor: 'divider' }}
+            title="Contrair"
+          >
+            <ExpandLessIcon fontSize="small" />
+          </IconButton>
+        </Box>
       </Box>
 
       {/* Seleção de Nota (Obrigatória) */}
@@ -415,6 +512,54 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
           />
           {isSubmitting && <CircularProgress size={20} />}
         </Box>
+      </Box>
+
+      {/* Seletor de Visibilidade: Pública | Close Friends | Privada */}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.75 }}>
+          Quem pode ver esta review?
+        </Typography>
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={visibility}
+          onChange={(e, val) => val && setVisibility(val)}
+          sx={{ flexWrap: 'wrap' }}
+        >
+          <ToggleButton value="public" sx={{ textTransform: 'none', gap: 0.6, px: 1.5 }}>
+            <PublicOutlinedIcon sx={{ fontSize: 16 }} /> Pública
+          </ToggleButton>
+          <ToggleButton
+            value="close_friends"
+            sx={{
+              textTransform: 'none',
+              gap: 0.6,
+              px: 1.5,
+              '&.Mui-selected': {
+                bgcolor: alpha('#16a34a', 0.2),
+                color: '#22c55e',
+                borderColor: alpha('#22c55e', 0.5),
+                '&:hover': { bgcolor: alpha('#16a34a', 0.28) },
+              },
+            }}
+          >
+            <StarIcon sx={{ fontSize: 16, color: '#22c55e' }} /> Close Friends
+          </ToggleButton>
+          <ToggleButton
+            value="private"
+            sx={{
+              textTransform: 'none',
+              gap: 0.6,
+              px: 1.5,
+              '&.Mui-selected': {
+                bgcolor: (theme) => alpha(theme.palette.warning.main, 0.16),
+                color: 'warning.main',
+              },
+            }}
+          >
+            <LockOutlinedIcon sx={{ fontSize: 16 }} /> Privada
+          </ToggleButton>
+        </ToggleButtonGroup>
       </Box>
 
       {/* Formulário de Review Text */}
@@ -507,17 +652,15 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
 
         {/* Botões de Ação */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1.5, mt: 2 }}>
-          {hasReview && (
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleCancelEdit}
-              disabled={isSubmitting}
-              sx={{ borderRadius: 2, textTransform: 'none' }}
-            >
-              Cancelar
-            </Button>
-          )}
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleCancelEdit}
+            disabled={isSubmitting}
+            sx={{ borderRadius: 2, textTransform: 'none' }}
+          >
+            Cancelar
+          </Button>
           <Button
             variant="contained"
             size="small"

@@ -13,7 +13,7 @@ export function createUserRouter(userController: UserController): Router {
    * Obtém as avaliações do utilizador autenticado.
    */
   router.get('/me/reviews', async (req: Request, res: Response) => {
-    const result = await userController.getUserReviews(req.user!.userId);
+    const result = await userController.getUserReviews(req.user!.userId, req.user!.userId);
 
     if (result.success) {
       res.json(result.reviews);
@@ -56,7 +56,7 @@ export function createUserRouter(userController: UserController): Router {
       return;
     }
 
-    const result = await userController.getUserReviews(targetUser.id);
+    const result = await userController.getUserReviews(targetUser.id, req.user!.userId);
 
     if (result.success) {
       res.json({

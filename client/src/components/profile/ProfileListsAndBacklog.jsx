@@ -27,6 +27,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import AlbumIcon from '@mui/icons-material/Album';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import PersonIcon from '@mui/icons-material/Person';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { getUserLists, createList, deleteList } from '../../services/lists';
 
@@ -126,6 +127,7 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
         <Grid container spacing={2.5}>
           {lists.map((list) => {
             const isTrackList = list.list_type === 'track';
+            const isArtistList = list.list_type === 'artist';
 
             return (
               <Grid size={{ xs: 12, sm: 6, md: 4 }} key={list.id}>
@@ -168,17 +170,31 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
                           }}
                         >
                           {!list.preview_covers?.[slot] && (
-                            isTrackList ? <MusicNoteIcon sx={{ fontSize: 18, opacity: 0.25 }} /> : <AlbumIcon sx={{ fontSize: 18, opacity: 0.25 }} />
+                            isTrackList ? (
+                              <MusicNoteIcon sx={{ fontSize: 18, opacity: 0.25 }} />
+                            ) : isArtistList ? (
+                              <PersonIcon sx={{ fontSize: 18, opacity: 0.25 }} />
+                            ) : (
+                              <AlbumIcon sx={{ fontSize: 18, opacity: 0.25 }} />
+                            )
                           )}
                         </Box>
                       ))}
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75, flexWrap: 'wrap' }}>
                       <Chip
                         size="small"
-                        icon={isTrackList ? <MusicNoteIcon sx={{ fontSize: 13 }} /> : <AlbumIcon sx={{ fontSize: 13 }} />}
-                        label={isTrackList ? 'Músicas' : 'Álbuns'}
+                        icon={
+                          isTrackList ? (
+                            <MusicNoteIcon sx={{ fontSize: 13 }} />
+                          ) : isArtistList ? (
+                            <PersonIcon sx={{ fontSize: 13 }} />
+                          ) : (
+                            <AlbumIcon sx={{ fontSize: 13 }} />
+                          )
+                        }
+                        label={isTrackList ? 'Músicas' : isArtistList ? 'Artistas' : 'Álbuns'}
                         color="primary"
                         variant="outlined"
                         sx={{ height: 22, fontSize: '0.68rem', fontWeight: 700 }}
@@ -251,12 +267,17 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
                 <FormControlLabel
                   value="album"
                   control={<Radio size="small" color="primary" />}
-                  label={<Typography variant="body2" fontWeight={600}>💿 Apenas Álbuns</Typography>}
+                  label={<Typography variant="body2" fontWeight={600}>💿 Álbuns</Typography>}
                 />
                 <FormControlLabel
                   value="track"
                   control={<Radio size="small" color="primary" />}
-                  label={<Typography variant="body2" fontWeight={600}>🎵 Apenas Músicas</Typography>}
+                  label={<Typography variant="body2" fontWeight={600}>🎵 Músicas</Typography>}
+                />
+                <FormControlLabel
+                  value="artist"
+                  control={<Radio size="small" color="primary" />}
+                  label={<Typography variant="body2" fontWeight={600}>🎤 Artistas</Typography>}
                 />
               </RadioGroup>
             </FormControl>

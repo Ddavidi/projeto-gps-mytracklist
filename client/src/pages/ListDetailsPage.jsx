@@ -75,9 +75,14 @@ export default function ListDetailsPage() {
     try {
       const res = await searchMulti(query.trim());
       const targetType = list?.list_type || 'album';
-      const filtered = targetType === 'album'
-        ? (res.albums || []).slice(0, 6).map((a) => ({ itemId: a.id, itemType: 'album', itemName: a.name, itemArtist: a.artist, itemImageUrl: a.imageUrl }))
-        : (res.tracks || []).slice(0, 6).map((t) => ({ itemId: t.id, itemType: 'track', itemName: t.name, itemArtist: t.artist, itemImageUrl: t.imageUrl }));
+      let filtered = [];
+      if (targetType === 'album') {
+        filtered = (res.albums || []).slice(0, 6).map((a) => ({ itemId: a.id, itemType: 'album', itemName: a.name, itemArtist: a.artist, itemImageUrl: a.imageUrl }));
+      } else if (targetType === 'track') {
+        filtered = (res.tracks || []).slice(0, 6).map((t) => ({ itemId: t.id, itemType: 'track', itemName: t.name, itemArtist: t.artist, itemImageUrl: t.imageUrl }));
+      } else if (targetType === 'artist') {
+        filtered = (res.artists || []).slice(0, 6).map((ar) => ({ itemId: ar.id, itemType: 'artist', itemName: ar.name, itemArtist: ar.genres?.slice(0, 2).join(', ') || 'Artista', itemImageUrl: ar.imageUrl }));
+      }
       setSearchResults(filtered);
     } finally {
       setSearching(false);
@@ -127,7 +132,13 @@ export default function ListDetailsPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
               <Chip
                 size="small"
-                label={list.list_type === 'track' ? '🎵 Lista de Músicas' : '💿 Lista de Álbuns'}
+                label={
+                  list.list_type === 'track'
+                    ? '🎵 Lista de Músicas'
+                    : list.list_type === 'artist'
+                    ? '🎤 Lista de Artistas'
+                    : '💿 Lista de Álbuns'
+                }
                 color="primary"
                 variant="outlined"
                 sx={{ fontWeight: 700 }}
@@ -170,7 +181,7 @@ export default function ListDetailsPage() {
         {isOwner && (
           <Box sx={{ mt: 3.5, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
             <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-              Adicionar álbum ou música à lista
+              Adicionar {list.list_type === 'track' ? 'música' : list.list_type === 'artist' ? 'artista' : 'álbum'} à lista
             </Typography>
             <Box component="form" onSubmit={handleSearch}>
               <TextField

@@ -210,6 +210,7 @@ export class SocialController {
            r.is_relisten,
            r.vibe_tags,
            r.has_spoiler,
+           COALESCE(r.visibility, 'public') as visibility,
            r."createdAt",
            r."updatedAt",
            u.id as author_id,
@@ -224,9 +225,18 @@ export class SocialController {
          WHERE r."userId" IN (
            SELECT "followingId" FROM follows WHERE "followerId" = ?
          )
+         AND (
+           COALESCE(r.visibility, 'public') = 'public'
+           OR (
+             r.visibility = 'close_friends'
+             AND EXISTS (
+               SELECT 1 FROM close_friends cf WHERE cf.user_id = r."userId" AND cf.friend_id = ?
+             )
+           )
+         )
          ORDER BY r."createdAt" DESC
          LIMIT ? OFFSET ?`,
-        [userId, userId, limit, offset]
+        [userId, userId, userId, limit, offset]
       );
       const feed = (rows || []).map((row: any) => ({
         ...row,
@@ -254,6 +264,7 @@ export class SocialController {
            r.vibe_tags,
            r.has_spoiler,
            r.is_relisten,
+           COALESCE(r.visibility, 'public') as visibility,
            r."createdAt",
            u.id as author_id,
            u.username as author_username,
@@ -269,8 +280,17 @@ export class SocialController {
          )
          AND r.item_id = ?
          AND r.item_type = ?
+         AND (
+           COALESCE(r.visibility, 'public') = 'public'
+           OR (
+             r.visibility = 'close_friends'
+             AND EXISTS (
+               SELECT 1 FROM close_friends cf WHERE cf.user_id = r."userId" AND cf.friend_id = ?
+             )
+           )
+         )
          ORDER BY r."createdAt" DESC`,
-        [userId, userId, itemId, itemType]
+        [userId, userId, itemId, itemType, userId]
       );
       const friendsReviews = (rows || []).map((row: any) => ({
         ...row,
@@ -377,6 +397,63 @@ export class SocialController {
     } catch (error) {
       console.error('Erro ao calcular compatibilidade:', error);
       return { success: false, message: 'Falha ao calcular compatibilidade.' };
+    }
+  }
+
+  // =====================
+  // Close Friends (Melhores Amigos)
+  // =====================
+
+  async getCloseFriends(userId: number) {
+    try {
+      const friends = await this.db.all(
+        `SELECT u.id, u.username, u.name, u.avatar_url, cf.created_at as added_at
+         FROM close_friends cf
+         JOIN users u ON u.id = cf.friend_id
+         WHERE cf.user_id = ?
+         ORDER BY cf.created_at DESC`,
+        [userId]
+      );
+      return { success: true, closeFriends: friends || [] };
+    } catch (error) {
+      console.error('Erro ao buscar Close Friends:', error);
+      return { success: false, message: 'Falha ao buscar lista de Close Friends.' };
+    }
+  }
+
+  async addCloseFriend(userId: number, friendId: number) {
+    if (userId === friendId) {
+      return { success: false, message: 'Você não pode adicionar a si mesmo ao Close Friends.' };
+    }
+    try {
+      await this.db.run(
+        'INSERT INTO close_friends (user_id, friend_id, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+        [userId, friendId]
+      );
+      return { success: true };
+    } catch (error: any) {
+      if (
+        error.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+        error.code === '23505' ||
+        (error.message && error.message.includes('unique'))
+      ) {
+        return { success: true, alreadyAdded: true };
+      }
+      console.error('Erro ao adicionar Close Friend:', error);
+      return { success: false, message: 'Falha ao adicionar amigo ao Close Friends.' };
+    }
+  }
+
+  async removeCloseFriend(userId: number, friendId: number) {
+    try {
+      await this.db.run(
+        'DELETE FROM close_friends WHERE user_id = ? AND friend_id = ?',
+        [userId, friendId]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao remover Close Friend:', error);
+      return { success: false, message: 'Falha ao remover amigo do Close Friends.' };
     }
   }
 }

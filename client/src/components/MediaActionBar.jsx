@@ -99,8 +99,8 @@ export default function MediaActionBar({ itemType, itemId, itemName, itemArtist 
     setLoadingLists(true);
     try {
       const lists = await getUserLists(uid);
-      const expectedType = itemType === 'track' ? 'track' : 'album';
-      // Não misturar álbum com música nas listas personalizadas
+      const expectedType = ['album', 'track', 'artist'].includes(itemType) ? itemType : 'album';
+      // Não misturar álbum, música e artista nas listas personalizadas
       const filtered = (lists || []).filter((l) => (l.list_type || 'album') === expectedType);
       setMyLists(filtered);
     } catch {
@@ -124,7 +124,8 @@ export default function MediaActionBar({ itemType, itemId, itemName, itemArtist 
     e.preventDefault();
     if (!newListTitle.trim()) return;
     setCreatingList(true);
-    const expectedType = itemType === 'track' ? 'track' : 'album';
+    const expectedType = ['album', 'track', 'artist'].includes(itemType) ? itemType : 'album';
+    const typeLabel = expectedType === 'track' ? 'músicas' : expectedType === 'artist' ? 'artistas' : 'álbuns';
     try {
       const res = await createList({
         title: newListTitle.trim(),
@@ -135,7 +136,7 @@ export default function MediaActionBar({ itemType, itemId, itemName, itemArtist 
       });
       if (res?.listId) {
         await addItemToList(res.listId, { itemId, itemType, itemName, itemArtist, itemImageUrl });
-        notify(`Lista de ${expectedType === 'track' ? 'músicas' : 'álbuns'} criada com sucesso!`);
+        notify(`Lista de ${typeLabel} criada com sucesso!`);
         setNewListTitle('');
         setListModalOpen(false);
       }

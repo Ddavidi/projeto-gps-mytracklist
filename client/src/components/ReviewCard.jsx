@@ -156,12 +156,38 @@ function ReviewCard({ review }) {
           </Box>
         </Box>
 
-        <Chip
-          size="small"
-          label={TYPE_LABEL[itemType] || 'Música'}
-          variant="outlined"
-          sx={{ fontSize: '0.7rem', height: 22, borderColor: 'divider' }}
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          {review.visibility === 'close_friends' && (
+            <Chip
+              size="small"
+              label="⭐ Close Friends"
+              sx={{
+                fontSize: '0.7rem',
+                height: 22,
+                fontWeight: 700,
+                bgcolor: alpha('#16a34a', 0.16),
+                color: '#22c55e',
+                border: '1px solid',
+                borderColor: alpha('#22c55e', 0.4),
+              }}
+            />
+          )}
+          {review.visibility === 'private' && (
+            <Chip
+              size="small"
+              label="🔒 Privada"
+              color="warning"
+              variant="outlined"
+              sx={{ fontSize: '0.7rem', height: 22, fontWeight: 700 }}
+            />
+          )}
+          <Chip
+            size="small"
+            label={TYPE_LABEL[itemType] || 'Música'}
+            variant="outlined"
+            sx={{ fontSize: '0.7rem', height: 22, borderColor: 'divider' }}
+          />
+        </Box>
       </Box>
 
       {/* Bloco da Mídia Avaliada */}

@@ -197,5 +197,37 @@ export function createSocialRouter(socialController: SocialController): Router {
     else res.status(500).json({ error: result.message });
   });
 
+  // =====================
+  // Close Friends (Melhores Amigos)
+  // =====================
+
+  router.get('/close-friends', requireAuth, async (req: Request, res: Response) => {
+    const result = await socialController.getCloseFriends(req.user!.userId);
+    if (result.success) res.json({ closeFriends: result.closeFriends });
+    else res.status(500).json({ error: result.message });
+  });
+
+  router.post('/close-friends/:friendId', requireAuth, async (req: Request, res: Response) => {
+    const friendId = Number(req.params.friendId);
+    if (isNaN(friendId)) {
+      res.status(400).json({ error: 'ID inválido.' });
+      return;
+    }
+    const result = await socialController.addCloseFriend(req.user!.userId, friendId);
+    if (result.success) res.status(201).json({ success: true });
+    else res.status(400).json({ error: result.message });
+  });
+
+  router.delete('/close-friends/:friendId', requireAuth, async (req: Request, res: Response) => {
+    const friendId = Number(req.params.friendId);
+    if (isNaN(friendId)) {
+      res.status(400).json({ error: 'ID inválido.' });
+      return;
+    }
+    const result = await socialController.removeCloseFriend(req.user!.userId, friendId);
+    if (result.success) res.json({ success: true });
+    else res.status(400).json({ error: result.message });
+  });
+
   return router;
 }

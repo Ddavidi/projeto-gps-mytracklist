@@ -135,10 +135,10 @@ export class ControllerFactory {
       }
       try {
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS item_type TEXT NOT NULL DEFAULT 'track'`);
-      } catch (e) {}
+      } catch (e) { }
       try {
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS review_text TEXT`);
-      } catch (e) {}
+      } catch (e) { }
       try {
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS item_name TEXT`);
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS item_image_url TEXT`);
@@ -147,7 +147,7 @@ export class ControllerFactory {
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_relisten BOOLEAN DEFAULT FALSE`);
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS vibe_tags TEXT`);
         await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS has_spoiler BOOLEAN DEFAULT FALSE`);
-      } catch (e) {}
+      } catch (e) { }
       try {
         // Drop old unique constraint and add new one
         await database.exec(`ALTER TABLE reviews DROP CONSTRAINT IF EXISTS reviews_userId_trackId_key`);
@@ -269,7 +269,7 @@ export class ControllerFactory {
 
       try {
         await database.exec(`ALTER TABLE custom_lists ADD COLUMN IF NOT EXISTS list_type TEXT NOT NULL DEFAULT 'album'`);
-      } catch (e) {}
+      } catch (e) { }
 
       await database.exec(`
         CREATE TABLE IF NOT EXISTS custom_list_items (
@@ -318,7 +318,24 @@ export class ControllerFactory {
 
       try {
         await database.exec(`ALTER TABLE listen_later ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0`);
-      } catch (e) {}
+      } catch (e) { }
+
+      // PostgreSQL schema — Visibilidade das reviews (public | close_friends | private) e lista Close Friends
+      try {
+        await database.exec(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'public'`);
+      } catch (e) { }
+
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS close_friends (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          friend_id INTEGER NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+          FOREIGN KEY (friend_id) REFERENCES users (id) ON DELETE CASCADE,
+          UNIQUE (user_id, friend_id)
+        )
+      `);
 
       // Username e e-mail únicos sem diferenciar maiúsculas/minúsculas ("Manga" == "manga")
       try {
@@ -356,20 +373,20 @@ export class ControllerFactory {
       `);
 
       // Migrations for existing SQLite user columns
-      try { await database.exec('ALTER TABLE users ADD COLUMN email TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN name TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN gender TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN birth_date TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN avatar_url TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN cover_url TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN bio TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN favorite_genres TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN spotify_access_token TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN spotify_refresh_token TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN spotify_token_expires_at TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN is_private BOOLEAN DEFAULT 0;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE users ADD COLUMN listen_later_is_public BOOLEAN DEFAULT 1;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE users ADD COLUMN email TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN name TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN gender TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN birth_date TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN avatar_url TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN cover_url TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN bio TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN favorite_genres TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN spotify_access_token TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN spotify_refresh_token TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN spotify_token_expires_at TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN is_private BOOLEAN DEFAULT 0;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN listen_later_is_public BOOLEAN DEFAULT 1;'); } catch (e) { }
 
       // SQLite schema — reviews (generic: track, album, artist)
       await database.exec(`
@@ -391,16 +408,16 @@ export class ControllerFactory {
       `);
 
       // Migrations for existing SQLite reviews (trackId -> item_id)
-      try { await database.exec('ALTER TABLE reviews RENAME COLUMN trackId TO item_id;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_type TEXT NOT NULL DEFAULT \'track\';'); } catch (e) {}
-      try { await database.exec('ALTER TABLE reviews ADD COLUMN review_text TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_name TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_image_url TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_preview_url TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE reviews ADD COLUMN listened_at TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE reviews ADD COLUMN is_relisten BOOLEAN DEFAULT 0;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE reviews ADD COLUMN vibe_tags TEXT;'); } catch (e) {}
-      try { await database.exec('ALTER TABLE reviews ADD COLUMN has_spoiler BOOLEAN DEFAULT 0;'); } catch (e) {}
+      try { await database.exec('ALTER TABLE reviews RENAME COLUMN trackId TO item_id;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_type TEXT NOT NULL DEFAULT \'track\';'); } catch (e) { }
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN review_text TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_name TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_image_url TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN item_preview_url TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN listened_at TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN is_relisten BOOLEAN DEFAULT 0;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN vibe_tags TEXT;'); } catch (e) { }
+      try { await database.exec('ALTER TABLE reviews ADD COLUMN has_spoiler BOOLEAN DEFAULT 0;'); } catch (e) { }
 
       // SQLite schema — activity_logs
       await database.exec(`
@@ -510,7 +527,7 @@ export class ControllerFactory {
           FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
       `);
-      try { await database.exec("ALTER TABLE custom_lists ADD COLUMN list_type TEXT NOT NULL DEFAULT 'album';"); } catch (e) {}
+      try { await database.exec("ALTER TABLE custom_lists ADD COLUMN list_type TEXT NOT NULL DEFAULT 'album';"); } catch (e) { }
 
       await database.exec(`
         CREATE TABLE IF NOT EXISTS custom_list_items (
@@ -555,7 +572,20 @@ export class ControllerFactory {
           UNIQUE (user_id, item_id, item_type)
         );
       `);
-      try { await database.exec("ALTER TABLE listen_later ADD COLUMN position INTEGER DEFAULT 0;"); } catch (e) {}
+      try { await database.exec("ALTER TABLE listen_later ADD COLUMN position INTEGER DEFAULT 0;"); } catch (e) { }
+      try { await database.exec("ALTER TABLE reviews ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public';"); } catch (e) { }
+
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS close_friends (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          friend_id INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+          FOREIGN KEY (friend_id) REFERENCES users (id) ON DELETE CASCADE,
+          UNIQUE (user_id, friend_id)
+        );
+      `);
     }
 
     console.log('Banco de dados inicializado com todas as tabelas.');

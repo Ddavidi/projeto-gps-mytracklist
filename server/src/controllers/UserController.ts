@@ -339,14 +339,34 @@ export class UserController {
     }
   }
 
-  async getUserReviews(userId: number) {
+  async getUserReviews(userId: number, requesterId?: number) {
     try {
-      const rows = await this.db.all(
-        'SELECT id, item_id, item_type, item_name, item_image_url, rating, review_text, listened_at, is_relisten, vibe_tags, has_spoiler, "createdAt", "updatedAt" FROM reviews WHERE "userId" = ? ORDER BY "createdAt" DESC',
-        [userId]
-      );
+      const isOwner = requesterId === userId;
+      let rows: any[];
+      if (isOwner) {
+        rows = await this.db.all(
+          'SELECT id, item_id, item_type, item_name, item_image_url, rating, review_text, listened_at, is_relisten, vibe_tags, has_spoiler, COALESCE(visibility, \'public\') as visibility, "createdAt", "updatedAt" FROM reviews WHERE "userId" = ? ORDER BY "createdAt" DESC',
+          [userId]
+        );
+      } else {
+        rows = await this.db.all(
+          `SELECT id, item_id, item_type, item_name, item_image_url, rating, review_text, listened_at, is_relisten, vibe_tags, has_spoiler, COALESCE(visibility, 'public') as visibility, "createdAt", "updatedAt"
+           FROM reviews
+           WHERE "userId" = ?
+           AND (
+             COALESCE(visibility, 'public') = 'public'
+             OR (
+               visibility = 'close_friends'
+               AND EXISTS (SELECT 1 FROM close_friends cf WHERE cf.user_id = ? AND cf.friend_id = ?)
+             )
+           )
+           ORDER BY "createdAt" DESC`,
+          [userId, userId, requesterId || -1]
+        );
+      }
       const reviews = (rows || []).map((r: any) => ({
         ...r,
+        visibility: r.visibility || 'public',
         vibe_tags: this.parseFavoriteGenres(r.vibe_tags),
         is_relisten: Boolean(r.is_relisten),
         has_spoiler: Boolean(r.has_spoiler),

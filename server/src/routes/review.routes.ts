@@ -1,6 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { ReviewController } from '../controllers/ReviewController';
 import { requireAuth } from '../middleware/auth';
+import { verifyToken } from '../utils/jwt';
+
+function getOptionalUserId(req: Request): number | undefined {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) return undefined;
+  const payload = verifyToken(header.slice(7));
+  return payload?.userId;
+}
 
 type ItemType = 'track' | 'album' | 'artist';
 const VALID_ITEM_TYPES: ItemType[] = ['track', 'album', 'artist'];
@@ -64,7 +72,7 @@ export function createReviewRouter(reviewController: ReviewController): Router {
       res.status(400).json({ error: 'ID inválido.' });
       return;
     }
-    const result = await reviewController.getUserDiary(userId);
+    const result = await reviewController.getUserDiary(userId, getOptionalUserId(req));
     if (result.success) res.json(result.entries);
     else res.status(500).json({ error: result.message });
   });
@@ -80,7 +88,7 @@ export function createReviewRouter(reviewController: ReviewController): Router {
       return;
     }
     const year = Number(req.query.year) || new Date().getFullYear();
-    const result = await reviewController.getUserWrapped(userId, year);
+    const result = await reviewController.getUserWrapped(userId, year, getOptionalUserId(req));
     if (result.success) res.json(result.wrapped);
     else res.status(500).json({ error: result.message });
   });
@@ -192,6 +200,7 @@ export function createReviewRouter(reviewController: ReviewController): Router {
       isRelisten,
       vibeTags,
       hasSpoiler,
+      visibility,
     } = req.body;
 
     if (!itemId) {
@@ -220,7 +229,7 @@ export function createReviewRouter(reviewController: ReviewController): Router {
       itemName,
       itemImageUrl,
       itemPreviewUrl,
-      { listenedAt, isRelisten, vibeTags, hasSpoiler }
+      { listenedAt, isRelisten, vibeTags, hasSpoiler, visibility }
     );
 
     if (result.success) {
@@ -236,7 +245,7 @@ export function createReviewRouter(reviewController: ReviewController): Router {
    * Body: { rating, reviewText?, listenedAt?, isRelisten?, vibeTags?, hasSpoiler? }
    */
   router.put('/:reviewId', async (req: Request, res: Response) => {
-    const { rating, reviewText, listenedAt, isRelisten, vibeTags, hasSpoiler } = req.body;
+    const { rating, reviewText, listenedAt, isRelisten, vibeTags, hasSpoiler, visibility } = req.body;
     if (rating !== undefined && (rating === null || rating === '' || isNaN(Number(rating)) || Number(rating) < 0 || Number(rating) > 10)) {
       res.status(400).json({ error: 'A avaliação deve ser uma nota válida de 0 a 10.' });
       return;
@@ -246,7 +255,7 @@ export function createReviewRouter(reviewController: ReviewController): Router {
       req.user!.userId,
       Number(rating),
       reviewText,
-      { listenedAt, isRelisten, vibeTags, hasSpoiler }
+      { listenedAt, isRelisten, vibeTags, hasSpoiler, visibility }
     );
 
     if (result.success) {

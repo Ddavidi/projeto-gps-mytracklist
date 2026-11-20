@@ -20,6 +20,7 @@ export class ReviewController {
     }
     return {
       ...row,
+      visibility: row.visibility || 'public',
       vibe_tags: vibeTags,
       is_relisten: Boolean(row.is_relisten),
       has_spoiler: Boolean(row.has_spoiler),
@@ -83,7 +84,7 @@ export class ReviewController {
     itemName?: string,
     itemImageUrl?: string,
     itemPreviewUrl?: string,
-    extras?: { listenedAt?: string; isRelisten?: boolean; vibeTags?: string[]; hasSpoiler?: boolean }
+    extras?: { listenedAt?: string; isRelisten?: boolean; vibeTags?: string[]; hasSpoiler?: boolean; visibility?: string }
   ) {
     if (!['track', 'album', 'artist'].includes(itemType)) {
       return { success: false, message: 'Tipo de item inválido. Use: track, album ou artist.' };
@@ -97,11 +98,14 @@ export class ReviewController {
       const isRelisten = Boolean(extras?.isRelisten);
       const vibeTags = JSON.stringify(Array.isArray(extras?.vibeTags) ? extras!.vibeTags : []);
       const hasSpoiler = Boolean(extras?.hasSpoiler);
+      const visibility = ['public', 'close_friends', 'private'].includes(String(extras?.visibility))
+        ? String(extras!.visibility)
+        : 'public';
 
       const result = await this.db.run(
         `INSERT INTO reviews
-          ("userId", item_id, item_type, rating, review_text, item_name, item_image_url, item_preview_url, listened_at, is_relisten, vibe_tags, has_spoiler, "createdAt", "updatedAt")
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          ("userId", item_id, item_type, rating, review_text, item_name, item_image_url, item_preview_url, listened_at, is_relisten, vibe_tags, has_spoiler, visibility, "createdAt", "updatedAt")
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         [
           userId,
           itemId,
@@ -115,6 +119,7 @@ export class ReviewController {
           isRelisten,
           vibeTags,
           hasSpoiler,
+          visibility,
         ]
       );
       return { success: true, reviewId: result.lastInsertRowid };
@@ -139,7 +144,7 @@ export class ReviewController {
     userId: number,
     rating: number,
     reviewText?: string,
-    extras?: { listenedAt?: string; isRelisten?: boolean; vibeTags?: string[]; hasSpoiler?: boolean }
+    extras?: { listenedAt?: string; isRelisten?: boolean; vibeTags?: string[]; hasSpoiler?: boolean; visibility?: string }
   ) {
     if (rating < 0 || rating > 10) {
       return { success: false, message: 'A avaliação deve estar entre 0 e 10.' };
@@ -163,6 +168,10 @@ export class ReviewController {
       if (extras?.hasSpoiler !== undefined) {
         updates.push('has_spoiler = ?');
         params.push(Boolean(extras.hasSpoiler));
+      }
+      if (extras?.visibility !== undefined && ['public', 'close_friends', 'private'].includes(extras.visibility)) {
+        updates.push('visibility = ?');
+        params.push(extras.visibility);
       }
 
       params.push(reviewId, userId);
@@ -208,12 +217,12 @@ export class ReviewController {
   async getItemStats(itemType: ItemType, itemId: string) {
     try {
       const stats = await this.db.get(
-        'SELECT AVG(rating) as averageScore, COUNT(id) as totalReviews FROM reviews WHERE item_type = ? AND item_id = ? AND rating IS NOT NULL',
+        "SELECT AVG(rating) as averageScore, COUNT(id) as totalReviews FROM reviews WHERE item_type = ? AND item_id = ? AND rating IS NOT NULL AND COALESCE(visibility, 'public') = 'public'",
         [itemType, itemId]
       );
       
       const distributionRows = await this.db.all(
-        'SELECT rating, COUNT(id) as count FROM reviews WHERE item_type = ? AND item_id = ? AND rating IS NOT NULL GROUP BY rating',
+        "SELECT rating, COUNT(id) as count FROM reviews WHERE item_type = ? AND item_id = ? AND rating IS NOT NULL AND COALESCE(visibility, 'public') = 'public' GROUP BY rating",
         [itemType, itemId]
       );
       
@@ -297,7 +306,7 @@ export class ReviewController {
         `SELECT item_id, item_type, item_name, item_image_url, 
                 AVG(rating) as avg_rating, COUNT(id) as review_count 
          FROM reviews 
-         WHERE item_type = ? AND rating IS NOT NULL 
+         WHERE item_type = ? AND rating IS NOT NULL AND COALESCE(visibility, 'public') = 'public'
          GROUP BY item_id, item_type, item_name, item_image_url 
          HAVING COUNT(id) > 0 
          ORDER BY avg_rating DESC, review_count DESC 
@@ -332,7 +341,7 @@ export class ReviewController {
       const rows = await this.db.all(
         `SELECT id, item_id, item_type, item_name, item_image_url, rating, vibe_tags, "createdAt"
          FROM reviews
-         WHERE item_type = ? AND rating IS NOT NULL`,
+         WHERE item_type = ? AND rating IS NOT NULL AND COALESCE(visibility, 'public') = 'public'`,
         [itemType]
       );
 
@@ -407,15 +416,21 @@ export class ReviewController {
   /**
    * Diário musical de um usuário ordenado por data de audição.
    */
-  async getUserDiary(userId: number) {
+  async getUserDiary(userId: number, requesterId?: number) {
+    const isOwner = requesterId === userId;
+    const visibilityClause = isOwner
+      ? ''
+      : `AND (COALESCE(visibility, 'public') = 'public' OR (visibility = 'close_friends' AND EXISTS (SELECT 1 FROM close_friends cf WHERE cf.user_id = ? AND cf.friend_id = ?)))`;
+    const queryParams = isOwner ? [userId] : [userId, userId, requesterId || -1];
+
     try {
       const rows = await this.db.all(
         `SELECT id, item_id, item_type, item_name, item_image_url, rating, review_text,
-                listened_at, is_relisten, vibe_tags, has_spoiler, "createdAt"
+                listened_at, is_relisten, vibe_tags, has_spoiler, COALESCE(visibility, 'public') as visibility, "createdAt"
          FROM reviews
-         WHERE "userId" = ?
+         WHERE "userId" = ? ${visibilityClause}
          ORDER BY COALESCE(listened_at, SUBSTRING(CAST("createdAt" AS TEXT), 1, 10)) DESC, "createdAt" DESC`,
-        [userId]
+        queryParams
       );
       const entries = (rows || []).map((r: any) => {
         const formatted = this.formatReviewRow(r);
@@ -428,11 +443,11 @@ export class ReviewController {
       try {
         const rows = await this.db.all(
           `SELECT id, item_id, item_type, item_name, item_image_url, rating, review_text,
-                  listened_at, is_relisten, vibe_tags, has_spoiler, "createdAt"
+                  listened_at, is_relisten, vibe_tags, has_spoiler, COALESCE(visibility, 'public') as visibility, "createdAt"
            FROM reviews
-           WHERE "userId" = ?
+           WHERE "userId" = ? ${visibilityClause}
            ORDER BY "createdAt" DESC`,
-          [userId]
+          queryParams
         );
         const entries = (rows || []).map((r: any) => {
           const formatted = this.formatReviewRow(r);
@@ -451,9 +466,9 @@ export class ReviewController {
   /**
    * Retrospectiva anual (MyTrackList Wrapped) de um usuário.
    */
-  async getUserWrapped(userId: number, year: number) {
+  async getUserWrapped(userId: number, year: number, requesterId?: number) {
     try {
-      const diaryRes = await this.getUserDiary(userId);
+      const diaryRes = await this.getUserDiary(userId, requesterId);
       if (!diaryRes.success) {
         return { success: false as const, message: diaryRes.message || 'Falha ao gerar retrospectiva.' };
       }

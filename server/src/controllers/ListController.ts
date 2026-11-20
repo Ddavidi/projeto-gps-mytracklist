@@ -156,7 +156,7 @@ export class ListController {
     try {
       const cleanTitle = title.trim();
       if (!cleanTitle) return { success: false, message: 'O título da lista é obrigatório.' };
-      const normalizedType = listType === 'track' ? 'track' : 'album';
+      const normalizedType = ['album', 'track', 'artist'].includes(listType) ? listType : 'album';
 
       const result = await this.db.run(
         `INSERT INTO custom_lists (user_id, title, description, list_type, is_ranked, is_public, created_at, updated_at)
@@ -200,9 +200,10 @@ export class ListController {
 
       const allowedType = list.list_type || 'album';
       if (item.itemType !== allowedType) {
+        const typeLabel = allowedType === 'album' ? 'álbuns' : allowedType === 'track' ? 'músicas' : 'artistas';
         return {
           success: false,
-          message: `Esta lista aceita exclusivamente ${allowedType === 'album' ? 'álbuns' : 'músicas'}. Não é permitido misturar formatos na mesma lista.`,
+          message: `Esta lista aceita exclusivamente ${typeLabel}. Não é permitido misturar formatos na mesma lista.`,
         };
       }
 
