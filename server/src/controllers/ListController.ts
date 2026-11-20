@@ -296,6 +296,30 @@ export class ListController {
     }
   }
 
+  async reorderItems(listId: number, userId: number, items: Array<{ id: number; position: number }>) {
+    try {
+      const list = await this.db.get('SELECT id, user_id FROM custom_lists WHERE id = ?', [listId]);
+      if (!list || list.user_id !== userId) {
+        return { success: false, message: 'Sem permissão para reordenar esta lista.' };
+      }
+
+      for (const it of items) {
+        if (typeof it.id === 'number' && typeof it.position === 'number') {
+          await this.db.run(
+            'UPDATE custom_list_items SET position = ? WHERE id = ? AND list_id = ?',
+            [it.position, it.id, listId]
+          );
+        }
+      }
+
+      await this.db.run('UPDATE custom_lists SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [listId]);
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao reordenar itens da lista:', error);
+      return { success: false, message: 'Falha ao reordenar itens.' };
+    }
+  }
+
   async toggleLikeList(listId: number, userId: number) {
     try {
       const existing = await this.db.get(

@@ -28,9 +28,10 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
-import { getListById, updateList, addItemToList, removeItemFromList, toggleLikeList } from '../services/lists';
+import { getListById, updateList, addItemToList, removeItemFromList, reorderListItems, toggleLikeList } from '../services/lists';
 import { searchMulti } from '../services/spotify';
 import { useAuth } from '../context/AuthContext';
 
@@ -140,6 +141,45 @@ export default function ListDetailsPage() {
       loadList();
     } catch (err) {
       setError(err.response?.data?.error || 'Erro ao adicionar item.');
+    }
+  };
+
+  const [dragState, setDragState] = useState({ draggedIdx: null, overIdx: null });
+
+  const handleDragStart = (e, idx) => {
+    if (!isOwner) return;
+    setDragState({ draggedIdx: idx, overIdx: idx });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(idx));
+  };
+
+  const handleDragOver = (e, idx) => {
+    e.preventDefault();
+    if (!isOwner || dragState.draggedIdx === null) return;
+    if (dragState.overIdx !== idx) {
+      setDragState((prev) => ({ ...prev, overIdx: idx }));
+    }
+  };
+
+  const handleDragEnd = async () => {
+    const { draggedIdx, overIdx } = dragState;
+    setDragState({ draggedIdx: null, overIdx: null });
+
+    if (!isOwner || draggedIdx === null || overIdx === null || draggedIdx === overIdx || !list?.items) {
+      return;
+    }
+
+    const newItems = [...list.items];
+    const [moved] = newItems.splice(draggedIdx, 1);
+    newItems.splice(overIdx, 0, moved);
+
+    setList((prev) => ({ ...prev, items: newItems }));
+
+    try {
+      const payload = newItems.map((it, idx) => ({ id: it.id, position: idx + 1 }));
+      await reorderListItems(list.id, payload);
+    } catch {
+      loadList();
     }
   };
 
@@ -302,61 +342,94 @@ export default function ListDetailsPage() {
         </Paper>
       ) : (
         <Paper sx={{ borderRadius: 3.5, overflow: 'hidden' }}>
-          {list.items.map((item, idx) => (
-            <React.Fragment key={item.id}>
-              {idx > 0 && <Divider />}
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2,
-                  px: { xs: 2, sm: 3 },
-                  py: 1.75,
-                  '&:hover': { bgcolor: 'action.hover' },
-                }}
-              >
-                {list.is_ranked && (
-                  <Typography
-                    variant="h6"
-                    className="mtl-mono"
-                    fontWeight={800}
-                    color={idx < 3 ? 'primary.main' : 'text.secondary'}
-                    sx={{ minWidth: 32 }}
-                  >
-                    {String(idx + 1).padStart(2, '0')}
-                  </Typography>
-                )}
-                <Avatar
-                  component={Link}
-                  to={`/${item.item_type}/${item.item_id}`}
-                  variant="rounded"
-                  src={item.item_image_url}
-                  sx={{ width: 56, height: 56 }}
-                />
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography
+          {list.items.map((item, idx) => {
+            const isDragging = dragState.draggedIdx === idx;
+            const isOver = dragState.overIdx === idx;
+
+            return (
+              <React.Fragment key={item.id}>
+                {idx > 0 && <Divider />}
+                <Box
+                  draggable={isOwner}
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDragEnd={handleDragEnd}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    px: { xs: 2, sm: 3 },
+                    py: 1.75,
+                    bgcolor: isOver
+                      ? (theme) => alpha(theme.palette.primary.main, 0.12)
+                      : 'transparent',
+                    borderLeft: isOver ? '3px solid' : '3px solid transparent',
+                    borderLeftColor: isOver ? 'primary.main' : 'transparent',
+                    opacity: isDragging ? 0.4 : 1,
+                    transition: 'all 0.15s ease',
+                    cursor: isOwner ? 'grab' : 'default',
+                    '&:hover': { bgcolor: isOver ? (theme) => alpha(theme.palette.primary.main, 0.15) : 'action.hover' },
+                  }}
+                >
+                  {list.is_ranked && (
+                    <Typography
+                      variant="h6"
+                      className="mtl-mono"
+                      fontWeight={800}
+                      color={idx < 3 ? 'primary.main' : 'text.secondary'}
+                      sx={{ minWidth: 32 }}
+                    >
+                      {String(idx + 1).padStart(2, '0')}
+                    </Typography>
+                  )}
+                  <Avatar
                     component={Link}
                     to={`/${item.item_type}/${item.item_id}`}
-                    variant="subtitle1"
-                    fontWeight={700}
-                    noWrap
-                    sx={{ color: 'text.primary', textDecoration: 'none', '&:hover': { color: 'primary.main' }, display: 'block' }}
-                  >
-                    {item.item_name}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap display="block">
-                    {item.item_artist || (item.item_type === 'album' ? 'Álbum' : 'Música')}
-                  </Typography>
-                </Box>
+                    variant="rounded"
+                    src={item.item_image_url}
+                    sx={{ width: 56, height: 56 }}
+                  />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      component={Link}
+                      to={`/${item.item_type}/${item.item_id}`}
+                      variant="subtitle1"
+                      fontWeight={700}
+                      noWrap
+                      sx={{ color: 'text.primary', textDecoration: 'none', '&:hover': { color: 'primary.main' }, display: 'block' }}
+                    >
+                      {item.item_name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap display="block">
+                      {item.item_artist || (item.item_type === 'album' ? 'Álbum' : 'Música')}
+                    </Typography>
+                  </Box>
 
-                {isOwner && (
-                  <IconButton size="small" color="error" onClick={() => handleRemoveItem(item.id)} aria-label="Remover item">
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
-                )}
-              </Box>
-            </React.Fragment>
-          ))}
+                  {isOwner && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box
+                        sx={{
+                          color: 'text.secondary',
+                          display: 'flex',
+                          alignItems: 'center',
+                          p: 0.5,
+                          borderRadius: 1,
+                          cursor: 'grab',
+                          '&:hover': { color: 'text.primary' },
+                        }}
+                        title="Arraste para reordenar"
+                      >
+                        <DragIndicatorIcon fontSize="small" />
+                      </Box>
+                      <IconButton size="small" color="error" onClick={() => handleRemoveItem(item.id)} aria-label="Remover item">
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  )}
+                </Box>
+              </React.Fragment>
+            );
+          })}
         </Paper>
       )}
       {/* Modal Editar Tier List */}

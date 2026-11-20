@@ -108,6 +108,17 @@ export function createListRouter(listController: ListController): Router {
     else res.status(400).json({ error: result.message });
   });
 
+  router.put('/:id/reorder', async (req: Request, res: Response) => {
+    const { items } = req.body;
+    if (!Array.isArray(items)) {
+      res.status(400).json({ error: 'items deve ser um array com id e position.' });
+      return;
+    }
+    const result = await listController.reorderItems(Number(req.params.id), req.user!.userId, items);
+    if (result.success) res.json({ success: true });
+    else res.status(400).json({ error: result.message });
+  });
+
   router.post('/:id/like', async (req: Request, res: Response) => {
     const result = await listController.toggleLikeList(Number(req.params.id), req.user!.userId);
     if (result.success) res.json(result);

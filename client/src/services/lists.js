@@ -40,6 +40,11 @@ export const removeItemFromList = async (listId, itemRowId) => {
   return res.data;
 };
 
+export const reorderListItems = async (listId, items) => {
+  const res = await api.put(`/lists/${listId}/reorder`, { items });
+  return res.data;
+};
+
 export const toggleLikeList = async (listId) => {
   const res = await api.post(`/lists/${listId}/like`);
   return res.data;
