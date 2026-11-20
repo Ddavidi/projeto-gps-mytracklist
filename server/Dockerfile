@@ -1,9 +1,9 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files and install dependencies (skip optional native sqlite driver)
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --omit=optional
 
 # Copy source code and build
 COPY tsconfig.json ./
@@ -11,12 +11,12 @@ COPY src/ ./src/
 RUN npm run build
 
 # --- Production stage ---
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 # Copy package files and install production deps only
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --omit=optional
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
