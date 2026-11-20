@@ -248,7 +248,7 @@ export class SpotifyService {
   }
 
   public async getUserRecentlyPlayed(accessToken: string) {
-    const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=20', {
+    const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=50', {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
     if (!response.ok) await this.handleSpotifyError(response, 'Falha ao buscar músicas recentes');
@@ -259,6 +259,7 @@ export class SpotifyService {
         id: item.track.id,
         name: item.track.name,
         artist: item.track.artists?.map((a: any) => a.name).join(', ') || '',
+        artistId: item.track.artists?.[0]?.id || null,
         album: item.track.album?.name || '',
         imageUrl: item.track.album?.images?.[0]?.url || '',
         playedAt: item.played_at,

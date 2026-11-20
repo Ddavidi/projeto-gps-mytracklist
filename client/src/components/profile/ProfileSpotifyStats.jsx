@@ -20,11 +20,12 @@ import {
 import { Link } from 'react-router-dom';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive';
+import HistoryIcon from '@mui/icons-material/History';
 import api from '../../services/api';
 import { formatTime } from '../../utils/date';
 
 export default function ProfileSpotifyStats({ userId, isOwner = false }) {
-  const [timeRange, setTimeRange] = useState('short_term'); // last_week | short_term | medium_term | long_term
+  const [timeRange, setTimeRange] = useState('short_term'); // recent | last_week | short_term | medium_term | long_term
 
   const [topTracks, setTopTracks] = useState([]);
   const [topArtists, setTopArtists] = useState([]);
@@ -43,7 +44,19 @@ export default function ProfileSpotifyStats({ userId, isOwner = false }) {
         setError(null);
         setPartialWarning(null);
 
-        if (timeRange === 'last_week') {
+        if (timeRange === 'recent') {
+          try {
+            const recentRes = await api.get(`/spotify/user/${userId}/recent`);
+            if (cancelled) return;
+            const allRecent = Array.isArray(recentRes.data) ? recentRes.data : [];
+            setRecentTracks(allRecent);
+            setTopTracks([]);
+            setTopArtists([]);
+          } catch (recentErr) {
+            if (cancelled) return;
+            setError(recentErr?.response?.data?.error || 'Não foi possível carregar as músicas tocadas recentemente.');
+          }
+        } else if (timeRange === 'last_week') {
           try {
             const recentRes = await api.get(`/spotify/user/${userId}/recent`);
             if (cancelled) return;
@@ -158,6 +171,7 @@ export default function ProfileSpotifyStats({ userId, isOwner = false }) {
             Spotify Stats
           </Typography>
           <Typography variant="caption" color="text.secondary">
+            {timeRange === 'recent' && 'Suas últimas 50 músicas reproduzidas no Spotify'}
             {timeRange === 'last_week' && 'Músicas e artistas mais tocados nos últimos 7 dias'}
             {timeRange === 'short_term' && 'Mais ouvidos no último mês'}
             {timeRange === 'medium_term' && 'Mais ouvidos nos últimos 6 meses'}
@@ -173,6 +187,9 @@ export default function ProfileSpotifyStats({ userId, isOwner = false }) {
           size="small"
           sx={{ flexWrap: 'wrap' }}
         >
+          <ToggleButton value="recent" sx={{ display: 'inline-flex', gap: 0.5 }}>
+            <HistoryIcon sx={{ fontSize: 16 }} /> Recentes
+          </ToggleButton>
           <ToggleButton value="last_week">Última Semana</ToggleButton>
           <ToggleButton value="short_term">1 Mês</ToggleButton>
           <ToggleButton value="medium_term">6 Meses</ToggleButton>
@@ -214,7 +231,44 @@ export default function ProfileSpotifyStats({ userId, isOwner = false }) {
             </Alert>
           )}
 
-          <Grid container spacing={3}>
+          {timeRange === 'recent' ? (
+            <Paper sx={{ p: 2.5, bgcolor: (theme) => alpha(theme.palette.text.primary, 0.02), borderRadius: 3 }}>
+              <Typography variant="subtitle1" fontWeight={700} mb={1.5}>
+                Tocadas Recentemente ({recentTracks.length})
+              </Typography>
+              {recentTracks.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  Nenhuma música reproduzida recentemente.
+                </Typography>
+              ) : (
+                <List disablePadding>
+                  {recentTracks.map((track, index) => (
+                    <React.Fragment key={`${track.id}-${index}-${track.playedAt}`}>
+                      <ListItemButton component={Link} to={`/track/${track.id}`} sx={{ px: 1, borderRadius: 1.5 }}>
+                        <Typography variant="caption" className="mtl-mono" sx={{ width: 28, fontWeight: 700, color: 'text.secondary' }}>
+                          {String(index + 1).padStart(2, '0')}
+                        </Typography>
+                        <ListItemAvatar sx={{ minWidth: 48 }}>
+                          <Avatar src={track.imageUrl} variant="rounded" sx={{ width: 40, height: 40 }} />
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={track.name}
+                          secondary={`${track.artist}${track.album ? ` · ${track.album}` : ''}`}
+                          primaryTypographyProps={{ variant: 'body2', fontWeight: 700, noWrap: true }}
+                          secondaryTypographyProps={{ variant: 'caption', noWrap: true }}
+                        />
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: 1.5, flexShrink: 0 }}>
+                          {formatTime(track.playedAt)}
+                        </Typography>
+                      </ListItemButton>
+                      {index < recentTracks.length - 1 && <Divider sx={{ opacity: 0.5 }} />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              )}
+            </Paper>
+          ) : (
+            <Grid container spacing={3}>
             {/* Top Músicas */}
             <Grid size={{ xs: 12, md: 4 }}>
               <Paper sx={{ p: 2.5, bgcolor: (theme) => alpha(theme.palette.text.primary, 0.02), borderRadius: 3, height: '100%' }}>
@@ -324,6 +378,7 @@ export default function ProfileSpotifyStats({ userId, isOwner = false }) {
               </Paper>
             </Grid>
           </Grid>
+          )}
         </>
       )}
     </Box>
