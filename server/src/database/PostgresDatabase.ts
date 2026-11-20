@@ -1,5 +1,10 @@
-import { Pool, PoolClient } from 'pg';
+import { Pool, PoolClient, types } from 'pg';
 import { IDatabase } from '../interfaces/IDatabase';
+
+// Colunas DATE (ex: birth_date) voltam como texto 'AAAA-MM-DD'.
+// Sem isso, o driver converte para Date à meia-noite UTC e, no Brasil (UTC-3),
+// a data aparece um dia antes.
+types.setTypeParser(1082, (value: string) => value);
 
 export class PostgresDatabase implements IDatabase {
   private pool: Pool | null = null;

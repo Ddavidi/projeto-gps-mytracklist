@@ -216,6 +216,33 @@ export class ControllerFactory {
         )
       `);
 
+      // PostgreSQL schema — cadastros pendentes de verificação por e-mail
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS email_verifications (
+          id SERIAL PRIMARY KEY,
+          email TEXT NOT NULL UNIQUE,
+          username TEXT NOT NULL,
+          password_hash TEXT NOT NULL,
+          code_hash TEXT NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          expires_at BIGINT NOT NULL,
+          last_sent_at BIGINT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+
+      // Username e e-mail únicos sem diferenciar maiúsculas/minúsculas ("Manga" == "manga")
+      try {
+        await database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_unique ON users (LOWER(username))`);
+      } catch (e) {
+        console.warn('Aviso: não foi possível criar índice único LOWER(username) — existem usernames duplicados ignorando maiúsculas.', e);
+      }
+      try {
+        await database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_unique ON users (LOWER(email))`);
+      } catch (e) {
+        console.warn('Aviso: não foi possível criar índice único LOWER(email) — existem e-mails duplicados ignorando maiúsculas.', e);
+      }
+
     } else {
       // SQLite schema (for local dev / testing)
       await database.exec(`
@@ -354,6 +381,21 @@ export class ControllerFactory {
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (review_id) REFERENCES reviews (id) ON DELETE CASCADE,
           FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+      `);
+
+      // SQLite schema — cadastros pendentes de verificação por e-mail
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS email_verifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          email TEXT NOT NULL UNIQUE,
+          username TEXT NOT NULL,
+          password_hash TEXT NOT NULL,
+          code_hash TEXT NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          expires_at INTEGER NOT NULL,
+          last_sent_at INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
       `);
     }

@@ -25,18 +25,86 @@ export function createAuthRouter(userController: UserController): Router {
   });
 
   /**
-   * POST /auth/register
-   * Cria uma nova conta de utilizador.
+   * POST /auth/register/request-code
+   * Etapa 1 do cadastro com 2FA: valida dados e envia código de 6 dígitos para o e-mail.
    */
-  router.post('/register', async (req: Request, res: Response) => {
-    const { username, password, email } = req.body;
+  router.post('/register/request-code', authLimiter, async (req: Request, res: Response) => {
+    const { username, password, confirmPassword, email } = req.body;
 
     if (!username || !password || !email) {
       res.status(400).json({ error: 'E-mail, nome de utilizador e senha são obrigatórios.' });
       return;
     }
 
-    if (username.length < 3) {
+    if (confirmPassword !== undefined && password !== confirmPassword) {
+      res.status(400).json({ error: 'As senhas não coincidem.' });
+      return;
+    }
+
+    if (username.trim().length < 3) {
+      res.status(400).json({ error: 'Nome de utilizador deve ter pelo menos 3 caracteres.' });
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[a-zA-Z])(?=.*[\d#?!&@$*^%-]).{10,}$/;
+    if (!passwordRegex.test(password)) {
+      res.status(400).json({ error: 'A senha deve ter pelo menos 10 caracteres, conter pelo menos 1 letra e 1 número ou caractere especial.' });
+      return;
+    }
+
+    const result = await userController.requestRegistrationCode(username, password, email);
+
+    if (result.success) {
+      res.json({ message: 'Código de verificação enviado para o seu e-mail.', email: result.email });
+    } else {
+      res.status(400).json({ error: result.message });
+    }
+  });
+
+  /**
+   * POST /auth/register/verify
+   * Etapa 2 do cadastro com 2FA: confirma o código de 6 dígitos e cria a conta.
+   */
+  router.post('/register/verify', authLimiter, async (req: Request, res: Response) => {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      res.status(400).json({ error: 'E-mail e código de verificação são obrigatórios.' });
+      return;
+    }
+
+    const result = await userController.verifyRegistrationCode(email, String(code));
+
+    if (result.success) {
+      const token = generateToken({ userId: result.userId!, username: result.username! });
+      res.status(201).json({
+        message: 'Conta verificada e criada com sucesso!',
+        token,
+        user: { id: result.userId, username: result.username, email: result.email },
+      });
+    } else {
+      res.status(400).json({ error: result.message });
+    }
+  });
+
+  /**
+   * POST /auth/register
+   * Cria uma nova conta de utilizador.
+   */
+  router.post('/register', async (req: Request, res: Response) => {
+    const { username, password, confirmPassword, email } = req.body;
+
+    if (!username || !password || !email) {
+      res.status(400).json({ error: 'E-mail, nome de utilizador e senha são obrigatórios.' });
+      return;
+    }
+
+    if (confirmPassword !== undefined && password !== confirmPassword) {
+      res.status(400).json({ error: 'As senhas não coincidem.' });
+      return;
+    }
+
+    if (username.trim().length < 3) {
       res.status(400).json({ error: 'Nome de utilizador deve ter pelo menos 3 caracteres.' });
       return;
     }
@@ -51,8 +119,8 @@ export function createAuthRouter(userController: UserController): Router {
 
     if (result.success) {
       // Auto-login after registration
-      const token = generateToken({ userId: result.userId!, username });
-      res.status(201).json({ message: 'Conta criada com sucesso!', token, user: { id: result.userId, username, email } });
+      const token = generateToken({ userId: result.userId!, username: username.trim() });
+      res.status(201).json({ message: 'Conta criada com sucesso!', token, user: { id: result.userId, username: username.trim(), email: email.trim().toLowerCase() } });
     } else {
       res.status(400).json({ error: result.message });
     }

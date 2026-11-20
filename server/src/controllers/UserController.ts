@@ -1,17 +1,32 @@
 import { IDatabase } from '../interfaces/IDatabase';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { sendVerificationCodeEmail } from '../utils/email';
 
 export class UserController {
   constructor(private db: IDatabase) {}
 
+  private hashVerificationCode(email: string, code: string): string {
+    return crypto
+      .createHash('sha256')
+      .update(`${email.trim().toLowerCase()}:${code.trim()}`)
+      .digest('hex');
+  }
+
   async registerUser(username: string, password: string, email: string) {
     try {
-      const existingUser = await this.db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, email]);
+      const normalizedUsername = username.trim();
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const existingUser = await this.db.get(
+        'SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)',
+        [normalizedUsername, normalizedEmail]
+      );
       if (existingUser) {
-        if (existingUser.username === username) {
+        if (existingUser.username.toLowerCase() === normalizedUsername.toLowerCase()) {
           return { success: false, message: 'Nome de utilizador já existe' };
         }
-        if (existingUser.email === email) {
+        if (existingUser.email?.toLowerCase() === normalizedEmail) {
           return { success: false, message: 'E-mail já está em uso' };
         }
       }
@@ -19,7 +34,7 @@ export class UserController {
       const passwordHash = await bcrypt.hash(password, 10);
       const result = await this.db.run(
         'INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)',
-        [username, passwordHash, email]
+        [normalizedUsername, passwordHash, normalizedEmail]
       );
 
       return { success: true, userId: result.lastInsertRowid };
@@ -29,9 +44,125 @@ export class UserController {
     }
   }
 
+  async requestRegistrationCode(username: string, password: string, email: string) {
+    try {
+      const normalizedUsername = username.trim();
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const existingUser = await this.db.get(
+        'SELECT id, username, email FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)',
+        [normalizedUsername, normalizedEmail]
+      );
+      if (existingUser) {
+        if (existingUser.username?.toLowerCase() === normalizedUsername.toLowerCase()) {
+          return { success: false, message: 'Nome de utilizador já existe' };
+        }
+        if (existingUser.email?.toLowerCase() === normalizedEmail) {
+          return { success: false, message: 'E-mail já está em uso' };
+        }
+      }
+
+      const pending = await this.db.get(
+        'SELECT id, last_sent_at FROM email_verifications WHERE LOWER(email) = LOWER(?)',
+        [normalizedEmail]
+      );
+
+      const now = Date.now();
+      if (pending && now - Number(pending.last_sent_at) < 45 * 1000) {
+        const waitSeconds = Math.ceil((45 * 1000 - (now - Number(pending.last_sent_at))) / 1000);
+        return { success: false, message: `Aguarde ${waitSeconds}s antes de reenviar o código.` };
+      }
+
+      const code = crypto.randomInt(100000, 1000000).toString();
+      const codeHash = this.hashVerificationCode(normalizedEmail, code);
+      const passwordHash = await bcrypt.hash(password, 10);
+      const expiresAt = now + 10 * 60 * 1000; // 10 minutos
+
+      if (pending) {
+        await this.db.run(
+          'UPDATE email_verifications SET username = ?, password_hash = ?, code_hash = ?, attempts = 0, expires_at = ?, last_sent_at = ? WHERE id = ?',
+          [normalizedUsername, passwordHash, codeHash, expiresAt, now, pending.id]
+        );
+      } else {
+        await this.db.run(
+          'INSERT INTO email_verifications (email, username, password_hash, code_hash, attempts, expires_at, last_sent_at) VALUES (?, ?, ?, ?, 0, ?, ?)',
+          [normalizedEmail, normalizedUsername, passwordHash, codeHash, expiresAt, now]
+        );
+      }
+
+      await sendVerificationCodeEmail(normalizedEmail, normalizedUsername, code);
+
+      return { success: true, email: normalizedEmail };
+    } catch (error: any) {
+      console.error('Erro ao enviar código de verificação:', error);
+      return { success: false, message: error?.message || 'Falha ao enviar código de verificação.' };
+    }
+  }
+
+  async verifyRegistrationCode(email: string, code: string) {
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const pending = await this.db.get(
+        'SELECT * FROM email_verifications WHERE LOWER(email) = LOWER(?)',
+        [normalizedEmail]
+      );
+
+      if (!pending) {
+        return { success: false, message: 'Nenhum cadastro pendente encontrado para este e-mail. Solicite um novo código.' };
+      }
+
+      if (Date.now() > Number(pending.expires_at)) {
+        await this.db.run('DELETE FROM email_verifications WHERE id = ?', [pending.id]);
+        return { success: false, message: 'Código expirado. Solicite um novo código.' };
+      }
+
+      if (Number(pending.attempts) >= 5) {
+        await this.db.run('DELETE FROM email_verifications WHERE id = ?', [pending.id]);
+        return { success: false, message: 'Muitas tentativas incorretas. Solicite um novo código.' };
+      }
+
+      const expectedHash = this.hashVerificationCode(normalizedEmail, code);
+      if (expectedHash !== pending.code_hash) {
+        await this.db.run('UPDATE email_verifications SET attempts = attempts + 1 WHERE id = ?', [pending.id]);
+        return { success: false, message: 'Código de verificação inválido.' };
+      }
+
+      // Garante que ninguém registrou o mesmo username/email enquanto estava pendente
+      const existingUser = await this.db.get(
+        'SELECT id, username, email FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)',
+        [pending.username, normalizedEmail]
+      );
+      if (existingUser) {
+        await this.db.run('DELETE FROM email_verifications WHERE id = ?', [pending.id]);
+        return { success: false, message: 'E-mail ou nome de utilizador já está em uso.' };
+      }
+
+      const result = await this.db.run(
+        'INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)',
+        [pending.username, pending.password_hash, normalizedEmail]
+      );
+
+      await this.db.run('DELETE FROM email_verifications WHERE id = ?', [pending.id]);
+
+      return {
+        success: true,
+        userId: result.lastInsertRowid,
+        username: pending.username,
+        email: normalizedEmail,
+      };
+    } catch (error) {
+      console.error('Erro ao verificar código de cadastro:', error);
+      return { success: false, message: 'Falha ao verificar código de cadastro.' };
+    }
+  }
+
   async authenticateUser(identifier: string, password: string) {
     try {
-      const user = await this.db.get('SELECT * FROM users WHERE username = ? OR email = ?', [identifier, identifier]);
+      const normalized = identifier.trim();
+      const user = await this.db.get(
+        'SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)',
+        [normalized, normalized]
+      );
       if (!user) {
         return { success: false, message: 'Utilizador ou palavra-passe inválidos' };
       }
@@ -64,7 +195,10 @@ export class UserController {
 
   async getUserByUsername(username: string) {
     try {
-      const user = await this.db.get('SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, is_admin, created_at, (CASE WHEN spotify_access_token IS NOT NULL THEN 1 ELSE 0 END) as spotify_connected FROM users WHERE username = ?', [username]);
+      const user = await this.db.get(
+        'SELECT id, username, email, name, gender, birth_date, avatar_url, cover_url, bio, is_admin, created_at, (CASE WHEN spotify_access_token IS NOT NULL THEN 1 ELSE 0 END) as spotify_connected FROM users WHERE LOWER(username) = LOWER(?)',
+        [username.trim()]
+      );
       return user || null;
     } catch (error) {
       console.error('Erro ao buscar utilizador por nome:', error);
@@ -74,8 +208,12 @@ export class UserController {
 
   async checkIdentifierExists(identifier: string) {
     try {
-      const isEmail = identifier.includes('@');
-      const user = await this.db.get('SELECT id FROM users WHERE email = ? OR username = ?', [identifier, identifier]);
+      const normalized = identifier.trim();
+      const isEmail = normalized.includes('@');
+      const user = await this.db.get(
+        'SELECT id FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)',
+        [normalized, normalized]
+      );
       return { success: true, exists: !!user, isEmail };
     } catch (error) {
       console.error('Erro ao verificar identificador:', error);
@@ -116,14 +254,14 @@ export class UserController {
     }
   }
 
-  // --- NOVO MÉTODO: Pesquisar utilizadores (parcial) ---
+  // --- NOVO MÉTODO: Pesquisar utilizadores (parcial, case-insensitive) ---
   async searchUsers(query: string) {
     try {
-      // Busca utilizadores cujo nome contenha a query (LIKE %query%)
+      // Busca utilizadores cujo nome contenha a query sem diferenciar maiúsculas/minúsculas
       // Limitamos a 20 resultados para não sobrecarregar
       const users = await this.db.all(
-        'SELECT id, username, avatar_url, created_at FROM users WHERE username LIKE ? LIMIT 20',
-        [`%${query}%`]
+        'SELECT id, username, avatar_url, created_at FROM users WHERE LOWER(username) LIKE LOWER(?) LIMIT 20',
+        [`%${query.trim()}%`]
       );
       return { success: true, users: users || [] };
     } catch (error) {
