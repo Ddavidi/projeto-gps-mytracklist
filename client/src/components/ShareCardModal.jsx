@@ -149,24 +149,6 @@ export default function ShareCardModal({ open, onClose, review }) {
         }
       }
 
-      // Vibes
-      const vibes = Array.isArray(review.vibe_tags) ? review.vibe_tags.slice(0, 3) : [];
-      if (vibes.length > 0) {
-        let vx = cardX + 56;
-        const vy = cardY + cardH - 125;
-        ctx.font = '600 24px "Plus Jakarta Sans", sans-serif';
-        for (const vibe of vibes) {
-          const w = ctx.measureText(vibe).width + 36;
-          ctx.fillStyle = palette.elevated;
-          ctx.beginPath();
-          ctx.roundRect(vx, vy - 30, w, 46, 23);
-          ctx.fill();
-          ctx.fillStyle = palette.secondary;
-          ctx.fillText(vibe, vx + 18, vy);
-          vx += w + 14;
-        }
-      }
-
       // Rodapé
       ctx.fillStyle = palette.textMuted;
       ctx.font = '500 24px "Plus Jakarta Sans", sans-serif';

@@ -21,6 +21,117 @@ export class SpotifyService {
   private clientSecret: string;
   private redirectUri: string;
   private token: SpotifyToken | null = null;
+  private exploreCache: { data: any; expiresAt: number } | null = null;
+
+  // ==========================================
+  // SMART SEARCH & FUZZY RANKING HELPERS
+  // ==========================================
+
+  private normalizeText(str: string): string {
+    return String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private stripEditionSuffix(str: string): string {
+    return this.normalizeText(
+      String(str || '').replace(/\s*[\(\[].*?[\)\]]/g, '').replace(/\s*-\s*(deluxe|remaster|anniversary|expanded|special|edition|bonus|live).*$/i, '')
+    );
+  }
+
+  private levenshtein(a: string, b: string): number {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const prev: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      let curr = i;
+      for (let j = 1; j <= b.length; j++) {
+        const temp = prev[j] ?? 0;
+        const prevDiag = prev[j - 1] ?? 0;
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        prev[j] = Math.min(temp + 1, curr + 1, prevDiag + cost);
+        curr = temp;
+      }
+      prev[0] = i;
+    }
+    return prev[b.length] ?? 0;
+  }
+
+  private similarityScore(a: string, b: string): number {
+    if (!a || !b) return 0;
+    const maxLen = Math.max(a.length, b.length);
+    if (maxLen === 0) return 1;
+    return Math.max(0, 1 - this.levenshtein(a, b) / maxLen);
+  }
+
+  private rankSearchItem(query: string, name: string, secondary: string = '', popularity: number = 0, isCompilation: boolean = false): number {
+    const q = this.normalizeText(query);
+    const n = this.normalizeText(name);
+    const base = this.stripEditionSuffix(name);
+    const sec = this.normalizeText(secondary);
+    const combined = `${n} ${sec}`.trim();
+
+    if (!q) return popularity;
+
+    let score = 0;
+
+    // 1. Correspondência exata tem prioridade absoluta
+    if (n === q) {
+      score += 1200;
+    } else if (base === q) {
+      score += 1050;
+    } else if (n.startsWith(q)) {
+      score += 620;
+    } else if (base.startsWith(q)) {
+      score += 560;
+    }
+
+    // 2. Correspondência por palavras / tokens
+    const qTokens = q.split(' ').filter(Boolean);
+    const nameWords = n.split(' ').filter(Boolean);
+    const allTokensInName = qTokens.every((t) => n.includes(t));
+    const allTokensInCombined = qTokens.every((t) => combined.includes(t));
+
+    if (qTokens.length > 0 && nameWords.includes(q)) {
+      score += 360;
+    }
+    if (allTokensInName) {
+      score += 280;
+    } else if (allTokensInCombined) {
+      score += 220;
+    }
+
+    // 3. Similaridade Fuzzy (tolera erros de digitação de 1-3 letras)
+    const directSim = Math.max(this.similarityScore(q, n), this.similarityScore(q, base));
+    score += Math.round(directSim * 320);
+
+    // Melhor similaridade por palavra para queries curtas com typo
+    if (qTokens.length === 1 && nameWords.length > 0) {
+      const bestWordSim = Math.max(...nameWords.map((w) => this.similarityScore(q, w)));
+      score += Math.round(bestWordSim * 220);
+    }
+
+    // 4. Popularidade do Spotify como desempate forte (evita covers/karaoke obscuros na frente)
+    score += Math.min(100, Math.max(0, popularity || 0)) * 2.2;
+
+    // 5. Penalidade para trilhas genéricas / tributos / karaoke quando não buscados explicitamente
+    if (isCompilation && !q.includes('various') && !q.includes('soundtrack')) {
+      score -= 140;
+    }
+    if ((n.includes('karaoke') || n.includes('tribute') || n.includes('lullaby')) && !q.includes('karaoke') && !q.includes('tribute')) {
+      score -= 220;
+    }
+    if (n.includes('original motion picture') && !q.includes('motion picture') && !q.includes('christmas')) {
+      score -= 90;
+    }
+
+    return score;
+  }
 
   constructor() {
     this.clientId = process.env.SPOTIFY_CLIENT_ID || '';
@@ -357,61 +468,134 @@ export class SpotifyService {
   // Cole este método dentro da classe SpotifyService,
 // por exemplo, a seguir ao método getAccessToken()
 
-  public async searchMulti(query: string, limit: number = 6) {
-    const accessToken = await this.getAccessToken();
+  public async searchMulti(query: string, limit: number = 10) {
+    const cleanQuery = String(query || '').trim();
+    if (!cleanQuery) return { tracks: [], albums: [], artists: [] };
 
-    const fetchSearch = async (type: string, qPrefix: string) => {
-      // Add wildcard or just the exact word, but usually just prefixing works well
+    const accessToken = await this.getAccessToken();
+    const fetchLimit = Math.min(25, Math.max(limit * 2, 18));
+
+    const runSpotifySearch = async (q: string) => {
       const searchParams = new URLSearchParams({
-        q: `${qPrefix}:${query}`,
-        type,
-        limit: limit.toString(),
+        q,
+        type: 'track,album,artist',
+        limit: fetchLimit.toString(),
+        market: 'BR',
       });
       const response = await fetch(`https://api.spotify.com/v1/search?${searchParams.toString()}`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
       if (!response.ok) {
-        console.error(`Falha ao pesquisar ${type} no Spotify:`, await response.text());
+        console.error('Falha na busca Spotify:', await response.text());
         return null;
       }
       return response.json();
     };
 
-    const [trackData, albumData, artistData] = await Promise.all([
-      fetchSearch('track', 'track'),
-      fetchSearch('album', 'album'),
-      fetchSearch('artist', 'artist')
-    ]);
+    // 1. Busca principal natural (muito mais tolerante a typos que prefixos rígidos track:/album:)
+    const primaryData = await runSpotifySearch(cleanQuery);
 
-    const tracks = (trackData?.tracks?.items || []).map((track: any) => ({
-      id: track.id,
-      name: track.name,
-      artist: track.artists?.map((a: any) => a.name).join(', ') || '',
-      album: track.album?.name || '',
-      imageUrl: track.album?.images[0]?.url || '',
-      durationMs: track.duration_ms,
-      previewUrl: track.preview_url,
-      externalUrl: track.external_urls?.spotify || '',
-    }));
+    let rawTracks: any[] = primaryData?.tracks?.items || [];
+    let rawAlbums: any[] = primaryData?.albums?.items || [];
+    let rawArtists: any[] = primaryData?.artists?.items || [];
 
-    const albums = (albumData?.albums?.items || []).map((album: any) => ({
-      id: album.id,
-      name: album.name,
-      artist: album.artists?.map((a: any) => a.name).join(', ') || '',
-      imageUrl: album.images[0]?.url || '',
-      releaseDate: album.release_date ? album.release_date.substring(0, 4) : '',
-      totalTracks: album.total_tracks,
-      albumType: album.album_type,
-    }));
+    // 2. Fallback tolerante a erros de digitação se algum bucket veio fraco
+    const normQuery = this.normalizeText(cleanQuery);
+    const words = normQuery.split(' ').filter((w) => w.length >= 2);
+    const needsFallback = rawTracks.length < 3 || rawAlbums.length < 3 || rawArtists.length < 2;
 
-    const artists = (artistData?.artists?.items || []).map((artist: any) => ({
-      id: artist.id,
-      name: artist.name,
-      imageUrl: artist.images[0]?.url || '',
-      genres: artist.genres && artist.genres.length > 0 ? artist.genres.slice(0, 2).join(', ') : 'Artista',
-      followers: artist.followers?.total || 0,
-      popularity: artist.popularity,
-    }));
+    if (needsFallback && normQuery.length >= 4) {
+      const fallbackVariants: string[] = [];
+      const firstWord = words[0];
+      if (words.length === 1 && firstWord && firstWord.length >= 5) {
+        // Ex: "nightmre" -> "nightm" ou "avengd" -> "aveng"
+        fallbackVariants.push(firstWord.slice(0, Math.max(4, firstWord.length - 2)));
+      } else if (words.length >= 2) {
+        // Ex: "avenged sevenfol" -> busca pela palavra principal mais longa ou sem os 2 últimos chars
+        const trimmedLast = words.map((w, idx) =>
+          idx === words.length - 1 && w.length >= 4 ? w.slice(0, -1) : w
+        ).join(' ');
+        if (trimmedLast !== normQuery) fallbackVariants.push(trimmedLast);
+        const longestWord = [...words].sort((a, b) => b.length - a.length)[0];
+        if (longestWord && longestWord.length >= 4) fallbackVariants.push(longestWord);
+      }
+
+      if (fallbackVariants.length > 0) {
+        const extraResults = await Promise.all(
+          fallbackVariants.slice(0, 2).map((v) => runSpotifySearch(v).catch(() => null))
+        );
+        for (const extra of extraResults) {
+          if (!extra) continue;
+          if (extra.tracks?.items) rawTracks = [...rawTracks, ...extra.tracks.items];
+          if (extra.albums?.items) rawAlbums = [...rawAlbums, ...extra.albums.items];
+          if (extra.artists?.items) rawArtists = [...rawArtists, ...extra.artists.items];
+        }
+      }
+    }
+
+    // Deduplica por ID
+    const dedupeById = (arr: any[]) => {
+      const map = new Map<string, any>();
+      for (const item of arr) {
+        if (item?.id && !map.has(item.id)) map.set(item.id, item);
+      }
+      return Array.from(map.values());
+    };
+
+    const tracks = dedupeById(rawTracks)
+      .map((track: any) => {
+        const artistStr = track.artists?.map((a: any) => a.name).join(', ') || '';
+        const isComp = artistStr.toLowerCase().includes('various artists');
+        return {
+          id: track.id,
+          name: track.name,
+          artist: artistStr,
+          album: track.album?.name || '',
+          imageUrl: track.album?.images?.[0]?.url || '',
+          durationMs: track.duration_ms,
+          previewUrl: track.preview_url,
+          externalUrl: track.external_urls?.spotify || '',
+          popularity: track.popularity || 0,
+          _score: this.rankSearchItem(cleanQuery, track.name, artistStr, track.popularity || 0, isComp),
+        };
+      })
+      .sort((a, b) => b._score - a._score)
+      .slice(0, limit)
+      .map(({ _score, ...rest }) => rest);
+
+    const albums = dedupeById(rawAlbums)
+      .map((album: any) => {
+        const artistStr = album.artists?.map((a: any) => a.name).join(', ') || '';
+        const isComp = album.album_type === 'compilation' || artistStr.toLowerCase().includes('various artists');
+        const bonusStudio = album.album_type === 'album' ? 45 : 0;
+        return {
+          id: album.id,
+          name: album.name,
+          artist: artistStr,
+          imageUrl: album.images?.[0]?.url || '',
+          releaseDate: album.release_date ? album.release_date.substring(0, 4) : '',
+          totalTracks: album.total_tracks,
+          albumType: album.album_type,
+          _score: this.rankSearchItem(cleanQuery, album.name, artistStr, (album.popularity || 50), isComp) + bonusStudio,
+        };
+      })
+      .sort((a, b) => b._score - a._score)
+      .slice(0, limit)
+      .map(({ _score, ...rest }) => rest);
+
+    const artists = dedupeById(rawArtists)
+      .map((artist: any) => ({
+        id: artist.id,
+        name: artist.name,
+        imageUrl: artist.images?.[0]?.url || '',
+        genres: artist.genres && artist.genres.length > 0 ? artist.genres.slice(0, 2).join(', ') : 'Artista',
+        followers: artist.followers?.total || 0,
+        popularity: artist.popularity || 0,
+        _score: this.rankSearchItem(cleanQuery, artist.name, '', artist.popularity || 0, false),
+      }))
+      .sort((a, b) => b._score - a._score)
+      .slice(0, limit)
+      .map(({ _score, ...rest }) => rest);
 
     return { tracks, albums, artists };
   }
@@ -750,62 +934,13 @@ export class SpotifyService {
    * Pesquisa músicas, álbuns e artistas no Spotify.
    * type pode ser 'track', 'album', 'artist' ou combinações como 'track,album,artist'
    */
-  public async searchAll(query: string, types: string = 'track,album,artist', limit: number = 10) {
-    const accessToken = await this.getAccessToken();
-
-    const fetchSearch = async (type: string, qPrefix: string) => {
-      const searchParams = new URLSearchParams({
-        q: `${qPrefix}:${query}`,
-        type,
-        limit: limit.toString(),
-        market: 'BR',
-      });
-      const response = await fetch(`https://api.spotify.com/v1/search?${searchParams.toString()}`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      });
-      if (!response.ok) {
-        console.error(`Falha ao pesquisar ${type} no Spotify:`, await response.text());
-        return null;
-      }
-      return response.json();
-    };
-
+  public async searchAll(query: string, types: string = 'track,album,artist', limit: number = 12) {
+    const multi = await this.searchMulti(query, limit);
     const typeArr = types.split(',');
-    const promises = [];
-    
-    if (typeArr.includes('track')) promises.push(fetchSearch('track', 'track')); else promises.push(Promise.resolve(null));
-    if (typeArr.includes('album')) promises.push(fetchSearch('album', 'album')); else promises.push(Promise.resolve(null));
-    if (typeArr.includes('artist')) promises.push(fetchSearch('artist', 'artist')); else promises.push(Promise.resolve(null));
-
-    const [trackData, albumData, artistData] = await Promise.all(promises);
-
     return {
-      tracks: (trackData?.tracks?.items || []).map((track: any) => ({
-        id: track.id,
-        name: track.name,
-        artist: track.artists.map((a: any) => a.name).join(', '),
-        album: track.album.name,
-        imageUrl: track.album.images[0]?.url,
-        durationMs: track.duration_ms,
-        previewUrl: track.preview_url,
-      })),
-      albums: (albumData?.albums?.items || []).map((album: any) => ({
-        id: album.id,
-        name: album.name,
-        artist: album.artists.map((a: any) => a.name).join(', '),
-        imageUrl: album.images[0]?.url,
-        releaseDate: album.release_date,
-        totalTracks: album.total_tracks,
-        albumType: album.album_type,
-      })),
-      artists: (artistData?.artists?.items || []).map((artist: any) => ({
-        id: artist.id,
-        name: artist.name,
-        imageUrl: artist.images[0]?.url,
-        genres: artist.genres,
-        popularity: artist.popularity,
-        followers: artist.followers?.total,
-      })),
+      tracks: typeArr.includes('track') ? multi.tracks : [],
+      albums: typeArr.includes('album') ? multi.albums : [],
+      artists: typeArr.includes('artist') ? multi.artists : [],
     };
   }
 
@@ -816,7 +951,7 @@ export class SpotifyService {
   public async getTrending() {
     const accessToken = await this.getAccessToken();
 
-    const response = await fetch(`https://api.spotify.com/v1/browse/new-releases?limit=10&country=BR`, {
+    const response = await fetch(`https://api.spotify.com/v1/browse/new-releases?limit=12&country=BR`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
 
@@ -836,6 +971,126 @@ export class SpotifyService {
     }));
 
     return { albums };
+  }
+
+  /**
+   * Obtém os rankings e novidades do Spotify para a página Explorar:
+   * - newReleases (Novidades / Lançamentos)
+   * - topGlobal (Top Global / Mais escutadas da semana no mundo)
+   * - topBrazil (Top Brasil / Mais escutadas da semana no Brasil)
+   * - allTimeClassics (Mais escutadas da história)
+   * Cache de 15 minutos em memória para performance e proteção de quota.
+   */
+  public async getExploreCharts() {
+    if (this.exploreCache && this.exploreCache.expiresAt > Date.now()) {
+      return this.exploreCache.data;
+    }
+
+    const accessToken = await this.getAccessToken();
+    const currentYear = new Date().getFullYear();
+
+    const formatTrack = (track: any) => ({
+      id: track.id,
+      name: track.name,
+      artist: track.artists?.map((a: any) => a.name).join(', ') || '',
+      album: track.album?.name || '',
+      albumId: track.album?.id || '',
+      imageUrl: track.album?.images?.[0]?.url || '',
+      popularity: track.popularity || 0,
+      previewUrl: track.preview_url || null,
+      releaseYear: track.album?.release_date ? track.album.release_date.substring(0, 4) : '',
+    });
+
+    const tryPlaylistTracks = async (playlistId: string, limit: number = 15) => {
+      try {
+        const res = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=${limit}&market=BR`, {
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+        });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return (json.items || [])
+          .map((i: any) => i?.track)
+          .filter((t: any) => t && t.id && t.name)
+          .map(formatTrack);
+      } catch {
+        return [];
+      }
+    };
+
+    const searchTopTracks = async (q: string, market: string, limit: number = 25) => {
+      try {
+        const params = new URLSearchParams({ q, type: 'track', market, limit: String(limit) });
+        const res = await fetch(`https://api.spotify.com/v1/search?${params.toString()}`, {
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+        });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return (json.tracks?.items || [])
+          .filter((t: any) => t && t.id && t.name)
+          .map(formatTrack);
+      } catch {
+        return [];
+      }
+    };
+
+    const dedupeAndSort = (tracks: any[], max: number = 12) => {
+      const seen = new Set<string>();
+      return tracks
+        .filter((t) => {
+          const key = `${t.id}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+        .slice(0, max);
+    };
+
+    // 1. Novidades (New Releases)
+    const trendingRes = await this.getTrending().catch(() => ({ albums: [] }));
+
+    // 2. Top Global (tenta playlist oficial Top 50 Global -> fallback hits atuais globais ordenados por popularidade)
+    let topGlobal = await tryPlaylistTracks('37i9dQZEVXbMDoHDwVN2tF', 15);
+    if (topGlobal.length < 6) {
+      const [g1, g2] = await Promise.all([
+        searchTopTracks(`year:${currentYear - 1}-${currentYear}`, 'US', 25),
+        searchTopTracks(`genre:pop year:${currentYear - 1}-${currentYear}`, 'US', 25),
+      ]);
+      topGlobal = dedupeAndSort([...g1, ...g2], 12);
+    }
+
+    // 3. Top Brasil (tenta playlist oficial Top 50 Brasil -> fallback hits atuais do Brasil)
+    let topBrazil = await tryPlaylistTracks('37i9dQZEVXbMXbN3EUUhlg', 15);
+    if (topBrazil.length < 6) {
+      const [b1, b2, b3] = await Promise.all([
+        searchTopTracks(`genre:sertanejo year:${currentYear - 1}-${currentYear}`, 'BR', 15),
+        searchTopTracks(`genre:funk year:${currentYear - 1}-${currentYear}`, 'BR', 15),
+        searchTopTracks(`genre:mpb OR genre:pagode OR genre:brazil year:${currentYear - 1}-${currentYear}`, 'BR', 15),
+      ]);
+      topBrazil = dedupeAndSort([...b1, ...b2, ...b3], 12);
+    }
+
+    // 4. Mais escutadas da história (maiores clássicos & streams históricos do Spotify)
+    const [h1, h2, h3] = await Promise.all([
+      searchTopTracks('Blinding Lights OR Shape of You OR Starboy OR As It Was', 'US', 15),
+      searchTopTracks('Bohemian Rhapsody OR Smells Like Teen Spirit OR Hotel California OR Sweater Weather', 'US', 15),
+      searchTopTracks('Someone You Loved OR Sunflower OR Believer OR One Dance', 'US', 15),
+    ]);
+    const allTimeClassics = dedupeAndSort([...h1, ...h2, ...h3], 12);
+
+    const payload = {
+      newReleases: (trendingRes.albums || []).slice(0, 12),
+      topGlobal,
+      topBrazil,
+      allTimeClassics,
+    };
+
+    this.exploreCache = {
+      data: payload,
+      expiresAt: Date.now() + 15 * 60 * 1000,
+    };
+
+    return payload;
   }
 
   // ==========================================

@@ -1,0 +1,19 @@
+{
+  "name": "MyTrackList",
+  "short_name": "MyTrackList",
+  "description": "Seu diário musical, avaliações, tier lists e comunidade.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0B0E11",
+  "theme_color": "#0B0E11",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

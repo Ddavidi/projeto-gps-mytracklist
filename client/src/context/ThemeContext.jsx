@@ -144,6 +144,22 @@ export function ThemeModeProvider({ children }) {
     root.style.setProperty('--mtl-text-muted', palette.textMuted);
     root.style.setProperty('--mtl-border', palette.border);
     root.setAttribute('data-theme-mode', palette.mode);
+
+    // Sincroniza theme-color do navegador / PWA / StatusBar mobile
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', palette.bg);
+    }
+    import('@capacitor/core')
+      .then(({ Capacitor }) => {
+        if (Capacitor.isNativePlatform()) {
+          import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+            StatusBar.setBackgroundColor({ color: palette.bg }).catch(() => {});
+            StatusBar.setStyle({ style: palette.mode === 'dark' ? Style.Dark : Style.Light }).catch(() => {});
+          }).catch(() => {});
+        }
+      })
+      .catch(() => {});
   }, [palette]);
 
   const muiTheme = useMemo(() => {

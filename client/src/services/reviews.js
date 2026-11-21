@@ -118,9 +118,9 @@ export const addReviewComment = async (reviewId, content) => {
   return response.data;
 };
 
-export const getCommunityCharts = async ({ type = 'album', period = 'all', vibe = '', sort = 'rating', limit = 24 } = {}) => {
+export const getCommunityCharts = async ({ type = 'album', period = 'all', sort = 'rating', limit = 24 } = {}) => {
   const response = await api.get('/reviews/charts', {
-    params: { type, period, ...(vibe ? { vibe } : {}), sort, limit },
+    params: { type, period, sort, limit },
   });
   return response.data || [];
 };

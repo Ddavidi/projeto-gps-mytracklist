@@ -31,7 +31,6 @@ import StarIcon from '@mui/icons-material/Star';
 import RatingInput from './RatingInput';
 import BirthDateField from './BirthDateField';
 import { getUserReviewForItem, saveReview } from '../services/reviews';
-import { VIBE_TAGS } from '../constants/vibes';
 
 function getTodayIso() {
   const now = new Date();
@@ -340,7 +339,7 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
             >
               Editar Avaliação
             </Button>
-            {(currentReview.review_text || (currentReview.vibe_tags && currentReview.vibe_tags.length > 0)) && (
+            {currentReview.review_text && (
               <IconButton
                 size="small"
                 onClick={() => setIsExpanded((e) => !e)}
@@ -421,18 +420,6 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
                 {isExpanded ? 'Mostrar menos' : 'Ler review completa'}
               </Button>
             )}
-          </Box>
-        )}
-
-        {/* Vibes da Audição */}
-        {Array.isArray(currentReview.vibe_tags) && currentReview.vibe_tags.length > 0 && (
-          <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-            <Typography variant="caption" color="text.secondary" fontWeight={600}>
-              Vibes:
-            </Typography>
-            {currentReview.vibe_tags.map((tag) => (
-              <Chip key={tag} label={tag} size="small" variant="filled" sx={{ fontSize: '0.75rem', fontWeight: 600 }} />
-            ))}
           </Box>
         )}
       </Paper>
@@ -576,29 +563,6 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
           variant="outlined"
           sx={{ mb: 1.5 }}
         />
-
-        {/* Tags de Vibe */}
-        <Box sx={{ mb: 1.5 }}>
-          <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.75 }}>
-            Vibes da audição (até 4)
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-            {VIBE_TAGS.map((tag) => {
-              const active = vibeTags.includes(tag);
-              return (
-                <Chip
-                  key={tag}
-                  label={tag}
-                  size="small"
-                  clickable
-                  color={active ? 'primary' : 'default'}
-                  variant={active ? 'filled' : 'outlined'}
-                  onClick={() => toggleVibe(tag)}
-                />
-              );
-            })}
-          </Box>
-        </Box>
 
         {/* Opções avançadas de Diário */}
         <Box sx={{ mb: 1.5 }}>

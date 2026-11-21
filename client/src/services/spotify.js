@@ -106,3 +106,8 @@ export const getTrending = async () => {
   const response = await api.get('/spotify/trending');
   return response.data;
 };
+
+export const getExploreCharts = async () => {
+  const response = await api.get('/spotify/explore');
+  return response.data;
+};

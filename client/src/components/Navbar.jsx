@@ -56,16 +56,47 @@ function VinylMark() {
   );
 }
 
-function Navbar() {
+function Navbar({ externalSearchOpen, onExternalSearchClose }) {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
+  const [navVisible, setNavVisible] = useState(true);
 
   const [notifications, setNotifications] = useState([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  // Sincroniza abertura externa (ex: botão Buscar da MobileBottomNav)
+  useEffect(() => {
+    if (externalSearchOpen) {
+      setSearchOpen(true);
+    }
+  }, [externalSearchOpen]);
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    if (onExternalSearchClose) onExternalSearchClose();
+  };
+
+  // Headroom: esconde ao descer, reaparece imediatamente ao rolar qualquer pouco para cima
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY <= 40) {
+        setNavVisible(true);
+      } else if (currentY < lastY - 4) {
+        setNavVisible(true);
+      } else if (currentY > lastY + 8 && currentY > 80) {
+        setNavVisible(false);
+      }
+      lastY = currentY;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -146,8 +177,10 @@ function Navbar() {
         position="sticky"
         elevation={0}
         sx={{
-          bgcolor: (theme) => alpha(theme.palette.background.default, 0.86),
-          backdropFilter: 'blur(14px)',
+          top: 0,
+          pt: 'env(safe-area-inset-top)',
+          bgcolor: (theme) => alpha(theme.palette.background.default, 0.88),
+          backdropFilter: 'blur(16px)',
           color: 'text.primary',
           borderBottom: '1px solid',
           borderColor: 'divider',
@@ -155,6 +188,8 @@ function Navbar() {
           borderLeft: 'none',
           borderRight: 'none',
           zIndex: 1200,
+          transform: navVisible ? 'translateY(0)' : 'translateY(-100%)',
+          transition: 'transform 0.24s cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       >
         <Toolbar sx={{ maxWidth: 1240, width: '100%', mx: 'auto', minHeight: 68, px: { xs: 2, md: 3 }, gap: 2 }}>
@@ -458,7 +493,7 @@ function Navbar() {
       {/* Overlay de Pesquisa Global */}
       <Dialog
         open={searchOpen}
-        onClose={() => setSearchOpen(false)}
+        onClose={closeSearch}
         maxWidth="md"
         fullWidth
         sx={{
@@ -479,8 +514,8 @@ function Navbar() {
       >
         <Box sx={{ width: '100%', maxWidth: 850, mx: 'auto' }}>
           <SearchBar
-            onSelect={() => setSearchOpen(false)}
-            onSearch={(q) => { setSearchOpen(false); navigate(`/search?q=${encodeURIComponent(q)}`); }}
+            onSelect={closeSearch}
+            onSearch={(q) => { closeSearch(); navigate(`/search?q=${encodeURIComponent(q)}`); }}
           />
         </Box>
       </Dialog>

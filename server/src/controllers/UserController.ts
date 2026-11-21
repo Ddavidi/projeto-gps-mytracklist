@@ -167,6 +167,14 @@ export class UserController {
         return { success: false, message: 'Utilizador ou palavra-passe inválidos' };
       }
 
+      if (user.password_hash === '__GOOGLE_OAUTH__') {
+        return {
+          success: false,
+          message: 'Esta conta foi criada com o Google. Clique em "Continuar com Google" para entrar.',
+          code: 'GOOGLE_ONLY_ACCOUNT',
+        };
+      }
+
       const isMatch = await bcrypt.compare(password, user.password_hash);
       if (isMatch) {
         if (user.email === 'ddnr03@gmail.com') {
@@ -244,13 +252,135 @@ export class UserController {
       const normalized = identifier.trim();
       const isEmail = normalized.includes('@');
       const user = await this.db.get(
-        'SELECT id FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)',
+        'SELECT id, google_id, password_hash FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)',
         [normalized, normalized]
       );
-      return { success: true, exists: !!user, isEmail };
+      return {
+        success: true,
+        exists: !!user,
+        isEmail,
+        isGoogleOnly: Boolean(user && user.password_hash === '__GOOGLE_OAUTH__'),
+        hasGoogle: Boolean(user && user.google_id),
+      };
     } catch (error) {
       console.error('Erro ao verificar identificador:', error);
       return { success: false, message: 'Falha ao verificar identificador' };
+    }
+  }
+
+  /**
+   * Autentica ou cria conta utilizando ID Token do Google Identity Services.
+   * Regra: se já existir conta (nativa ou Google) com o mesmo e-mail, vincula o google_id e faz login direto sem duplicar.
+   */
+  async authenticateWithGoogle(credential: string) {
+    try {
+      if (!credential || typeof credential !== 'string') {
+        return { success: false, message: 'Token do Google inválido.' };
+      }
+
+      const tokenInfoRes = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+      );
+      if (!tokenInfoRes.ok) {
+        return { success: false, message: 'Não foi possível validar sua conta Google. Tente novamente.' };
+      }
+
+      const payload: any = await tokenInfoRes.json();
+      const expectedClientId = process.env.GOOGLE_CLIENT_ID;
+      if (expectedClientId && payload.aud !== expectedClientId) {
+        return { success: false, message: 'Token Google não pertence a este aplicativo.' };
+      }
+
+      const email = String(payload.email || '').trim().toLowerCase();
+      const googleId = String(payload.sub || '').trim();
+      const fullName = String(payload.name || '').trim();
+      const picture = String(payload.picture || '').trim();
+
+      if (!email || !googleId) {
+        return { success: false, message: 'Não foi possível obter o e-mail da sua conta Google.' };
+      }
+
+      // 1. Verifica se já existe conta pelo google_id ou pelo mesmo e-mail (conta nativa)
+      const existing = await this.db.get(
+        'SELECT * FROM users WHERE google_id = ? OR LOWER(email) = LOWER(?)',
+        [googleId, email]
+      );
+
+      if (existing) {
+        // Vincula google_id e foto (se ainda não tiver) e realiza login direto
+        const updates: string[] = [];
+        const params: any[] = [];
+        if (!existing.google_id) {
+          updates.push('google_id = ?');
+          params.push(googleId);
+        }
+        if (!existing.avatar_url && picture) {
+          updates.push('avatar_url = ?');
+          params.push(picture);
+        }
+        if (!existing.name && fullName) {
+          updates.push('name = ?');
+          params.push(fullName);
+        }
+        if (updates.length > 0) {
+          params.push(existing.id);
+          await this.db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+        }
+
+        if (email === 'ddnr03@gmail.com') {
+          try { await this.db.run('UPDATE users SET is_admin = true WHERE id = ?', [existing.id]); }
+          catch { await this.db.run('UPDATE users SET is_admin = 1 WHERE id = ?', [existing.id]); }
+        }
+
+        return {
+          success: true,
+          userId: existing.id,
+          username: existing.username,
+          isNewUser: false,
+          accountLinked: !existing.google_id,
+        };
+      }
+
+      // 2. Cria nova conta com username único limpo
+      const baseRaw = (email.split('@')[0] || fullName || 'usuario')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '')
+        .slice(0, 18);
+      const baseUsername = baseRaw.length >= 3 ? baseRaw : `user${Math.floor(1000 + Math.random() * 9000)}`;
+
+      let finalUsername = baseUsername;
+      for (let suffix = 0; suffix < 20; suffix++) {
+        const candidate = suffix === 0 ? baseUsername : `${baseUsername}${Math.floor(10 + Math.random() * 989)}`;
+        const taken = await this.db.get('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', [candidate]);
+        if (!taken) {
+          finalUsername = candidate;
+          break;
+        }
+      }
+
+      const result = await this.db.run(
+        'INSERT INTO users (username, password_hash, email, name, avatar_url, google_id) VALUES (?, ?, ?, ?, ?, ?)',
+        [finalUsername, '__GOOGLE_OAUTH__', email, fullName || finalUsername, picture || null, googleId]
+      );
+
+      const newUserId = result.lastInsertRowid;
+      if (email === 'ddnr03@gmail.com') {
+        try { await this.db.run('UPDATE users SET is_admin = true WHERE id = ?', [newUserId]); }
+        catch { await this.db.run('UPDATE users SET is_admin = 1 WHERE id = ?', [newUserId]); }
+      }
+
+      return {
+        success: true,
+        userId: newUserId,
+        username: finalUsername,
+        isNewUser: true,
+        accountLinked: false,
+      };
+    } catch (error) {
+      console.error('Erro na autenticação com Google:', error);
+      return { success: false, message: 'Falha ao entrar com o Google.' };
     }
   }
 
@@ -337,16 +467,73 @@ export class UserController {
     }
   }
 
-  // --- NOVO MÉTODO: Pesquisar utilizadores (parcial, case-insensitive) ---
+  // --- Pesquisar utilizadores com ranking inteligente + tolerância a erros de digitação ---
   async searchUsers(query: string) {
     try {
-      // Busca utilizadores cujo nome contenha a query sem diferenciar maiúsculas/minúsculas
-      // Limitamos a 20 resultados para não sobrecarregar
-      const users = await this.db.all(
-        'SELECT id, username, avatar_url, created_at FROM users WHERE LOWER(username) LIKE LOWER(?) LIMIT 20',
-        [`%${query.trim()}%`]
+      const q = String(query || '').trim().toLowerCase();
+      if (!q) return { success: true, users: [] };
+
+      const direct = await this.db.all(
+        'SELECT id, username, name, avatar_url, created_at FROM users WHERE LOWER(username) LIKE LOWER(?) OR LOWER(COALESCE(name, \'\')) LIKE LOWER(?) LIMIT 40',
+        [`%${q}%`, `%${q}%`]
       );
-      return { success: true, users: users || [] };
+
+      let pool = direct || [];
+      if (pool.length < 6) {
+        const allCandidates = await this.db.all(
+          'SELECT id, username, name, avatar_url, created_at FROM users LIMIT 200'
+        );
+        const existingIds = new Set(pool.map((u: any) => u.id));
+        for (const u of allCandidates || []) {
+          if (!existingIds.has(u.id)) pool.push(u);
+        }
+      }
+
+      const levenshtein = (a: string, b: string): number => {
+        if (a === b) return 0;
+        if (!a.length) return b.length;
+        if (!b.length) return a.length;
+        const prev: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
+        for (let i = 1; i <= a.length; i++) {
+          let curr = i;
+          for (let j = 1; j <= b.length; j++) {
+            const temp = prev[j] ?? 0;
+            const prevDiag = prev[j - 1] ?? 0;
+            prev[j] = Math.min(temp + 1, curr + 1, prevDiag + (a[i - 1] === b[j - 1] ? 0 : 1));
+            curr = temp;
+          }
+          prev[0] = i;
+        }
+        return prev[b.length] ?? 0;
+      };
+
+      const scored = pool
+        .map((u: any) => {
+          const uname = String(u.username || '').toLowerCase();
+          const name = String(u.name || '').toLowerCase();
+          let score = 0;
+          if (uname === q) score = 1000;
+          else if (name === q) score = 900;
+          else if (uname.startsWith(q)) score = 700;
+          else if (name.startsWith(q)) score = 600;
+          else if (uname.includes(q)) score = 450;
+          else if (name.includes(q)) score = 380;
+          else {
+            const distU = levenshtein(q, uname);
+            const distN = name ? levenshtein(q, name) : 99;
+            const simU = 1 - distU / Math.max(q.length, uname.length, 1);
+            const simN = name ? 1 - distN / Math.max(q.length, name.length, 1) : 0;
+            const best = Math.max(simU, simN);
+            if (best >= 0.55) score = Math.round(best * 320);
+          }
+          return { ...u, _score: score };
+        })
+        .filter((u: any) => u._score > 0)
+        .sort((a: any, b: any) => b._score - a._score)
+        .slice(0, 20)
+        .map(({ _score, ...rest }: any) => rest);
+
+      return { success: true, users: scored };
     } catch (error) {
       console.error('Erro ao pesquisar utilizadores:', error);
       return { success: false, message: 'Falha ao pesquisar utilizadores.' };

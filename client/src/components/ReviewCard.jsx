@@ -55,7 +55,6 @@ function ReviewCard({ review }) {
 
   const authorUsername = review.user_username || review.author_username || review.user?.username || 'Usuário';
   const authorAvatar = review.user_avatar || review.author_avatar || review.user?.avatar_url;
-  const vibes = Array.isArray(review.vibe_tags) ? review.vibe_tags : [];
 
   const handleLike = async () => {
     if (likeLoading) return;
@@ -286,8 +285,8 @@ function ReviewCard({ review }) {
         )}
       </Box>
 
-      {/* Texto da Review (com proteção de spoiler) e Vibes */}
-      {(review.review_text || vibes.length > 0 || review.is_relisten) && (
+      {/* Texto da Review (com proteção de spoiler) */}
+      {(review.review_text || review.is_relisten) && (
         <Box sx={{ px: 2.5, pt: 1.75, pb: 0.5 }}>
           {review.review_text && (
             review.has_spoiler && !spoilerRevealed ? (
@@ -306,7 +305,7 @@ function ReviewCard({ review }) {
                   alignItems: 'center',
                   gap: 1,
                   cursor: 'pointer',
-                  mb: vibes.length > 0 ? 1.25 : 0,
+                  mb: review.is_relisten ? 1.25 : 0,
                 }}
               >
                 <VisibilityOffOutlinedIcon fontSize="small" color="warning" />
@@ -315,37 +314,22 @@ function ReviewCard({ review }) {
                 </Typography>
               </Box>
             ) : (
-              <Typography variant="body1" color="text.primary" sx={{ whiteSpace: 'pre-line', lineHeight: 1.65, mb: vibes.length > 0 || review.is_relisten ? 1.25 : 0 }}>
+              <Typography variant="body1" color="text.primary" sx={{ whiteSpace: 'pre-line', lineHeight: 1.65, mb: review.is_relisten ? 1.25 : 0 }}>
                 {review.review_text}
               </Typography>
             )
           )}
 
-          {(vibes.length > 0 || review.is_relisten) && (
+          {review.is_relisten && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-              {review.is_relisten && (
-                <Chip
-                  size="small"
-                  icon={<RepeatIcon sx={{ fontSize: 14 }} />}
-                  label="Re-audição"
-                  variant="outlined"
-                  color="primary"
-                  sx={{ height: 22, fontSize: '0.7rem' }}
-                />
-              )}
-              {vibes.map((tag) => (
-                <Chip
-                  key={tag}
-                  size="small"
-                  label={tag}
-                  sx={{
-                    height: 22,
-                    fontSize: '0.7rem',
-                    bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.14),
-                    color: 'secondary.main',
-                  }}
-                />
-              ))}
+              <Chip
+                size="small"
+                icon={<RepeatIcon sx={{ fontSize: 14 }} />}
+                label="Re-audição"
+                variant="outlined"
+                color="primary"
+                sx={{ height: 22, fontSize: '0.7rem' }}
+              />
             </Box>
           )}
         </Box>

@@ -495,45 +495,48 @@ export default function ProfileOverview({
                     : `Digite o nome de um ${activePickerMeta.singular} para adicionar à sua vitrine (até ${MAX_FAVORITES}).`}
                 </Typography>
               ) : (
-                <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   {searchResults.map((item) => {
                     const alreadyAdded = activePickerIds.has(item.id);
                     return (
                       <ListItem
                         key={item.id}
                         sx={{
-                          borderRadius: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5,
+                          px: 1.5,
+                          py: 1,
+                          borderRadius: 2.5,
                           border: '1px solid',
                           borderColor: 'divider',
                           bgcolor: (theme) => alpha(theme.palette.text.primary, 0.02),
                         }}
-                        secondaryAction={
-                          <Button
-                            size="small"
-                            variant={alreadyAdded ? 'outlined' : 'contained'}
-                            disabled={alreadyAdded || busyId === item.id}
-                            startIcon={alreadyAdded ? <CheckIcon fontSize="small" /> : <AddIcon fontSize="small" />}
-                            onClick={() => handleAddFavorite(item)}
-                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
-                          >
-                            {alreadyAdded ? 'Adicionado' : 'Adicionar'}
-                          </Button>
-                        }
                       >
-                        <ListItemAvatar>
-                          <Avatar
-                            variant={pickerType === 'artist' ? 'circular' : 'rounded'}
-                            src={item.imageUrl}
-                            alt={item.name}
-                            sx={{ width: 44, height: 44 }}
-                          />
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={item.name}
-                          secondary={item.artist || (Array.isArray(item.genres) ? item.genres.slice(0, 2).join(', ') : item.genres || '')}
-                          primaryTypographyProps={{ variant: 'body2', fontWeight: 700, noWrap: true }}
-                          secondaryTypographyProps={{ variant: 'caption', noWrap: true }}
+                        <Avatar
+                          variant={pickerType === 'artist' ? 'circular' : 'rounded'}
+                          src={item.imageUrl}
+                          alt={item.name}
+                          sx={{ width: 46, height: 46, flexShrink: 0 }}
                         />
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="body2" fontWeight={700} noWrap>
+                            {item.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" noWrap display="block">
+                            {item.artist || (Array.isArray(item.genres) ? item.genres.slice(0, 2).join(', ') : item.genres || '')}
+                          </Typography>
+                        </Box>
+                        <Button
+                          size="small"
+                          variant={alreadyAdded ? 'outlined' : 'contained'}
+                          disabled={alreadyAdded || busyId === item.id}
+                          startIcon={alreadyAdded ? <CheckIcon fontSize="small" /> : <AddIcon fontSize="small" />}
+                          onClick={() => handleAddFavorite(item)}
+                          sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}
+                        >
+                          {alreadyAdded ? 'Adicionado' : 'Adicionar'}
+                        </Button>
                       </ListItem>
                     );
                   })}

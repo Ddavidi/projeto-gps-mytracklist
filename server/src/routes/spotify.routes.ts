@@ -29,6 +29,20 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
   });
 
   /**
+   * GET /spotify/explore
+   * Retorna rankings e novidades do Spotify (Novidades, Top Global, Top Brasil e Clássicos da História).
+   */
+  router.get('/explore', async (_req: Request, res: Response) => {
+    try {
+      const explore = await spotifyService.getExploreCharts();
+      res.json(explore);
+    } catch (err) {
+      console.error('Erro ao obter rankings do Spotify:', err);
+      res.status(500).json({ error: 'Falha ao obter os rankings do Spotify.' });
+    }
+  });
+
+  /**
    * GET /spotify/search?q=query
    * Pesquisa músicas, álbuns e artistas no Spotify.
    */

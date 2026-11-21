@@ -29,9 +29,13 @@ body,
   padding: 0;
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--mtl-bg);
   color: var(--mtl-text);
   overflow-x: hidden;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 ::selection {

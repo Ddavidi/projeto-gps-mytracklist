@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -16,6 +16,7 @@ import {
   ListItemIcon,
   ListItemText,
   Grid,
+  Divider,
   alpha,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -36,13 +37,71 @@ function LoginPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [isLoginFlow, setIsLoginFlow] = useState(false);
+  const [isGoogleOnlyAccount, setIsGoogleOnlyAccount] = useState(false);
   const [error, setError] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showcaseAlbums, setShowcaseAlbums] = useState([]);
+  const googleBtnRef = useRef(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
   const navigate = useNavigate();
   const { login, setAuth } = useAuth();
+
+  const handleGoogleCredential = useCallback(async (response) => {
+    if (!response?.credential) return;
+    setError('');
+    setInfoMessage('');
+    setIsSubmitting(true);
+    try {
+      const res = await api.post('/auth/google', { credential: response.credential });
+      setAuth(res.data.token, res.data.user);
+      if (res.data.isNewUser) {
+        setStep('onboarding');
+      } else {
+        navigate('/');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Falha ao entrar com o Google.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [setAuth, navigate]);
+
+  useEffect(() => {
+    if (!googleClientId || (step !== 1 && !(step === 2 && isGoogleOnlyAccount))) return;
+
+    let attempts = 0;
+    const renderGoogleButton = () => {
+      if (window.google?.accounts?.id && googleBtnRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleCredential,
+        });
+        googleBtnRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'filled_black',
+          size: 'large',
+          shape: 'pill',
+          text: 'continue_with',
+          locale: 'pt-BR',
+          width: Math.min(380, googleBtnRef.current.offsetWidth || 360),
+        });
+        return true;
+      }
+      return false;
+    };
+
+    if (!renderGoogleButton()) {
+      const timer = setInterval(() => {
+        attempts += 1;
+        if (renderGoogleButton() || attempts > 20) {
+          clearInterval(timer);
+        }
+      }, 250);
+      return () => clearInterval(timer);
+    }
+  }, [googleClientId, step, isGoogleOnlyAccount, handleGoogleCredential]);
 
   useEffect(() => {
     getTrending()
@@ -54,11 +113,18 @@ function LoginPage() {
     e.preventDefault();
     setError('');
     setInfoMessage('');
+    setIsGoogleOnlyAccount(false);
     setIsSubmitting(true);
     try {
       const response = await api.post('/auth/check', { identifier: identifier.trim() });
       if (response.data.exists) {
         setIsLoginFlow(true);
+        if (response.data.isGoogleOnly) {
+          setIsGoogleOnlyAccount(true);
+          setInfoMessage('Este e-mail já está cadastrado via Google. Use o botão "Continuar com Google" abaixo para entrar.');
+        } else if (response.data.isEmail) {
+          setInfoMessage('Encontramos uma conta com este e-mail. Digite sua senha para entrar.');
+        }
         setStep(2);
       } else {
         if (response.data.isEmail) {
@@ -264,26 +330,98 @@ function LoginPage() {
             {infoMessage && <Alert severity="info" sx={{ mb: 2.5 }}>{infoMessage}</Alert>}
 
             {step === 1 && (
-              <Box component="form" onSubmit={handleIdentifierSubmit}>
-                <TextField
-                  margin="normal"
-                  required
+              <Box>
+                <Box sx={{ mb: 2.5 }}>
+                  {googleClientId ? (
+                    <Box
+                      ref={googleBtnRef}
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        minHeight: 44,
+                        width: '100%',
+                      }}
+                    />
+                  ) : (
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      size="large"
+                      onClick={() =>
+                        setInfoMessage('Para ativar o login com Google neste ambiente, configure a variável VITE_GOOGLE_CLIENT_ID.')
+                      }
+                      sx={{
+                        borderRadius: 99,
+                        py: 1.15,
+                        borderColor: 'divider',
+                        color: 'text.primary',
+                        fontWeight: 700,
+                        gap: 1.25,
+                      }}
+                    >
+                      <Box component="svg" viewBox="0 0 24 24" sx={{ width: 18, height: 18 }}>
+                        <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+                        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
+                        <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
+                        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
+                      </Box>
+                      Continuar com Google
+                    </Button>
+                  )}
+                </Box>
+
+                <Divider sx={{ my: 2.5 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                    OU COM E-MAIL
+                  </Typography>
+                </Divider>
+
+                <Box component="form" onSubmit={handleIdentifierSubmit}>
+                  <TextField
+                    margin="normal"
+                    required
+                    fullWidth
+                    id="identifier"
+                    label="E-mail ou Username"
+                    name="identifier"
+                    autoComplete="email"
+                    autoFocus
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                  />
+                  <Button type="submit" fullWidth variant="contained" size="large" sx={{ mt: 2.5 }} disabled={isSubmitting}>
+                    {isSubmitting ? 'Verificando...' : 'Continuar'}
+                  </Button>
+                </Box>
+              </Box>
+            )}
+
+            {step === 2 && isGoogleOnlyAccount && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {googleClientId && (
+                  <Box
+                    ref={googleBtnRef}
+                    sx={{ display: 'flex', justifyContent: 'center', minHeight: 44, width: '100%' }}
+                  />
+                )}
+                <Button
                   fullWidth
-                  id="identifier"
-                  label="E-mail ou Username"
-                  name="identifier"
-                  autoComplete="email"
-                  autoFocus
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                />
-                <Button type="submit" fullWidth variant="contained" size="large" sx={{ mt: 3 }} disabled={isSubmitting}>
-                  {isSubmitting ? 'Verificando...' : 'Continuar'}
+                  variant="text"
+                  color="inherit"
+                  startIcon={<ArrowBackIcon />}
+                  onClick={() => {
+                    setError('');
+                    setInfoMessage('');
+                    setIsGoogleOnlyAccount(false);
+                    setStep(1);
+                  }}
+                >
+                  Usar outra conta
                 </Button>
               </Box>
             )}
 
-            {step === 2 && (
+            {step === 2 && !isGoogleOnlyAccount && (
               <Box component="form" onSubmit={handleCredentialsSubmit}>
                 {!isLoginFlow && (
                   <TextField

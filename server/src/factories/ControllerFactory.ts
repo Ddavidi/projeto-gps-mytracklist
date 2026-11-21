@@ -103,6 +103,7 @@ export class ControllerFactory {
           ALTER TABLE users ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS listen_later_is_public BOOLEAN DEFAULT TRUE;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS listen_later_visibility TEXT NOT NULL DEFAULT 'public';
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT UNIQUE;
         `);
       } catch (e) {
         console.log('Postgres migration info (user columns might already exist):', e);
@@ -405,6 +406,7 @@ export class ControllerFactory {
       try { await database.exec('ALTER TABLE users ADD COLUMN is_private BOOLEAN DEFAULT 0;'); } catch (e) { }
       try { await database.exec('ALTER TABLE users ADD COLUMN listen_later_is_public BOOLEAN DEFAULT 1;'); } catch (e) { }
       try { await database.exec("ALTER TABLE users ADD COLUMN listen_later_visibility TEXT NOT NULL DEFAULT 'public';"); } catch (e) { }
+      try { await database.exec('ALTER TABLE users ADD COLUMN google_id TEXT;'); } catch (e) { }
 
       // SQLite schema — reviews (generic: track, album, artist)
       await database.exec(`

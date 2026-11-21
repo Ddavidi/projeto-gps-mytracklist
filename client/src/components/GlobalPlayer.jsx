@@ -147,7 +147,7 @@ export default function GlobalPlayer() {
       <Box
         sx={{
           position: "fixed",
-          bottom: 0,
+          bottom: { xs: "calc(62px + env(safe-area-inset-bottom))", md: 0 },
           left: 0,
           right: 0,
           zIndex: 1300,

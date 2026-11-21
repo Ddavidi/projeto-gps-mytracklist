@@ -156,7 +156,41 @@ export function createAuthRouter(userController: UserController): Router {
         }
       });
     } else {
-      res.status(401).json({ error: result.message });
+      res.status(401).json({ error: result.message, code: (result as any).code });
+    }
+  });
+
+  /**
+   * POST /auth/google
+   * Autentica ou cria conta usando ID Token do Google Identity Services.
+   */
+  router.post('/google', authLimiter, async (req: Request, res: Response) => {
+    const { credential } = req.body;
+    if (!credential) {
+      res.status(400).json({ error: 'Credencial do Google é obrigatória.' });
+      return;
+    }
+
+    const result = await userController.authenticateWithGoogle(credential);
+    if (result.success && result.userId) {
+      const user = await userController.getUserById(result.userId);
+      const token = generateToken({ userId: result.userId, username: user?.username || result.username! });
+      res.json({
+        message: result.isNewUser ? 'Conta criada com o Google!' : 'Login realizado com o Google!',
+        token,
+        isNewUser: Boolean(result.isNewUser),
+        accountLinked: Boolean(result.accountLinked),
+        user: {
+          id: result.userId,
+          username: user?.username || result.username,
+          name: (user as any)?.name,
+          avatar_url: user?.avatar_url,
+          cover_url: user?.cover_url,
+          is_admin: (user as any)?.is_admin,
+        },
+      });
+    } else {
+      res.status(401).json({ error: result.message || 'Falha ao autenticar com o Google.' });
     }
   });
 

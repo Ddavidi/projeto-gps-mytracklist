@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
 import HomePage from './pages/HomePage';
 import Navbar from './components/Navbar';
+import MobileBottomNav from './components/MobileBottomNav';
 import LoginPage from './pages/LoginPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import TrackDetailsPage from './pages/TrackDetailsPage';
@@ -22,6 +23,7 @@ import GlobalPlayer from './components/GlobalPlayer';
 
 function App() {
   const { loading } = useAuth();
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   if (loading) {
     return (
@@ -34,8 +36,11 @@ function App() {
   return (
     <PlayerProvider>
       <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-        <Navbar />
-        <Box component="main" sx={{ flex: 1, pb: '108px' }}>
+        <Navbar
+          externalSearchOpen={mobileSearchOpen}
+          onExternalSearchClose={() => setMobileSearchOpen(false)}
+        />
+        <Box component="main" sx={{ flex: 1, pb: { xs: 'calc(150px + env(safe-area-inset-bottom))', md: '108px' } }}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/explore" element={<ExplorePage />} />
@@ -55,6 +60,7 @@ function App() {
           </Routes>
         </Box>
         <GlobalPlayer />
+        <MobileBottomNav onOpenSearch={() => setMobileSearchOpen(true)} />
       </Box>
     </PlayerProvider>
   );

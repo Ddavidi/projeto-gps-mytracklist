@@ -99,25 +99,6 @@ export default function ProfileDiaryWrapped({ userId }) {
                   </Grid>
                 ))}
               </Grid>
-
-              {wrapped.topVibes?.length > 0 && (
-                <Box>
-                  <Typography variant="caption" color="text.secondary" fontWeight={700} display="block" sx={{ mb: 1 }}>
-                    Vibes mais marcantes
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                    {wrapped.topVibes.map((item) => (
-                      <Chip
-                        key={item.vibe}
-                        size="small"
-                        label={`${item.vibe} (${item.count})`}
-                        color="secondary"
-                        variant="outlined"
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              )}
             </Grid>
 
             <Grid size={{ xs: 12, md: 7 }}>
