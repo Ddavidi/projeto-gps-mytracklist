@@ -82,18 +82,25 @@ function Navbar({ externalSearchOpen, onExternalSearchClose }) {
 
   // Headroom: esconde ao descer, reaparece imediatamente ao rolar qualquer pouco para cima
   useEffect(() => {
-    let lastY = window.scrollY;
+    const getScrollY = () => window.scrollY || document.documentElement.scrollTop || 0;
+    let lastY = getScrollY();
+
     const onScroll = () => {
-      const currentY = window.scrollY;
+      const currentY = getScrollY();
+      const delta = currentY - lastY;
+
       if (currentY <= 40) {
         setNavVisible(true);
-      } else if (currentY < lastY - 4) {
+        lastY = currentY;
+      } else if (delta < -3) {
         setNavVisible(true);
-      } else if (currentY > lastY + 8 && currentY > 80) {
+        lastY = currentY;
+      } else if (delta > 8 && currentY > 80) {
         setNavVisible(false);
+        lastY = currentY;
       }
-      lastY = currentY;
     };
+
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -174,10 +181,12 @@ function Navbar({ externalSearchOpen, onExternalSearchClose }) {
   return (
     <>
       <AppBar
-        position="sticky"
+        position="fixed"
         elevation={0}
         sx={{
           top: 0,
+          left: 0,
+          right: 0,
           pt: 'env(safe-area-inset-top)',
           bgcolor: (theme) => alpha(theme.palette.background.default, 0.88),
           backdropFilter: 'blur(16px)',
@@ -409,6 +418,8 @@ function Navbar({ externalSearchOpen, onExternalSearchClose }) {
           </Box>
         </Toolbar>
       </AppBar>
+      {/* Espaçador para compensar AppBar fixed */}
+      <Box sx={{ height: 'calc(68px + env(safe-area-inset-top))', flexShrink: 0 }} />
 
       {/* Drawer Mobile */}
       <Drawer
