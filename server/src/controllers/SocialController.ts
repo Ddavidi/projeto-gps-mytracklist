@@ -261,6 +261,17 @@ export class SocialController {
         'INSERT INTO review_likes ("userId", "reviewId", "createdAt") VALUES (?, ?, CURRENT_TIMESTAMP)',
         [userId, reviewId]
       );
+      try {
+        const review = await this.db.get('SELECT "userId" FROM reviews WHERE id = ?', [reviewId]);
+        if (review && review.userId !== userId) {
+          await this.db.run(
+            'INSERT INTO notifications (user_id, actor_id, type, reference_id, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+            [review.userId, userId, 'like', reviewId]
+          );
+        }
+      } catch {
+        // Não bloqueia se notificação falhar
+      }
       return { success: true };
     } catch (error: any) {
       if (

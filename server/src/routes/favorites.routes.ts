@@ -42,6 +42,18 @@ export function createFavoriteRouter(favoriteController: FavoriteController): Ro
     }
   });
 
+  // PUT /favorites/reorder -> Reordena favoritos de uma categoria
+  router.put('/reorder', async (req: Request, res: Response): Promise<void> => {
+    const { item_type, ordered_item_ids } = req.body;
+    if (!item_type || !Array.isArray(ordered_item_ids)) {
+      res.status(400).json({ error: 'item_type e ordered_item_ids são obrigatórios.' });
+      return;
+    }
+    const result = await favoriteController.reorderFavorites(req.user!.userId, item_type, ordered_item_ids);
+    if (result.success) res.json({ success: true });
+    else res.status(400).json({ error: result.message });
+  });
+
   // DELETE /favorites/:itemType/:itemId -> Remove favorito
   router.delete('/:itemType/:itemId', async (req: Request, res: Response): Promise<void> => {
     const { itemType, itemId } = req.params;

@@ -50,10 +50,10 @@ function formatDateDisplay(iso) {
   return iso;
 }
 
-function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAverageInfo = null }) {
+function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAverageInfo = null, defaultEditing = false }) {
   const [currentReview, setCurrentReview] = useState(null);
-  const [isEditing, setIsEditing] = useState(false); // Sempre colapsado por padrão (avaliado ou não)
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isEditing, setIsEditing] = useState(defaultEditing);
+  const [isExpanded, setIsExpanded] = useState(defaultEditing);
 
   const [rating, setRating] = useState(null);
   const [reviewText, setReviewText] = useState('');
@@ -90,7 +90,8 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
       setHasSpoiler(false);
       setVisibility('public');
     }
-    setIsEditing(false); // Sempre começa contraído/leitura até o usuário clicar em Fazer Review ou Editar
+    setIsEditing(Boolean(defaultEditing));
+    setIsExpanded(Boolean(defaultEditing));
   };
 
   useEffect(() => {

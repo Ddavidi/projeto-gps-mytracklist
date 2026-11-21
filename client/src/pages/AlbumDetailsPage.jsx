@@ -363,6 +363,7 @@ function AlbumDetailsPage() {
               <ReviewSection
                 itemType="track"
                 itemId={reviewTrackModal.id}
+                defaultEditing
                 itemData={{
                   name: reviewTrackModal.name,
                   imageUrl: album.imageUrl,

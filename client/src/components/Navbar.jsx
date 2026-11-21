@@ -68,11 +68,26 @@ function Navbar() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      return;
+    }
+
+    const fetchNotifs = () => {
       api.get('/users/me/notifications')
         .then((res) => setNotifications(res.data || []))
         .catch(() => {});
-    }
+    };
+
+    fetchNotifs();
+    const intervalId = setInterval(fetchNotifs, 15000);
+    const onFocus = () => fetchNotifs();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [isAuthenticated]);
 
   // Atalho global Ctrl+K / Cmd+K para busca rápida
@@ -463,7 +478,10 @@ function Navbar() {
         }}
       >
         <Box sx={{ width: '100%', maxWidth: 850, mx: 'auto' }}>
-          <SearchBar onSearch={(q) => { setSearchOpen(false); navigate(`/search?q=${encodeURIComponent(q)}`); }} />
+          <SearchBar
+            onSelect={() => setSearchOpen(false)}
+            onSearch={(q) => { setSearchOpen(false); navigate(`/search?q=${encodeURIComponent(q)}`); }}
+          />
         </Box>
       </Dialog>
 
@@ -508,6 +526,8 @@ function Navbar() {
                       <Box component="span" fontWeight={700}>{notif.actor_username}</Box>{' '}
                       {notif.type === 'like'
                         ? 'curtiu sua avaliação.'
+                        : notif.type === 'comment'
+                        ? 'comentou na sua avaliação.'
                         : notif.type === 'follow_request'
                         ? 'solicitou para te seguir.'
                         : notif.type === 'follow_accepted'

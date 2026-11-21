@@ -20,10 +20,17 @@ export class FavoriteController {
         return { success: false, message: `Você já atingiu o limite de 5 favoritos para a categoria ${itemType}.` };
       }
 
-      // 2. Inserir (O banco de dados bloqueará duplicações por causa da constraint UNIQUE)
+      // 2. Próxima posição na categoria
+      const maxPosRow = await this.db.get(
+        'SELECT COALESCE(MAX(position), 0) as max_pos FROM user_favorites WHERE "userId" = ? AND item_type = ?',
+        [userId, itemType]
+      );
+      const nextPos = Number(maxPosRow?.max_pos || 0) + 1;
+
+      // 3. Inserir (O banco de dados bloqueará duplicações por causa da constraint UNIQUE)
       await this.db.run(
-        'INSERT INTO user_favorites ("userId", item_id, item_type) VALUES (?, ?, ?)',
-        [userId, itemId, itemType]
+        'INSERT INTO user_favorites ("userId", item_id, item_type, position) VALUES (?, ?, ?, ?)',
+        [userId, itemId, itemType, nextPos]
       );
 
       return { success: true };
@@ -53,12 +60,30 @@ export class FavoriteController {
   }
 
   /**
-   * Lista todos os favoritos de um usuário.
+   * Reordena os favoritos de uma categoria (album | track | artist).
+   */
+  async reorderFavorites(userId: number, itemType: string, orderedItemIds: string[]) {
+    try {
+      for (let idx = 0; idx < orderedItemIds.length; idx++) {
+        await this.db.run(
+          'UPDATE user_favorites SET position = ? WHERE "userId" = ? AND item_type = ? AND item_id = ?',
+          [idx + 1, userId, itemType, orderedItemIds[idx]]
+        );
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao reordenar favoritos:', error);
+      return { success: false, message: 'Falha ao reordenar favoritos.' };
+    }
+  }
+
+  /**
+   * Lista todos os favoritos de um usuário ordenados por posição.
    */
   async getUserFavorites(userId: number) {
     try {
       const favorites = await this.db.all(
-        'SELECT id, item_id, item_type, "createdAt" FROM user_favorites WHERE "userId" = ? ORDER BY "createdAt" DESC',
+        'SELECT id, item_id, item_type, COALESCE(position, 0) as position, "createdAt" FROM user_favorites WHERE "userId" = ? ORDER BY COALESCE(position, 0) ASC, "createdAt" ASC',
         [userId]
       );
       return { success: true, favorites: favorites || [] };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Avatar,
@@ -47,6 +47,12 @@ function ReviewCard({ review }) {
   const [spoilerRevealed, setSpoilerRevealed] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
+  useEffect(() => {
+    setLiked(Boolean(review.is_liked));
+    setLikesCount(Number(review.likes_count) || 0);
+    setCommentsCount(Number(review.comments_count) || 0);
+  }, [review.id, review.is_liked, review.likes_count, review.comments_count]);
+
   const authorUsername = review.user_username || review.author_username || review.user?.username || 'Usuário';
   const authorAvatar = review.user_avatar || review.author_avatar || review.user?.avatar_url;
   const vibes = Array.isArray(review.vibe_tags) ? review.vibe_tags : [];
@@ -83,7 +89,9 @@ function ReviewCard({ review }) {
       setLoadingComments(true);
       try {
         const data = await getReviewComments(review.id);
-        setComments(data || []);
+        const list = data || [];
+        setComments(list);
+        setCommentsCount(list.length);
       } catch {
         console.error('Failed to load comments');
       } finally {

@@ -37,7 +37,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import LinkIcon from '@mui/icons-material/Link';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CheckIcon from '@mui/icons-material/Check';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useThemeMode } from '../context/ThemeContext';
 import api from '../services/api';
@@ -746,9 +746,29 @@ function SettingsPage() {
                           }
                         >
                           <ListItemAvatar>
-                            <Avatar src={u.avatar_url}>{u.username?.charAt(0).toUpperCase()}</Avatar>
+                            <Avatar
+                              component={Link}
+                              to={`/user/${u.username}`}
+                              src={u.avatar_url || u.user_avatar}
+                              sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700, textDecoration: 'none' }}
+                            >
+                              {u.username?.charAt(0).toUpperCase()}
+                            </Avatar>
                           </ListItemAvatar>
-                          <ListItemText primary={`@${u.username}`} secondary={u.name || ''} />
+                          <ListItemText
+                            primary={
+                              <Typography
+                                component={Link}
+                                to={`/user/${u.username}`}
+                                variant="body2"
+                                fontWeight={700}
+                                sx={{ color: 'text.primary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+                              >
+                                @{u.username}
+                              </Typography>
+                            }
+                            secondary={u.name || ''}
+                          />
                         </ListItem>
                       );
                     })}
@@ -802,9 +822,29 @@ function SettingsPage() {
                           }
                         >
                           <ListItemAvatar>
-                            <Avatar src={friend.avatar_url}>{friend.username?.charAt(0).toUpperCase()}</Avatar>
+                            <Avatar
+                              component={Link}
+                              to={`/user/${friend.username}`}
+                              src={friend.avatar_url || friend.user_avatar}
+                              sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700, textDecoration: 'none' }}
+                            >
+                              {friend.username?.charAt(0).toUpperCase()}
+                            </Avatar>
                           </ListItemAvatar>
-                          <ListItemText primary={`@${friend.username}`} secondary={friend.name || 'Close Friend'} />
+                          <ListItemText
+                            primary={
+                              <Typography
+                                component={Link}
+                                to={`/user/${friend.username}`}
+                                variant="body2"
+                                fontWeight={700}
+                                sx={{ color: 'text.primary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+                              >
+                                @{friend.username}
+                              </Typography>
+                            }
+                            secondary={friend.name || 'Close Friend'}
+                          />
                         </ListItem>
                       ))}
                     </List>
@@ -858,9 +898,29 @@ function SettingsPage() {
                             }
                           >
                             <ListItemAvatar>
-                              <Avatar src={u.avatar_url}>{u.username?.charAt(0).toUpperCase()}</Avatar>
+                              <Avatar
+                                component={Link}
+                                to={`/user/${u.username}`}
+                                src={u.avatar_url || u.user_avatar}
+                                sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700, textDecoration: 'none' }}
+                              >
+                                {u.username?.charAt(0).toUpperCase()}
+                              </Avatar>
                             </ListItemAvatar>
-                            <ListItemText primary={`@${u.username}`} secondary={u.name || ''} />
+                            <ListItemText
+                              primary={
+                                <Typography
+                                  component={Link}
+                                  to={`/user/${u.username}`}
+                                  variant="body2"
+                                  fontWeight={700}
+                                  sx={{ color: 'text.primary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+                                >
+                                  @{u.username}
+                                </Typography>
+                              }
+                              secondary={u.name || ''}
+                            />
                           </ListItem>
                         );
                       })}

@@ -380,26 +380,40 @@ export class UserController {
         }
       }
 
+      const viewerId = requesterId || -1;
       let rows: any[];
       if (isOwner) {
         rows = await this.db.all(
-          'SELECT id, item_id, item_type, item_name, item_image_url, rating, review_text, listened_at, is_relisten, vibe_tags, has_spoiler, COALESCE(visibility, \'public\') as visibility, "createdAt", "updatedAt" FROM reviews WHERE "userId" = ? ORDER BY "createdAt" DESC',
-          [userId]
+          `SELECT r.id, r.item_id, r.item_type, r.item_name, r.item_image_url, r.rating, r.review_text,
+                  r.listened_at, r.is_relisten, r.vibe_tags, r.has_spoiler,
+                  COALESCE(r.visibility, 'public') as visibility, r."createdAt", r."updatedAt",
+                  (SELECT COUNT(*) FROM review_likes rl WHERE rl."reviewId" = r.id) as likes_count,
+                  (SELECT 1 FROM review_likes rl2 WHERE rl2."reviewId" = r.id AND rl2."userId" = ?) as is_liked,
+                  (SELECT COUNT(*) FROM review_comments rc WHERE rc.review_id = r.id) as comments_count
+           FROM reviews r
+           WHERE r."userId" = ?
+           ORDER BY r."createdAt" DESC`,
+          [viewerId, userId]
         );
       } else {
         rows = await this.db.all(
-          `SELECT id, item_id, item_type, item_name, item_image_url, rating, review_text, listened_at, is_relisten, vibe_tags, has_spoiler, COALESCE(visibility, 'public') as visibility, "createdAt", "updatedAt"
-           FROM reviews
-           WHERE "userId" = ?
+          `SELECT r.id, r.item_id, r.item_type, r.item_name, r.item_image_url, r.rating, r.review_text,
+                  r.listened_at, r.is_relisten, r.vibe_tags, r.has_spoiler,
+                  COALESCE(r.visibility, 'public') as visibility, r."createdAt", r."updatedAt",
+                  (SELECT COUNT(*) FROM review_likes rl WHERE rl."reviewId" = r.id) as likes_count,
+                  (SELECT 1 FROM review_likes rl2 WHERE rl2."reviewId" = r.id AND rl2."userId" = ?) as is_liked,
+                  (SELECT COUNT(*) FROM review_comments rc WHERE rc.review_id = r.id) as comments_count
+           FROM reviews r
+           WHERE r."userId" = ?
            AND (
-             COALESCE(visibility, 'public') = 'public'
+             COALESCE(r.visibility, 'public') = 'public'
              OR (
-               visibility = 'close_friends'
+               r.visibility = 'close_friends'
                AND EXISTS (SELECT 1 FROM close_friends cf WHERE cf.user_id = ? AND cf.friend_id = ?)
              )
            )
-           ORDER BY "createdAt" DESC`,
-          [userId, userId, requesterId || -1]
+           ORDER BY r."createdAt" DESC`,
+          [viewerId, userId, userId, viewerId]
         );
       }
       const reviews = (rows || []).map((r: any) => ({

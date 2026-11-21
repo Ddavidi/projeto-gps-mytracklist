@@ -14,3 +14,11 @@ export const removeFavorite = async (itemType, itemId) => {
   const response = await api.delete(`/favorites/${itemType}/${itemId}`);
   return response.data;
 };
+
+export const reorderFavorites = async (itemType, orderedItemIds) => {
+  const response = await api.put('/favorites/reorder', {
+    item_type: itemType,
+    ordered_item_ids: orderedItemIds,
+  });
+  return response.data;
+};

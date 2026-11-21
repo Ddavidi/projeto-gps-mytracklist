@@ -30,21 +30,42 @@ app.set('trust proxy', 1);
 // Middlewares Globais
 // ========================
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
-  : false;
+const envOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim().replace(/\/+$/, '')).filter(Boolean)
+  : [];
 
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? allowedOrigins
-    : true,
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (process.env.NODE_ENV !== 'production') return callback(null, true);
+
+    const normalized = origin.replace(/\/+$/, '');
+    const isExactAllowed = envOrigins.includes(normalized);
+    const isVercelProject =
+      normalized === 'https://projeto-gps-mytracklist.vercel.app' ||
+      /^https:\/\/projeto-gps-mytracklist[a-z0-9-]*\.vercel\.app$/i.test(normalized) ||
+      /^https:\/\/projeto-gps-mytracklis[a-z0-9-]*\.vercel\.app$/i.test(normalized);
+
+    if (isExactAllowed || isVercelProject || envOrigins.length === 0) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
 
-// Rate limiter global
-const maxRequests = process.env.NODE_ENV === 'production' ? 200 : 2000;
-const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: maxRequests });
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Rate limiter global (ignora preflight OPTIONS para nunca quebrar CORS)
+const maxRequests = process.env.NODE_ENV === 'production' ? 2000 : 5000;
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: maxRequests,
+  skip: (req) => req.method === 'OPTIONS',
+});
 app.use(globalLimiter);
 
 // Security headers
@@ -119,6 +140,14 @@ async function startServer() {
     app.use('/api/v1/listen-later', createListenLaterRouter(listenLaterController));
     app.use('/api/v1/admin', createAdminRouter(adminController));
 
+    // Error handler global para evitar queda do processo sem headers CORS
+    app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      console.error('Erro não tratado na rota:', err);
+      if (!res.headersSent) {
+        res.status(err?.status || 500).json({ error: err?.message || 'Erro interno do servidor.' });
+      }
+    });
+
     // Iniciar servidor
     app.listen(PORT, () => {
       console.log(`🚀 Servidor MyTrackList rodando na porta ${PORT}`);
@@ -129,5 +158,13 @@ async function startServer() {
     process.exit(1);
   }
 }
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Promise Rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
 
 startServer();

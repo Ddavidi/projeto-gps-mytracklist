@@ -43,6 +43,7 @@ function ProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [listenLaterOpen, setListenLaterOpen] = useState(false);
+  const [socialSubTab, setSocialSubTab] = useState('followers');
 
   const getInitialTab = useCallback(() => {
     const tab = searchParams.get('tab');
@@ -115,6 +116,20 @@ function ProfilePage() {
     fetchData();
   }, [fetchData]);
 
+  // Atualização automática em segundo plano (curtidas, comentários, solicitações)
+  useEffect(() => {
+    if (!user) return;
+    const intervalId = setInterval(() => {
+      fetchData(true);
+    }, 20000);
+    const onFocus = () => fetchData(true);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [user, fetchData]);
+
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', my: 8 }}><CircularProgress /></Box>;
   }
@@ -166,6 +181,7 @@ function ProfilePage() {
             itemDetails={itemDetails}
             profileUser={user}
             isOwner
+            onFavoritesChanged={() => fetchData(true)}
           />
         );
       case 1:
@@ -183,6 +199,7 @@ function ProfilePage() {
           <ProfileSocial
             userId={uid}
             isOwner
+            initialSubTab={socialSubTab}
             followRequests={followRequests}
             onAcceptRequest={handleAcceptRequest}
             onRejectRequest={handleRejectRequest}
@@ -211,6 +228,14 @@ function ProfilePage() {
           followingCount={followingCount}
           onEditClick={() => setEditModalOpen(true)}
           onOpenListenLater={() => setListenLaterOpen(true)}
+          onFollowersClick={() => {
+            setSocialSubTab('followers');
+            handleTabChange(null, 6);
+          }}
+          onFollowingClick={() => {
+            setSocialSubTab('following');
+            handleTabChange(null, 6);
+          }}
         />
 
         <Box sx={{ px: { xs: 2.5, sm: 4 } }}>

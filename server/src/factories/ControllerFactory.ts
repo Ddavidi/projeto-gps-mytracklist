@@ -218,11 +218,15 @@ export class ControllerFactory {
           "userId" INTEGER NOT NULL,
           item_id TEXT NOT NULL,
           item_type TEXT NOT NULL,
+          position INTEGER DEFAULT 0,
           "createdAt" TIMESTAMPTZ DEFAULT NOW(),
           FOREIGN KEY ("userId") REFERENCES users (id) ON DELETE CASCADE,
           UNIQUE ("userId", item_id, item_type)
         )
       `);
+      try {
+        await database.exec(`ALTER TABLE user_favorites ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0`);
+      } catch (e) { }
 
       // PostgreSQL schema — review_comments
       await database.exec(`
@@ -493,11 +497,13 @@ export class ControllerFactory {
           userId INTEGER NOT NULL,
           item_id TEXT NOT NULL,
           item_type TEXT NOT NULL,
+          position INTEGER DEFAULT 0,
           createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE,
           UNIQUE (userId, item_id, item_type)
         );
       `);
+      try { await database.exec('ALTER TABLE user_favorites ADD COLUMN position INTEGER DEFAULT 0;'); } catch (e) { }
 
       // SQLite schema — review_comments
       await database.exec(`

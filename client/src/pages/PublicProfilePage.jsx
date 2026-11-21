@@ -44,6 +44,7 @@ function PublicProfilePage() {
   const [socialLoading, setSocialLoading] = useState(false);
 
   const [tabIndex, setTabIndex] = useState(0);
+  const [socialSubTab, setSocialSubTab] = useState('followers');
   const [listenLaterOpen, setListenLaterOpen] = useState(false);
 
   const enrichDataWithSpotify = useCallback(async (items, isFavorites = false) => {
@@ -165,7 +166,7 @@ function PublicProfilePage() {
       case 5:
         return <ProfileListsAndBacklog userId={targetUser?.id} isOwner={isOwnProfile} />;
       case 6:
-        return <ProfileSocial userId={targetUser?.id} />;
+        return <ProfileSocial userId={targetUser?.id} initialSubTab={socialSubTab} />;
       case 7:
         return <ProfileStatus reviews={reviews} profileUser={targetUser} />;
       case 8:
@@ -194,6 +195,14 @@ function PublicProfilePage() {
           socialLoading={socialLoading}
           onFollowToggle={handleToggleFollow}
           onOpenListenLater={() => setListenLaterOpen(true)}
+          onFollowersClick={() => {
+            setSocialSubTab('followers');
+            setTabIndex(6);
+          }}
+          onFollowingClick={() => {
+            setSocialSubTab('following');
+            setTabIndex(6);
+          }}
         />
 
         <Box sx={{ px: { xs: 2.5, sm: 4 } }}>

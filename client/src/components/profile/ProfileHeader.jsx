@@ -17,6 +17,8 @@ export default function ProfileHeader({
   onEditClick,
   onFollowToggle,
   onOpenListenLater,
+  onFollowersClick,
+  onFollowingClick,
   isFollowing,
   isRequested = false,
   isPrivateLocked = false,
@@ -146,7 +148,28 @@ export default function ProfileHeader({
                   Avaliações
                 </Typography>
               </Box>
-              <Box>
+              <Box
+                onClick={!isPrivateLocked ? onFollowersClick : undefined}
+                role={!isPrivateLocked && onFollowersClick ? 'button' : undefined}
+                tabIndex={!isPrivateLocked && onFollowersClick ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (!isPrivateLocked && onFollowersClick && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    onFollowersClick();
+                  }
+                }}
+                sx={{
+                  cursor: !isPrivateLocked && onFollowersClick ? 'pointer' : 'default',
+                  borderRadius: 1.5,
+                  px: 0.75,
+                  py: 0.25,
+                  mx: -0.75,
+                  transition: 'background-color 0.15s ease',
+                  ...(!isPrivateLocked && onFollowersClick
+                    ? { '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1) } }
+                    : {}),
+                }}
+              >
                 <Typography variant="h6" className="mtl-mono" fontWeight={700} lineHeight={1.1}>
                   {followersCount}
                 </Typography>
@@ -154,7 +177,28 @@ export default function ProfileHeader({
                   Seguidores
                 </Typography>
               </Box>
-              <Box>
+              <Box
+                onClick={!isPrivateLocked ? onFollowingClick : undefined}
+                role={!isPrivateLocked && onFollowingClick ? 'button' : undefined}
+                tabIndex={!isPrivateLocked && onFollowingClick ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (!isPrivateLocked && onFollowingClick && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    onFollowingClick();
+                  }
+                }}
+                sx={{
+                  cursor: !isPrivateLocked && onFollowingClick ? 'pointer' : 'default',
+                  borderRadius: 1.5,
+                  px: 0.75,
+                  py: 0.25,
+                  mx: -0.75,
+                  transition: 'background-color 0.15s ease',
+                  ...(!isPrivateLocked && onFollowingClick
+                    ? { '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1) } }
+                    : {}),
+                }}
+              >
                 <Typography variant="h6" className="mtl-mono" fontWeight={700} lineHeight={1.1}>
                   {followingCount}
                 </Typography>

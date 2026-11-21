@@ -26,7 +26,7 @@ import { searchMulti } from '../services/spotify';
 import api from '../services/api';
 import { formatCalendarDate } from '../utils/date';
 
-function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou artistas..." }) {
+function SearchBar({ onSearch, onSelect, placeholder = "Pesquise por músicas, álbuns ou artistas..." }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState({ tracks: [], albums: [], artists: [] });
   const [loading, setLoading] = useState(false);
@@ -78,36 +78,49 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
     };
   }, [query]);
 
+  const resetSearch = () => {
+    setQuery('');
+    setResults({ tracks: [], albums: [], artists: [], users: [] });
+    setOpen(false);
+    if (onSelect) onSelect();
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!query.trim()) return;
 
-    setOpen(false);
+    const q = query.trim();
+    resetSearch();
     if (onSearch) {
-      onSearch(query.trim());
+      onSearch(q);
     } else {
-      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+      navigate(`/search?q=${encodeURIComponent(q)}`);
     }
   };
 
   const handleSelectTrack = (id) => {
-    setOpen(false);
+    resetSearch();
     navigate(`/music/${id}`);
   };
 
   const handleSelectAlbum = (id) => {
-    setOpen(false);
+    resetSearch();
     navigate(`/album/${id}`);
   };
 
   const handleSelectArtist = (id) => {
-    setOpen(false);
+    resetSearch();
     navigate(`/artist/${id}`);
+  };
+
+  const handleSelectUser = (username) => {
+    resetSearch();
+    navigate(`/user/${username}`);
   };
 
   const handleClear = () => {
     setQuery('');
-    setResults({ tracks: [], albums: [], artists: [] });
+    setResults({ tracks: [], albums: [], artists: [], users: [] });
     setOpen(false);
   };
 
@@ -332,7 +345,7 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
                     {results.users?.slice(0, 5).map((u) => (
                       <ListItemButton
                         key={u.id}
-                        onClick={() => { setOpen(false); navigate(`/user/${u.username}`); }}
+                        onClick={() => handleSelectUser(u.username)}
                         sx={{
                           borderRadius: 2,
                           mb: 0.5,
@@ -341,11 +354,19 @@ function SearchBar({ onSearch, placeholder = "Pesquise por músicas, álbuns ou 
                         }}
                       >
                         <ListItemAvatar sx={{ minWidth: 46 }}>
-                          <Avatar src={u.avatar_url} alt={u.username} sx={{ width: 38, height: 38 }} />
+                          <Avatar
+                            src={u.avatar_url || u.user_avatar}
+                            alt={u.username}
+                            sx={{ width: 38, height: 38, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}
+                          >
+                            {u.username?.charAt(0).toUpperCase()}
+                          </Avatar>
                         </ListItemAvatar>
                         <ListItemText
-                          primary={u.username}
+                          primary={`@${u.username}`}
+                          secondary={u.name || ''}
                           primaryTypographyProps={{ variant: 'body2', fontWeight: 600, noWrap: true }}
+                          secondaryTypographyProps={{ variant: 'caption', noWrap: true }}
                         />
                       </ListItemButton>
                     ))}
