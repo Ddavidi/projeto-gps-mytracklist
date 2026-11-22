@@ -25,9 +25,12 @@ import {
   IconButton,
   ToggleButtonGroup,
   ToggleButton,
+  Collapse,
   alpha,
 } from '@mui/material';
 import PaletteIcon from '@mui/icons-material/Palette';
+import TuneIcon from '@mui/icons-material/Tune';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
@@ -48,7 +51,9 @@ import { MUSIC_GENRES } from '../constants/genres';
 
 function SettingsPage() {
   const { user, refreshUser } = useAuth();
-  const { paletteId, selectPalette, palettes } = useThemeMode();
+  const { paletteId, selectPalette, palettes, customPalette, updateCustomPalette, resetCustomPalette } = useThemeMode();
+  const [customEditorOpen, setCustomEditorOpen] = useState(false);
+  const [hexDrafts, setHexDrafts] = useState({});
   const [tabIndex, setTabIndex] = useState(0);
   const location = useLocation();
 
@@ -420,16 +425,21 @@ function SettingsPage() {
               <Grid container spacing={2.5}>
                 {palettes.map((item) => {
                   const isSelected = item.id === paletteId;
+                  const isCustom = item.id === 'custom';
                   return (
                     <Grid size={{ xs: 12, sm: 6 }} key={item.id}>
                       <Box
-                        onClick={() => selectPalette(item.id)}
+                        onClick={() => {
+                          selectPalette(item.id);
+                          if (!isCustom) setCustomEditorOpen(false);
+                        }}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             selectPalette(item.id);
+                            if (!isCustom) setCustomEditorOpen(false);
                           }
                         }}
                         sx={{
@@ -441,6 +451,9 @@ function SettingsPage() {
                           bgcolor: (theme) =>
                             isSelected ? alpha(theme.palette.primary.main, 0.08) : alpha(theme.palette.text.primary, 0.02),
                           transition: 'transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
                           '&:hover': {
                             transform: 'translateY(-2px)',
                             borderColor: 'primary.main',
@@ -454,7 +467,7 @@ function SettingsPage() {
                             mb: 2,
                             p: 1.5,
                             bgcolor: item.bg,
-                            border: '1px solid rgba(255,255,255,0.08)',
+                            border: '1px solid rgba(255,255,255,0.1)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -495,14 +508,200 @@ function SettingsPage() {
                           </Typography>
                           {isSelected && <CheckCircleIcon color="primary" fontSize="small" />}
                         </Box>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.45 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.45, flex: 1 }}>
                           {item.tagline}
                         </Typography>
+
+                        {isCustom && isSelected && (
+                          <Box sx={{ mt: 2 }}>
+                            <Button
+                              size="small"
+                              variant={customEditorOpen ? 'outlined' : 'contained'}
+                              startIcon={<TuneIcon fontSize="small" />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setHexDrafts({
+                                  bg: customPalette.bg,
+                                  surface: customPalette.surface,
+                                  primary: customPalette.primary,
+                                  secondary: customPalette.secondary,
+                                  text: customPalette.text,
+                                });
+                                setCustomEditorOpen((prev) => !prev);
+                              }}
+                              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                            >
+                              {customEditorOpen ? 'Fechar personalização' : 'Personalizar cores'}
+                            </Button>
+                          </Box>
+                        )}
                       </Box>
                     </Grid>
                   );
                 })}
               </Grid>
+
+              {/* Editor Ao Vivo da Paleta Personalizada */}
+              <Collapse in={paletteId === 'custom' && customEditorOpen}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    mt: 3,
+                    p: { xs: 2.25, sm: 3 },
+                    borderRadius: 3.5,
+                    border: '1px solid',
+                    borderColor: 'primary.main',
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04),
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5, mb: 2.5 }}>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={800}>
+                        Personalizar Paleta Ao Vivo
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Escolha as cores no seletor ou digite o código hexadecimal (#RRGGBB) e veja o site mudar instantaneamente.
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <ToggleButtonGroup
+                        size="small"
+                        exclusive
+                        value={customPalette.mode}
+                        onChange={(_e, nextMode) => {
+                          if (!nextMode) return;
+                          const preset =
+                            nextMode === 'light'
+                              ? { mode: 'light', bg: '#F5F2EB', surface: '#FFFFFF', text: '#161614' }
+                              : { mode: 'dark', bg: '#0E1015', surface: '#161A22', text: '#F3F4F6' };
+                          updateCustomPalette(preset);
+                          setHexDrafts((prev) => ({ ...prev, bg: preset.bg, surface: preset.surface, text: preset.text }));
+                        }}
+                      >
+                        <ToggleButton value="dark" sx={{ textTransform: 'none', fontWeight: 700, px: 1.75 }}>
+                          Base Escura
+                        </ToggleButton>
+                        <ToggleButton value="light" sx={{ textTransform: 'none', fontWeight: 700, px: 1.75 }}>
+                          Base Clara
+                        </ToggleButton>
+                      </ToggleButtonGroup>
+
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="inherit"
+                        startIcon={<RestartAltIcon fontSize="small" />}
+                        onClick={() => {
+                          resetCustomPalette();
+                          setHexDrafts({});
+                        }}
+                        sx={{ borderRadius: 2, textTransform: 'none' }}
+                      >
+                        Restaurar
+                      </Button>
+                    </Box>
+                  </Box>
+
+                  <Grid container spacing={2}>
+                    {[
+                      { key: 'bg', label: 'Fundo da Página', hint: 'Cor principal do fundo' },
+                      { key: 'surface', label: 'Cards e Superfícies', hint: 'Caixas, menus e modais' },
+                      { key: 'primary', label: 'Cor Principal', hint: 'Botões, links e destaques' },
+                      { key: 'secondary', label: 'Cor Secundária', hint: 'Estrelas, badges e acentos' },
+                      { key: 'text', label: 'Cor do Texto', hint: 'Títulos e textos principais' },
+                    ].map((field) => {
+                      const currentHex = customPalette[field.key] || '#000000';
+                      const draftVal = hexDrafts[field.key] !== undefined ? hexDrafts[field.key] : currentHex;
+                      return (
+                        <Grid size={{ xs: 12, sm: 6 }} key={field.key}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 1.5,
+                              borderRadius: 2.5,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              bgcolor: 'background.paper',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.5,
+                            }}
+                          >
+                            <Box
+                              component="label"
+                              sx={{
+                                width: 42,
+                                height: 42,
+                                borderRadius: 2,
+                                bgcolor: currentHex,
+                                border: '2px solid',
+                                borderColor: 'divider',
+                                flexShrink: 0,
+                                cursor: 'pointer',
+                                position: 'relative',
+                                overflow: 'hidden',
+                              }}
+                              title={`Selecionar ${field.label}`}
+                            >
+                              <input
+                                type="color"
+                                value={currentHex}
+                                onChange={(e) => {
+                                  const hex = e.target.value.toUpperCase();
+                                  setHexDrafts((prev) => ({ ...prev, [field.key]: hex }));
+                                  updateCustomPalette({ [field.key]: hex });
+                                }}
+                                style={{
+                                  opacity: 0,
+                                  position: 'absolute',
+                                  inset: 0,
+                                  width: '100%',
+                                  height: '100%',
+                                  cursor: 'pointer',
+                                }}
+                              />
+                            </Box>
+
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Typography variant="body2" fontWeight={700} noWrap>
+                                {field.label}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" noWrap display="block">
+                                {field.hint}
+                              </Typography>
+                            </Box>
+
+                            <TextField
+                              size="small"
+                              value={draftVal}
+                              onChange={(e) => {
+                                let val = e.target.value.toUpperCase().replace(/[^#0-9A-F]/g, '');
+                                if (val && !val.startsWith('#')) val = `#${val}`;
+                                val = val.slice(0, 7);
+                                setHexDrafts((prev) => ({ ...prev, [field.key]: val }));
+                                if (/^#[0-9A-F]{6}$/.test(val)) {
+                                  updateCustomPalette({ [field.key]: val });
+                                }
+                              }}
+                              onBlur={() => {
+                                if (!/^#[0-9A-F]{6}$/.test(draftVal)) {
+                                  setHexDrafts((prev) => ({ ...prev, [field.key]: currentHex }));
+                                }
+                              }}
+                              inputProps={{
+                                maxLength: 7,
+                                className: 'mtl-mono',
+                                style: { width: 78, textAlign: 'center', fontWeight: 700, fontSize: '0.82rem', padding: '6px 8px' },
+                              }}
+                            />
+                          </Paper>
+                        </Grid>
+                      );
+                    })}
+                  </Grid>
+                </Paper>
+              </Collapse>
             </Box>
           )}
 

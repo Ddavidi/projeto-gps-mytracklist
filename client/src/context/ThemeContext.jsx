@@ -108,26 +108,129 @@ export const PALETTES = [
 ];
 
 const STORAGE_KEY = 'mtl_palette_id';
+const CUSTOM_STORAGE_KEY = 'mtl_custom_palette';
+
+export const DEFAULT_CUSTOM_PALETTE = {
+  id: 'custom',
+  name: 'Personalizada',
+  tagline: 'Monte a sua própria combinação escolhendo cada cor ou código hexadecimal.',
+  inspiration: 'Sua identidade visual',
+  mode: 'dark',
+  bg: '#0E1015',
+  surface: '#161A22',
+  primary: '#6366F1',
+  secondary: '#EC4899',
+  text: '#F3F4F6',
+};
+
+function isValidHex(value) {
+  return typeof value === 'string' && /^#[0-9A-Fa-f]{6}$/.test(value.trim());
+}
+
+function getContrastText(hex) {
+  if (!isValidHex(hex)) return '#FFFFFF';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.62 ? '#0B0E11' : '#FFFFFF';
+}
+
+function adjustHexBrightness(hex, delta) {
+  if (!isValidHex(hex)) return hex;
+  const clamp = (v) => Math.max(0, Math.min(255, v));
+  const r = clamp(parseInt(hex.slice(1, 3), 16) + delta);
+  const g = clamp(parseInt(hex.slice(3, 5), 16) + delta);
+  const b = clamp(parseInt(hex.slice(5, 7), 16) + delta);
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function buildCustomPaletteObject(raw) {
+  const mode = raw?.mode === 'light' ? 'light' : 'dark';
+  const bg = isValidHex(raw?.bg) ? raw.bg : DEFAULT_CUSTOM_PALETTE.bg;
+  const surface = isValidHex(raw?.surface) ? raw.surface : DEFAULT_CUSTOM_PALETTE.surface;
+  const primary = isValidHex(raw?.primary) ? raw.primary : DEFAULT_CUSTOM_PALETTE.primary;
+  const secondary = isValidHex(raw?.secondary) ? raw.secondary : DEFAULT_CUSTOM_PALETTE.secondary;
+  const text = isValidHex(raw?.text) ? raw.text : mode === 'dark' ? '#F3F4F6' : '#161614';
+
+  const elevated = adjustHexBrightness(surface, mode === 'dark' ? 14 : -14);
+  const textMuted = mode === 'dark' ? alpha(text, 0.65) : alpha(text, 0.62);
+  const border = mode === 'dark' ? alpha(text, 0.1) : alpha(text, 0.12);
+
+  return {
+    id: 'custom',
+    name: 'Personalizada',
+    tagline: 'Monte a sua própria combinação escolhendo cada cor ou código hexadecimal.',
+    inspiration: 'Sua identidade visual',
+    mode,
+    bg,
+    surface,
+    elevated,
+    primary,
+    primaryContrast: getContrastText(primary),
+    secondary,
+    text,
+    textMuted,
+    border,
+    swatches: [bg, surface, primary, secondary],
+  };
+}
 
 const ThemeModeContext = createContext();
 
 export const useThemeMode = () => useContext(ThemeModeContext);
 
 export function ThemeModeProvider({ children }) {
+  const [customConfig, setCustomConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem(CUSTOM_STORAGE_KEY);
+      if (saved) return { ...DEFAULT_CUSTOM_PALETTE, ...JSON.parse(saved) };
+    } catch {
+      // ignora JSON inválido
+    }
+    return DEFAULT_CUSTOM_PALETTE;
+  });
+
+  const customPalette = useMemo(() => buildCustomPaletteObject(customConfig), [customConfig]);
+
+  const allPalettes = useMemo(() => [...PALETTES, customPalette], [customPalette]);
+
   const [paletteId, setPaletteId] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === 'custom') return 'custom';
     return PALETTES.some((p) => p.id === saved) ? saved : 'vinyl-emerald';
   });
 
   const palette = useMemo(
-    () => PALETTES.find((p) => p.id === paletteId) || PALETTES[0],
-    [paletteId]
+    () => allPalettes.find((p) => p.id === paletteId) || allPalettes[0],
+    [allPalettes, paletteId]
   );
 
   const selectPalette = (id) => {
-    if (PALETTES.some((p) => p.id === id)) {
+    if (id === 'custom' || PALETTES.some((p) => p.id === id)) {
       setPaletteId(id);
       localStorage.setItem(STORAGE_KEY, id);
+    }
+  };
+
+  const updateCustomPalette = (partial) => {
+    setCustomConfig((prev) => {
+      const next = { ...prev, ...partial };
+      try {
+        localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignora quota
+      }
+      return next;
+    });
+  };
+
+  const resetCustomPalette = () => {
+    setCustomConfig(DEFAULT_CUSTOM_PALETTE);
+    try {
+      localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(DEFAULT_CUSTOM_PALETTE));
+    } catch {
+      // ignora
     }
   };
 
@@ -362,7 +465,17 @@ export function ThemeModeProvider({ children }) {
   }, [palette]);
 
   return (
-    <ThemeModeContext.Provider value={{ palette, paletteId, selectPalette, palettes: PALETTES }}>
+    <ThemeModeContext.Provider
+      value={{
+        palette,
+        paletteId,
+        selectPalette,
+        palettes: allPalettes,
+        customPalette,
+        updateCustomPalette,
+        resetCustomPalette,
+      }}
+    >
       <MuiThemeProvider theme={muiTheme}>
         <CssBaseline />
         {children}

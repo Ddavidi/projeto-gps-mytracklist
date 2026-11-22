@@ -287,7 +287,7 @@ export class SpotifyService {
 
     if (response.status === 403) {
       throw new SpotifyApiError(
-        'O Spotify bloqueou o acesso aos dados desta conta (403). No Modo Desenvolvimento do Spotify, o e-mail da conta precisa estar autorizado no Spotify Developer Dashboard (User Management) e o app precisa ter permissões válidas.',
+        'A integração com o Spotify está em acesso antecipado. Peça para a equipe do MyTrackList liberar o seu e-mail do Spotify e depois reconecte sua conta em Configurações.',
         403,
         'SPOTIFY_FORBIDDEN'
       );
