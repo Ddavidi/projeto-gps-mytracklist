@@ -93,6 +93,28 @@ export function createReviewRouter(reviewController: ReviewController): Router {
     else res.status(500).json({ error: result.message });
   });
 
+  /**
+   * GET /reviews/community/:itemType/:itemId
+   * Avaliações públicas da comunidade para um item (respeita perfis privados e Close Friends).
+   */
+  router.get('/community/:itemType/:itemId', async (req: Request, res: Response) => {
+    const { itemType, itemId } = req.params as { itemType: string; itemId: string };
+    if (!VALID_ITEM_TYPES.includes(itemType as ItemType)) {
+      res.status(400).json({ error: 'Tipo de item inválido. Use: track, album ou artist.' });
+      return;
+    }
+    const result = await reviewController.getCommunityReviewsForItem(
+      itemType as ItemType,
+      itemId,
+      getOptionalUserId(req)
+    );
+    if (result.success) {
+      res.json({ reviews: result.reviews });
+    } else {
+      res.status(500).json({ error: result.message });
+    }
+  });
+
   // Todas as rotas de reviews abaixo requerem autenticação
   router.use(requireAuth);
 

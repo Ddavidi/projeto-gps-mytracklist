@@ -217,12 +217,17 @@ export class ReviewController {
   async getItemStats(itemType: ItemType, itemId: string) {
     try {
       const stats = await this.db.get(
-        "SELECT AVG(rating) as averageScore, COUNT(id) as totalReviews FROM reviews WHERE item_type = ? AND item_id = ? AND rating IS NOT NULL AND COALESCE(visibility, 'public') = 'public'",
+        `SELECT AVG(rating) as "averageScore", COUNT(id) as "totalReviews"
+         FROM reviews
+         WHERE item_type = ? AND item_id = ? AND rating IS NOT NULL AND COALESCE(visibility, 'public') = 'public'`,
         [itemType, itemId]
       );
       
       const distributionRows = await this.db.all(
-        "SELECT rating, COUNT(id) as count FROM reviews WHERE item_type = ? AND item_id = ? AND rating IS NOT NULL AND COALESCE(visibility, 'public') = 'public' GROUP BY rating",
+        `SELECT rating, COUNT(id) as count
+         FROM reviews
+         WHERE item_type = ? AND item_id = ? AND rating IS NOT NULL AND COALESCE(visibility, 'public') = 'public'
+         GROUP BY rating`,
         [itemType, itemId]
       );
       
@@ -230,21 +235,91 @@ export class ReviewController {
         0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0
       };
       
-      for (const row of distributionRows) {
-        distribution[row.rating] = Number(row.count);
+      for (const row of distributionRows || []) {
+        const key = Math.round(Number(row.rating));
+        distribution[key] = (distribution[key] || 0) + Number(row.count || 0);
       }
+
+      const rawAvg = stats?.averageScore ?? stats?.averagescore ?? 0;
+      const rawTotal = stats?.totalReviews ?? stats?.totalreviews ?? 0;
 
       return { 
         success: true, 
         stats: {
-          averageScore: stats?.averageScore ? parseFloat(Number(stats.averageScore).toFixed(1)) : 0,
-          totalReviews: stats?.totalReviews ? Number(stats.totalReviews) : 0,
+          averageScore: rawAvg ? parseFloat(Number(rawAvg).toFixed(1)) : 0,
+          totalReviews: rawTotal ? Number(rawTotal) : 0,
           distribution
         }
       };
     } catch (error) {
       console.error('Falha ao obter estatísticas:', error);
       return { success: false, message: 'Falha ao obter estatísticas.' };
+    }
+  }
+
+  /**
+   * Lista todas as avaliações da comunidade para um item (álbum, música ou artista),
+   * respeitando privacidade de conta (perfis privados só para seguidores) e visibilidade (public / close_friends).
+   */
+  async getCommunityReviewsForItem(itemType: ItemType, itemId: string, requesterId?: number) {
+    try {
+      const viewerId = requesterId || -1;
+      const rows = await this.db.all(
+        `SELECT
+           r.id,
+           r.rating,
+           r.review_text,
+           r.has_spoiler,
+           r.is_relisten,
+           COALESCE(r.visibility, 'public') as visibility,
+           r."createdAt",
+           u.id as author_id,
+           u.username as author_username,
+           u.name as author_name,
+           u.avatar_url as author_avatar,
+           (SELECT COUNT(*) FROM review_likes rl WHERE rl."reviewId" = r.id) as likes_count,
+           (SELECT 1 FROM review_likes rl2 WHERE rl2."reviewId" = r.id AND rl2."userId" = ?) as is_liked,
+           (SELECT COUNT(*) FROM review_comments rc WHERE rc.review_id = r.id) as comments_count,
+           (SELECT 1 FROM follows f WHERE f."followerId" = ? AND f."followingId" = u.id) as is_friend
+         FROM reviews r
+         JOIN users u ON u.id = r."userId"
+         WHERE r.item_type = ?
+           AND r.item_id = ?
+           AND (
+             u.id = ?
+             OR (
+               (
+                 COALESCE(u.is_private, FALSE) = FALSE
+                 OR EXISTS (SELECT 1 FROM follows f2 WHERE f2."followerId" = ? AND f2."followingId" = u.id)
+               )
+               AND (
+                 COALESCE(r.visibility, 'public') = 'public'
+                 OR (
+                   r.visibility = 'close_friends'
+                   AND EXISTS (SELECT 1 FROM close_friends cf WHERE cf.user_id = u.id AND cf.friend_id = ?)
+                 )
+               )
+             )
+           )
+         ORDER BY r."createdAt" DESC
+         LIMIT 50`,
+        [viewerId, viewerId, itemType, itemId, viewerId, viewerId, viewerId]
+      );
+
+      const reviews = (rows || []).map((row: any) => ({
+        ...row,
+        has_spoiler: Boolean(row.has_spoiler),
+        is_relisten: Boolean(row.is_relisten),
+        is_liked: Boolean(row.is_liked),
+        is_friend: Boolean(row.is_friend),
+        likes_count: Number(row.likes_count || 0),
+        comments_count: Number(row.comments_count || 0),
+      }));
+
+      return { success: true, reviews };
+    } catch (error) {
+      console.error('Falha ao buscar avaliações da comunidade:', error);
+      return { success: false, message: 'Falha ao buscar avaliações da comunidade.' };
     }
   }
 

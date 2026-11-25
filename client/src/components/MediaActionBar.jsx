@@ -85,7 +85,7 @@ export default function MediaActionBar({ itemType, itemId, itemName, itemArtist 
       } else {
         await addFavorite(itemType, itemId);
         setIsFav(true);
-        notify(itemType === 'album' ? 'Adicionado ao Top 4 Álbuns da Vida!' : 'Adicionado aos Favoritos!');
+        notify(itemType === 'album' ? 'Adicionado aos Álbuns Favoritos (Top 5)!' : 'Adicionado aos Favoritos!');
       }
     } catch (err) {
       notify(err.response?.data?.error || 'Erro ao atualizar favoritos', 'error');
@@ -170,7 +170,7 @@ export default function MediaActionBar({ itemType, itemId, itemName, itemArtist 
           onClick={handleToggleFavorite}
           disabled={busyFav}
         >
-          {isFav ? 'Favoritado' : itemType === 'album' ? 'Favoritar (Top 4)' : 'Favoritar'}
+          {isFav ? 'Favoritado' : itemType === 'album' ? 'Favoritar (Top 5)' : 'Favoritar'}
         </Button>
 
         <Button

@@ -97,13 +97,17 @@ function UserSearchPage() {
               divider
             >
               <ListItemAvatar>
-                <Avatar>
-                  <PersonIcon />
+                <Avatar
+                  src={user.avatar_url || user.user_avatar}
+                  alt={user.username}
+                  sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}
+                >
+                  {user.username ? user.username.charAt(0).toUpperCase() : <PersonIcon />}
                 </Avatar>
               </ListItemAvatar>
               <ListItemText 
-                primary={user.username} 
-                secondary={`Membro desde ${formatDate(user.created_at)}`}
+                primary={`@${user.username}`}
+                secondary={user.name ? `${user.name} · Membro desde ${formatDate(user.created_at)}` : `Membro desde ${formatDate(user.created_at)}`}
               />
             </ListItem>
           ))}

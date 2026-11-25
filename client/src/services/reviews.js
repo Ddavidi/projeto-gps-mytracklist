@@ -125,6 +125,15 @@ export const getCommunityCharts = async ({ type = 'album', period = 'all', sort 
   return response.data || [];
 };
 
+export const getCommunityItemReviews = async (itemType, itemId) => {
+  try {
+    const response = await api.get(`/reviews/community/${itemType}/${itemId}`);
+    return response.data?.reviews || [];
+  } catch {
+    return [];
+  }
+};
+
 export const getUserDiary = async (userId) => {
   const response = await api.get(`/reviews/diary/${userId}`);
   return response.data || [];
