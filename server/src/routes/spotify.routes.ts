@@ -398,5 +398,63 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     }
   });
 
+  /**
+   * POST /spotify/me/playlists/export
+   * Cria uma playlist na conta Spotify do usuário com as faixas enviadas.
+   */
+  router.post('/me/playlists/export', async (req: Request, res: Response) => {
+    const { name, description, isPublic = true, trackIds = [] } = req.body;
+    if (!name || !String(name).trim()) {
+      res.status(400).json({ error: 'Nome da playlist é obrigatório.' });
+      return;
+    }
+    try {
+      const userId = (req as any).user?.userId;
+      const result = await spotifyService.withUserToken(
+        userId,
+        userController,
+        (accessToken) =>
+          spotifyService.createSpotifyPlaylistWithTracks(
+            accessToken,
+            String(name),
+            String(description || ''),
+            Boolean(isPublic),
+            Array.isArray(trackIds) ? trackIds : []
+          )
+      );
+      res.status(201).json(result);
+    } catch (err: any) {
+      sendSpotifyError(res, err, 'Falha ao exportar playlist para o Spotify.');
+    }
+  });
+
+  /**
+   * GET /spotify/playlists/import/:playlistId
+   * Carrega metadados e faixas de uma playlist do Spotify para importar no MyTrackList.
+   */
+  router.get('/playlists/import/:playlistId', async (req: Request, res: Response) => {
+    const rawId = String(req.params.playlistId || '').trim();
+    if (!rawId) {
+      res.status(400).json({ error: 'ID da playlist é obrigatório.' });
+      return;
+    }
+    try {
+      const userId = (req as any).user?.userId;
+      let data;
+      try {
+        data = await spotifyService.withUserToken(
+          userId,
+          userController,
+          (accessToken) => spotifyService.getPlaylistForImport(rawId, accessToken)
+        );
+      } catch {
+        data = await spotifyService.getPlaylistForImport(rawId);
+      }
+      res.json(data);
+    } catch (err: any) {
+      sendSpotifyError(res, err, 'Falha ao importar playlist do Spotify.');
+    }
+  });
+
   return router;
 }

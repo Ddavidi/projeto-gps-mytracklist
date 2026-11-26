@@ -98,6 +98,17 @@ export function createListRouter(listController: ListController): Router {
     else res.status(400).json({ error: result.message });
   });
 
+  router.post('/:id/items/bulk', async (req: Request, res: Response) => {
+    const { items } = req.body;
+    if (!Array.isArray(items)) {
+      res.status(400).json({ error: 'items deve ser um array.' });
+      return;
+    }
+    const result = await listController.addItemsBulk(Number(req.params.id), req.user!.userId, items);
+    if (result.success) res.status(201).json(result);
+    else res.status(400).json({ error: result.message });
+  });
+
   router.delete('/:id/items/:itemRowId', async (req: Request, res: Response) => {
     const result = await listController.removeItemFromList(
       Number(req.params.id),

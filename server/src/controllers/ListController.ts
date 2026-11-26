@@ -156,7 +156,7 @@ export class ListController {
     try {
       const cleanTitle = title.trim();
       if (!cleanTitle) return { success: false, message: 'O título da lista é obrigatório.' };
-      const normalizedType = ['album', 'track', 'artist'].includes(listType) ? listType : 'album';
+      const normalizedType = ['album', 'track', 'artist', 'playlist'].includes(listType) ? listType : 'album';
 
       const result = await this.db.run(
         `INSERT INTO custom_lists (user_id, title, description, list_type, is_ranked, is_public, created_at, updated_at)
@@ -243,7 +243,8 @@ export class ListController {
         return { success: false, message: 'Lista não encontrada ou sem permissão.' };
       }
 
-      const allowedType = list.list_type || 'album';
+      const rawListType = list.list_type || 'album';
+      const allowedType = rawListType === 'playlist' ? 'track' : rawListType;
       if (item.itemType !== allowedType) {
         const typeLabel = allowedType === 'album' ? 'álbuns' : allowedType === 'track' ? 'músicas' : 'artistas';
         return {
@@ -278,6 +279,48 @@ export class ListController {
     } catch (error) {
       console.error('Erro ao adicionar item à lista:', error);
       return { success: false, message: 'Falha ao adicionar item à lista.' };
+    }
+  }
+
+  async addItemsBulk(
+    listId: number,
+    userId: number,
+    items: Array<{ itemId: string; itemType?: string; itemName: string; itemArtist?: string; itemImageUrl?: string }>
+  ) {
+    try {
+      const list = await this.db.get('SELECT id, user_id, list_type FROM custom_lists WHERE id = ?', [listId]);
+      if (!list || list.user_id !== userId) {
+        return { success: false, message: 'Lista não encontrada ou sem permissão.' };
+      }
+      const maxRow = await this.db.get(
+        'SELECT COALESCE(MAX(position), 0) as max_pos FROM custom_list_items WHERE list_id = ?',
+        [listId]
+      );
+      let pos = Number(maxRow?.max_pos || 0);
+      let added = 0;
+
+      for (const item of items.slice(0, 100)) {
+        if (!item.itemId || !item.itemName) continue;
+        const itemType = item.itemType || 'track';
+        const existing = await this.db.get(
+          'SELECT id FROM custom_list_items WHERE list_id = ? AND item_id = ? AND item_type = ?',
+          [listId, item.itemId, itemType]
+        );
+        if (existing) continue;
+        pos += 1;
+        await this.db.run(
+          `INSERT INTO custom_list_items (list_id, item_id, item_type, item_name, item_artist, item_image_url, position, note, added_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, '', CURRENT_TIMESTAMP)`,
+          [listId, item.itemId, itemType, item.itemName, item.itemArtist || '', item.itemImageUrl || '', pos]
+        );
+        added += 1;
+      }
+
+      await this.db.run('UPDATE custom_lists SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [listId]);
+      return { success: true, added };
+    } catch (error) {
+      console.error('Erro ao adicionar itens em lote:', error);
+      return { success: false, message: 'Falha ao adicionar itens em lote.' };
     }
   }
 

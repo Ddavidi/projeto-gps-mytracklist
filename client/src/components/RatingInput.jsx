@@ -1,43 +1,73 @@
 import React from 'react';
-import { Rating, Box, Typography } from '@mui/material';
+import { Rating, Box, Typography, alpha } from '@mui/material';
+import { getRatingMeta } from '../utils/ratingColor';
 
 /**
- * Componente para input de avaliação por estrelas (0-10).
- * @param {Object} props
- * @param {number | null} props.value - A nota atual (0-10).
- * @param {function(number | null): void} props.onChange - Função chamada quando a nota muda.
- * @param {boolean} [props.readOnly=false] - Se o componente é apenas para exibição.
- * @param {string} [props.size='large'] - Tamanho das estrelas ('small', 'medium', 'large').
+ * Componente para input de avaliação por estrelas (0-10) com paleta semântica de cores por nota.
  */
 function RatingInput({ value, onChange, readOnly = false, size = 'large' }) {
-  // O componente Rating do MUI trabalha com valores como 0, 0.5, 1, 1.5, ..., 5.
-  // Precisamos converter a nossa escala 0-10 para esta escala e vice-versa.
-  const muiRatingValue = value !== null ? value / 2 : null;
+  const muiRatingValue = value !== null && value !== undefined ? value / 2 : null;
+  const hasValue = value !== null && value !== undefined;
+  const { color, isGold, label } = hasValue ? getRatingMeta(value) : { color: undefined, isGold: false, label: '' };
 
-  const handleChange = (event, newValue) => {
-    // newValue vem como 0.5, 1, 1.5, etc. Convertêmo-lo de volta para 0-10.
+  const handleChange = (_event, newValue) => {
     if (onChange) {
-        onChange(newValue !== null ? newValue * 2 : null);
+      onChange(newValue !== null ? newValue * 2 : null);
     }
   };
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', flexDirection: 'column', my: readOnly ? 0 : 2 }}>
-      {!readOnly && <Typography component="legend">Avaliação (0-10):</Typography>}
+    <Box sx={{ display: 'flex', alignItems: 'center', flexDirection: 'column', my: readOnly ? 0 : 1.5 }}>
+      {!readOnly && (
+        <Typography component="legend" variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
+          Avaliação (0–10):
+        </Typography>
+      )}
       <Rating
         name="track-rating"
         value={muiRatingValue}
         onChange={handleChange}
-        precision={0.5} // Permite meias estrelas (representando 1 ponto na nossa escala)
-        max={5} // Máximo de 5 estrelas
-        size={size} // Agora aceita tamanho personalizado
+        precision={0.5}
+        max={5}
+        size={size}
         readOnly={readOnly}
+        sx={{
+          ...(hasValue && {
+            '& .MuiRating-iconFilled': {
+              color,
+              ...(isGold && { filter: 'drop-shadow(0 0 6px rgba(245, 197, 24, 0.55))' }),
+            },
+            '& .MuiRating-iconHover': {
+              color,
+            },
+          }),
+        }}
       />
-      {/* Exibe a nota numérica correspondente apenas se não for pequeno demais */}
-      {value !== null && size !== 'small' && (
-        <Typography variant="h6" sx={{ mt: 1 }}>
-          {value}/10
-        </Typography>
+      {hasValue && size !== 'small' && (
+        <Box
+          sx={{
+            mt: 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.85,
+            px: 1.4,
+            py: 0.35,
+            borderRadius: 99,
+            bgcolor: alpha(color, isGold ? 0.18 : 0.14),
+            border: '1px solid',
+            borderColor: alpha(color, isGold ? 0.6 : 0.4),
+            ...(isGold && { boxShadow: '0 0 14px rgba(245, 197, 24, 0.25)' }),
+          }}
+        >
+          <Typography variant="subtitle1" className="mtl-mono" fontWeight={800} sx={{ color, lineHeight: 1 }}>
+            {value}/10
+          </Typography>
+          {label && (
+            <Typography variant="caption" fontWeight={700} sx={{ color, opacity: 0.92 }}>
+              · {label}
+            </Typography>
+          )}
+        </Box>
       )}
     </Box>
   );

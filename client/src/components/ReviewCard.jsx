@@ -27,6 +27,7 @@ import { getReviewComments, addReviewComment } from '../services/reviews';
 import { formatDateShort, formatDateTime } from '../utils/date';
 import PlayButton from './PlayButton';
 import ShareCardModal from './ShareCardModal';
+import { getRatingMeta } from '../utils/ratingColor';
 
 const TYPE_LABEL = {
   track: 'Música',
@@ -250,24 +251,43 @@ function ReviewCard({ review }) {
             {review.item_name || 'Item Desconhecido'}
           </Typography>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
-            <Rating value={Number(review.rating) / 2} precision={0.5} readOnly size="small" />
-            <Box
-              component="span"
-              className="mtl-mono"
-              sx={{
-                px: 0.9,
-                py: 0.2,
-                borderRadius: 1,
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.15),
-                color: 'primary.main',
-              }}
-            >
-              {review.rating}/10
-            </Box>
-          </Box>
+          {(() => {
+            const { color: ratingColor, isGold } = getRatingMeta(review.rating);
+            return (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                <Rating
+                  value={Number(review.rating) / 2}
+                  precision={0.5}
+                  readOnly
+                  size="small"
+                  sx={{
+                    '& .MuiRating-iconFilled': {
+                      color: ratingColor,
+                      ...(isGold && { filter: 'drop-shadow(0 0 5px rgba(245, 197, 24, 0.55))' }),
+                    },
+                  }}
+                />
+                <Box
+                  component="span"
+                  className="mtl-mono"
+                  sx={{
+                    px: 0.9,
+                    py: 0.2,
+                    borderRadius: 1,
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    bgcolor: alpha(ratingColor, isGold ? 0.2 : 0.15),
+                    color: ratingColor,
+                    border: '1px solid',
+                    borderColor: alpha(ratingColor, isGold ? 0.55 : 0.3),
+                    ...(isGold && { boxShadow: '0 0 10px rgba(245, 197, 24, 0.22)' }),
+                  }}
+                >
+                  {review.rating}/10
+                </Box>
+              </Box>
+            );
+          })()}
         </Box>
 
         {itemType !== 'artist' && review.item_id && (

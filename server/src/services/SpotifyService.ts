@@ -1253,4 +1253,107 @@ export class SpotifyService {
     if (!response.ok) await this.handleSpotifyError(response, 'Falha ao adicionar música à playlist');
     return { success: true };
   }
+
+  /**
+   * Cria uma playlist na conta do Spotify do usuário e adiciona as faixas (em lotes de até 100).
+   */
+  public async createSpotifyPlaylistWithTracks(
+    accessToken: string,
+    name: string,
+    description: string,
+    isPublic: boolean,
+    trackIds: string[]
+  ) {
+    // 1. Tenta criar via /v1/me/playlists (suportado em 2025/2026) ou fallback via /v1/users/{id}/playlists
+    let createRes = await fetch('https://api.spotify.com/v1/me/playlists', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: name.trim() || 'Playlist MyTrackList',
+        description: description?.trim() || 'Criada no MyTrackList',
+        public: Boolean(isPublic),
+      }),
+    });
+
+    if (createRes.status === 404 || createRes.status === 400) {
+      const meRes = await fetch('https://api.spotify.com/v1/me', {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      if (!meRes.ok) await this.handleSpotifyError(meRes, 'Falha ao identificar sua conta Spotify');
+      const meData = await meRes.json();
+      createRes = await fetch(`https://api.spotify.com/v1/users/${meData.id}/playlists`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: name.trim() || 'Playlist MyTrackList',
+          description: description?.trim() || 'Criada no MyTrackList',
+          public: Boolean(isPublic),
+        }),
+      });
+    }
+
+    if (!createRes.ok) await this.handleSpotifyError(createRes, 'Falha ao criar playlist no Spotify');
+    const created = await createRes.json();
+
+    // 2. Adiciona faixas em lotes de 100
+    const uris = trackIds.filter(Boolean).map((id) => `spotify:track:${id}`);
+    let added = 0;
+    for (let i = 0; i < uris.length; i += 100) {
+      const chunk = uris.slice(i, i + 100);
+      let addRes = await fetch(`https://api.spotify.com/v1/playlists/${created.id}/items`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ uris: chunk }),
+      });
+      if (addRes.status === 404 || addRes.status === 400) {
+        addRes = await fetch(`https://api.spotify.com/v1/playlists/${created.id}/tracks`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ uris: chunk }),
+        });
+      }
+      if (addRes.ok) added += chunk.length;
+    }
+
+    return {
+      id: created.id,
+      name: created.name,
+      externalUrl: created.external_urls?.spotify || `https://open.spotify.com/playlist/${created.id}`,
+      tracksAdded: added,
+    };
+  }
+
+  /**
+   * Obtém metadados e faixas de uma playlist do Spotify para importação no MyTrackList.
+   */
+  public async getPlaylistForImport(playlistId: string, userAccessToken?: string) {
+    const token = userAccessToken || (await this.getAccessToken());
+    const metaRes = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}?fields=id,name,description,images,external_urls`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!metaRes.ok) await this.handleSpotifyError(metaRes, 'Playlist do Spotify não encontrada ou privada');
+    const meta = await metaRes.json();
+    const tracks = await this.getPlaylistTracks(token, playlistId);
+
+    return {
+      id: meta.id,
+      name: meta.name || 'Playlist Importada',
+      description: meta.description || '',
+      imageUrl: meta.images?.[0]?.url || '',
+      externalUrl: meta.external_urls?.spotify || '',
+      tracks,
+    };
+  }
 }

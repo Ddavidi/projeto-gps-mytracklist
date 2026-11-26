@@ -31,7 +31,9 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
-import { getListById, updateList, addItemToList, removeItemFromList, reorderListItems, toggleLikeList } from '../services/lists';
+import IosShareIcon from '@mui/icons-material/IosShare';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { getListById, updateList, addItemToList, removeItemFromList, reorderListItems, toggleLikeList, exportPlaylistToSpotify } from '../services/lists';
 import { searchMulti } from '../services/spotify';
 import { useAuth } from '../context/AuthContext';
 
@@ -48,6 +50,33 @@ export default function ListDetailsPage() {
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(null); // { externalUrl, tracksAdded }
+
+  const handleExportToSpotify = async () => {
+    if (!list || exporting) return;
+    const trackIds = (list.items || []).filter((i) => i.item_type === 'track').map((i) => i.item_id);
+    if (trackIds.length === 0) {
+      setError('Adicione pelo menos uma música antes de exportar para o Spotify.');
+      return;
+    }
+    setExporting(true);
+    setError('');
+    setExportSuccess(null);
+    try {
+      const res = await exportPlaylistToSpotify({
+        name: list.title,
+        description: list.description || 'Criada no MyTrackList',
+        isPublic: list.is_public,
+        trackIds,
+      });
+      setExportSuccess(res);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Conecte sua conta Spotify em Configurações para exportar playlists.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const [editOpen, setEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -118,7 +147,7 @@ export default function ListDetailsPage() {
     setSearching(true);
     try {
       const res = await searchMulti(query.trim());
-      const targetType = list?.list_type || 'album';
+      const targetType = list?.list_type === 'playlist' ? 'track' : (list?.list_type || 'album');
       let filtered = [];
       if (targetType === 'album') {
         filtered = (res.albums || []).slice(0, 6).map((a) => ({ itemId: a.id, itemType: 'album', itemName: a.name, itemArtist: a.artist, itemImageUrl: a.imageUrl }));
@@ -210,17 +239,41 @@ export default function ListDetailsPage() {
       </Button>
 
       <Paper sx={{ p: { xs: 2.5, sm: 4 }, borderRadius: 4, mb: 4 }}>
+        {exportSuccess && (
+          <Alert
+            severity="success"
+            sx={{ mb: 2.5, borderRadius: 2.5 }}
+            action={
+              <Button
+                component="a"
+                href={exportSuccess.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="small"
+                color="inherit"
+                endIcon={<OpenInNewIcon fontSize="small" />}
+                sx={{ fontWeight: 700 }}
+              >
+                Abrir no Spotify
+              </Button>
+            }
+          >
+            Playlist exportada para o seu Spotify com {exportSuccess.tracksAdded} {exportSuccess.tracksAdded === 1 ? 'faixa' : 'faixas'}!
+          </Alert>
+        )}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
               <Chip
                 size="small"
                 label={
-                  list.list_type === 'track'
-                    ? '🎵 Lista de Músicas'
+                  list.list_type === 'playlist'
+                    ? 'Playlist MyTrackList'
+                    : list.list_type === 'track'
+                    ? 'Lista de Músicas'
                     : list.list_type === 'artist'
-                    ? '🎤 Lista de Artistas'
-                    : '💿 Lista de Álbuns'
+                    ? 'Lista de Artistas'
+                    : 'Lista de Álbuns'
                 }
                 color="primary"
                 variant="outlined"
@@ -249,7 +302,20 @@ export default function ListDetailsPage() {
             </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            {isAuthenticated && (list.list_type === 'playlist' || list.list_type === 'track') && list.items?.length > 0 && (
+              <Button
+                variant="contained"
+                size="small"
+                color="primary"
+                disabled={exporting}
+                startIcon={exporting ? <CircularProgress size={14} color="inherit" /> : <IosShareIcon fontSize="small" />}
+                onClick={handleExportToSpotify}
+                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+              >
+                {exporting ? 'Exportando...' : 'Exportar para Spotify'}
+              </Button>
+            )}
             {isOwner && (
               <Button
                 variant="outlined"
@@ -277,7 +343,7 @@ export default function ListDetailsPage() {
         {isOwner && (
           <Box sx={{ mt: 3.5, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
             <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-              Adicionar {list.list_type === 'track' ? 'música' : list.list_type === 'artist' ? 'artista' : 'álbum'} à lista
+              Adicionar {list.list_type === 'track' || list.list_type === 'playlist' ? 'música' : list.list_type === 'artist' ? 'artista' : 'álbum'} à {list.list_type === 'playlist' ? 'playlist' : 'lista'}
             </Typography>
             <Box component="form" onSubmit={handleSearch}>
               <TextField

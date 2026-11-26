@@ -35,6 +35,21 @@ export const addItemToList = async (listId, item) => {
   return res.data;
 };
 
+export const addItemsBulkToList = async (listId, items) => {
+  const res = await api.post(`/lists/${listId}/items/bulk`, { items });
+  return res.data;
+};
+
+export const exportPlaylistToSpotify = async ({ name, description = '', isPublic = true, trackIds = [] }) => {
+  const res = await api.post('/spotify/me/playlists/export', { name, description, isPublic, trackIds });
+  return res.data;
+};
+
+export const importSpotifyPlaylistById = async (playlistId) => {
+  const res = await api.get(`/spotify/playlists/import/${encodeURIComponent(playlistId)}`);
+  return res.data;
+};
+
 export const removeItemFromList = async (listId, itemRowId) => {
   const res = await api.delete(`/lists/${listId}/items/${itemRowId}`);
   return res.data;

@@ -50,7 +50,7 @@ export default function ProfileListsAndBacklog({ userId, isOwner = false }) {
     setLoading(true);
     try {
       const userLists = await getUserLists(userId);
-      setLists(userLists || []);
+      setLists((userLists || []).filter((l) => l.list_type !== 'playlist'));
     } finally {
       setLoading(false);
     }

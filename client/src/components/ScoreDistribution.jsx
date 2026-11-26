@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, alpha } from '@mui/material';
 import { getItemStats } from '../services/reviews';
+import { getRatingColor } from '../utils/ratingColor';
 
 function ScoreDistribution({ itemType, itemId }) {
   const [stats, setStats] = useState(null);
@@ -35,7 +36,7 @@ function ScoreDistribution({ itemType, itemId }) {
         <Typography variant="subtitle2" fontWeight={700}>
           Distribuição de Notas
         </Typography>
-        <Typography variant="h6" className="mtl-mono" color="primary" fontWeight={800}>
+        <Typography variant="h6" className="mtl-mono" fontWeight={800} sx={{ color: getRatingColor(average) }}>
           {average.toFixed(1)}
           <Typography component="span" variant="caption" color="text.secondary">/10</Typography>
         </Typography>
@@ -45,6 +46,7 @@ function ScoreDistribution({ itemType, itemId }) {
         {scores.map((score) => {
           const count = distribution[score] || 0;
           const heightPercent = (count / maxCount) * 100;
+          const barColor = getRatingColor(score);
 
           return (
             <Box key={score} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%', justifyContent: 'flex-end' }}>
@@ -53,9 +55,10 @@ function ScoreDistribution({ itemType, itemId }) {
                   width: '100%',
                   maxWidth: 14,
                   height: `${Math.max(heightPercent, 8)}%`,
-                  bgcolor: count > 0 ? 'primary.main' : (theme) => alpha(theme.palette.text.primary, 0.1),
+                  bgcolor: count > 0 ? barColor : (theme) => alpha(theme.palette.text.primary, 0.1),
                   borderRadius: '4px 4px 0 0',
                   transition: 'height 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+                  ...(count > 0 && score >= 10 && { boxShadow: '0 0 8px rgba(245, 197, 24, 0.5)' }),
                 }}
               />
               <Typography variant="caption" className="mtl-mono" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.65rem' }}>

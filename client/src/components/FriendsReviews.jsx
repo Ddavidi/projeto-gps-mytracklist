@@ -22,6 +22,7 @@ import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import StarIcon from '@mui/icons-material/Star';
 import { formatDateShort } from '../utils/date';
+import { getRatingMeta } from '../utils/ratingColor';
 
 function FriendsReviews({ itemType, itemId }) {
   const { isAuthenticated } = useAuth();
@@ -195,14 +196,42 @@ function FriendsReviews({ itemType, itemId }) {
                     </Box>
                   }
                   subheader={formatDateShort(review.createdAt)}
-                  action={
-                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mr: 1 }}>
-                      <Rating value={Number(review.rating) / 2} precision={0.5} readOnly size="small" />
-                      <Typography variant="body2" className="mtl-mono" fontWeight={700} sx={{ ml: 1 }}>
-                        {review.rating}/10
-                      </Typography>
-                    </Box>
-                  }
+                  action={(() => {
+                    const { color: ratingColor, isGold } = getRatingMeta(review.rating);
+                    return (
+                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mr: 1, gap: 1 }}>
+                        <Rating
+                          value={Number(review.rating) / 2}
+                          precision={0.5}
+                          readOnly
+                          size="small"
+                          sx={{
+                            '& .MuiRating-iconFilled': {
+                              color: ratingColor,
+                              ...(isGold && { filter: 'drop-shadow(0 0 5px rgba(245, 197, 24, 0.55))' }),
+                            },
+                          }}
+                        />
+                        <Box
+                          component="span"
+                          className="mtl-mono"
+                          sx={{
+                            px: 0.9,
+                            py: 0.2,
+                            borderRadius: 1,
+                            fontSize: '0.78rem',
+                            fontWeight: 800,
+                            bgcolor: alpha(ratingColor, isGold ? 0.2 : 0.15),
+                            color: ratingColor,
+                            border: '1px solid',
+                            borderColor: alpha(ratingColor, isGold ? 0.55 : 0.3),
+                          }}
+                        >
+                          {review.rating}/10
+                        </Box>
+                      </Box>
+                    );
+                  })()}
                   sx={{ pb: review.review_text ? 0 : 2 }}
                 />
                 {review.review_text && (

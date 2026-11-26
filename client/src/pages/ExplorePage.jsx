@@ -29,6 +29,7 @@ import { getCommunityCharts } from '../services/reviews';
 import { getPublicLists } from '../services/lists';
 import { getExploreCharts } from '../services/spotify';
 import PlayButton from '../components/PlayButton';
+import { getRatingColor } from '../utils/ratingColor';
 
 export default function ExplorePage() {
   // Seção 1: Rankings da Comunidade (MyTrackList primeiro)
@@ -308,15 +309,17 @@ export default function ExplorePage() {
                           px: 0.9,
                           py: 0.3,
                           borderRadius: 1.5,
-                          bgcolor: 'rgba(0,0,0,0.82)',
-                          color: '#fff',
+                          bgcolor: 'rgba(0,0,0,0.86)',
+                          border: '1px solid',
+                          borderColor: alpha(getRatingColor(item.avg_rating), 0.55),
+                          color: getRatingColor(item.avg_rating),
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 0.35,
                         }}
                       >
-                        <StarIcon sx={{ fontSize: 13, color: 'secondary.main' }} />
-                        <Typography variant="caption" className="mtl-mono" fontWeight={700}>
+                        <StarIcon sx={{ fontSize: 13, color: getRatingColor(item.avg_rating) }} />
+                        <Typography variant="caption" className="mtl-mono" fontWeight={800} sx={{ color: getRatingColor(item.avg_rating) }}>
                           {item.avg_rating}
                         </Typography>
                       </Box>
