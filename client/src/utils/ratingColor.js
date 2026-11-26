@@ -8,12 +8,12 @@ export function getRatingColor(rawScore) {
   }
   const score = Number(rawScore);
 
-  if (score >= 9.5) return '#F5C518'; // Dourado (Obra-prima / 10)
-  if (score >= 8.0) return '#10B981'; // Esmeralda (Excelente)
-  if (score >= 6.5) return '#84CC16'; // Verde lima (Boa)
-  if (score >= 5.0) return '#EAB308'; // Amarelo / Âmbar (Mediana)
-  if (score >= 3.0) return '#F97316'; // Laranja (Fraca)
-  return '#EF4444'; // Vermelho (Ruim)
+  if (score >= 9.5) return '#F5C518'; // Dourado (10)
+  if (score >= 8.0) return '#10B981'; // Esmeralda (8 - 9)
+  if (score >= 6.5) return '#84CC16'; // Verde lima (7)
+  if (score >= 5.0) return '#38BDF8'; // Azul celeste (5 - 6)
+  if (score >= 3.0) return '#F97316'; // Laranja (3 - 4)
+  return '#EF4444'; // Vermelho (0 - 2)
 }
 
 export function getRatingMeta(rawScore) {

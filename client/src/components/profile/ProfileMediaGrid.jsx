@@ -25,6 +25,7 @@ import StarIcon from '@mui/icons-material/Star';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import GridViewIcon from '@mui/icons-material/GridView';
 import AlbumIcon from '@mui/icons-material/Album';
+import { getRatingMeta } from '../../utils/ratingColor';
 
 export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
   const [sortOrder, setSortOrder] = useState('recent');
@@ -197,27 +198,35 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
                         <AlbumIcon color="disabled" />
                       )}
 
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          bottom: 8,
-                          right: 8,
-                          bgcolor: 'rgba(0,0,0,0.78)',
-                          backdropFilter: 'blur(6px)',
-                          color: '#fff',
-                          px: 0.9,
-                          py: 0.35,
-                          borderRadius: 1.5,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.4,
-                        }}
-                      >
-                        <StarIcon sx={{ fontSize: 13, color: 'secondary.main' }} />
-                        <Typography variant="caption" className="mtl-mono" fontWeight={700}>
-                          {review.rating}
-                        </Typography>
-                      </Box>
+                      {(() => {
+                        const { color: ratingColor, isGold } = getRatingMeta(review.rating);
+                        return (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              bottom: 8,
+                              right: 8,
+                              bgcolor: 'rgba(0,0,0,0.84)',
+                              backdropFilter: 'blur(6px)',
+                              border: '1px solid',
+                              borderColor: alpha(ratingColor, isGold ? 0.7 : 0.45),
+                              color: ratingColor,
+                              px: 0.9,
+                              py: 0.35,
+                              borderRadius: 1.5,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.4,
+                              ...(isGold && { boxShadow: '0 0 12px rgba(245, 197, 24, 0.35)' }),
+                            }}
+                          >
+                            <StarIcon sx={{ fontSize: 13, color: ratingColor }} />
+                            <Typography variant="caption" className="mtl-mono" fontWeight={800} sx={{ color: ratingColor }}>
+                              {review.rating}
+                            </Typography>
+                          </Box>
+                        );
+                      })()}
                     </Box>
                     <Typography className="media-title" variant="body2" fontWeight={700} noWrap sx={{ transition: 'color 0.2s' }}>
                       {name}
@@ -284,12 +293,30 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
                         </Box>
                       </TableCell>
                       <TableCell align="center">
-                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, color: 'secondary.main' }}>
-                          <StarIcon sx={{ fontSize: 15 }} />
-                          <Typography variant="body2" className="mtl-mono" fontWeight={700}>
-                            {review.rating}
-                          </Typography>
-                        </Box>
+                        {(() => {
+                          const { color: ratingColor, isGold } = getRatingMeta(review.rating);
+                          return (
+                            <Box
+                              sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 0.4,
+                                px: 1,
+                                py: 0.25,
+                                borderRadius: 1.5,
+                                bgcolor: alpha(ratingColor, isGold ? 0.18 : 0.14),
+                                border: '1px solid',
+                                borderColor: alpha(ratingColor, isGold ? 0.55 : 0.3),
+                                color: ratingColor,
+                              }}
+                            >
+                              <StarIcon sx={{ fontSize: 14, color: ratingColor }} />
+                              <Typography variant="body2" className="mtl-mono" fontWeight={800} sx={{ color: ratingColor }}>
+                                {review.rating}
+                              </Typography>
+                            </Box>
+                          );
+                        })()}
                       </TableCell>
                     </TableRow>
                   );

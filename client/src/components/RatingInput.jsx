@@ -62,11 +62,6 @@ function RatingInput({ value, onChange, readOnly = false, size = 'large' }) {
           <Typography variant="subtitle1" className="mtl-mono" fontWeight={800} sx={{ color, lineHeight: 1 }}>
             {value}/10
           </Typography>
-          {label && (
-            <Typography variant="caption" fontWeight={700} sx={{ color, opacity: 0.92 }}>
-              · {label}
-            </Typography>
-          )}
         </Box>
       )}
     </Box>

@@ -19,6 +19,7 @@ import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined
 import AutoGraphIcon from '@mui/icons-material/AutoGraph';
 import { getUserDiary, getUserWrapped } from '../../services/reviews';
 import { formatCalendarDate } from '../../utils/date';
+import { getRatingColor } from '../../utils/ratingColor';
 
 const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -147,7 +148,7 @@ export default function ProfileDiaryWrapped({ userId }) {
                           <Typography variant="caption" fontWeight={700} noWrap display="block">
                             {alb.item_name}
                           </Typography>
-                          <Typography variant="caption" className="mtl-mono" color="secondary.main" fontWeight={700}>
+                          <Typography variant="caption" className="mtl-mono" fontWeight={800} sx={{ color: getRatingColor(alb.rating) }}>
                             {alb.rating}/10
                           </Typography>
                         </Box>
@@ -208,9 +209,9 @@ export default function ProfileDiaryWrapped({ userId }) {
                     </Typography>
                   )}
                 </Box>
-                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, color: 'secondary.main' }}>
-                  <StarIcon sx={{ fontSize: 16 }} />
-                  <Typography variant="body2" className="mtl-mono" fontWeight={700}>
+                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, color: getRatingColor(entry.rating) }}>
+                  <StarIcon sx={{ fontSize: 16, color: getRatingColor(entry.rating) }} />
+                  <Typography variant="body2" className="mtl-mono" fontWeight={800} sx={{ color: getRatingColor(entry.rating) }}>
                     {entry.rating}
                   </Typography>
                 </Box>
