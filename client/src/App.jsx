@@ -4,6 +4,7 @@ import { Box, CircularProgress } from '@mui/material';
 import HomePage from './pages/HomePage';
 import Navbar from './components/Navbar';
 import MobileBottomNav from './components/MobileBottomNav';
+import NativeAppBridge from './components/NativeAppBridge';
 import LoginPage from './pages/LoginPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import TrackDetailsPage from './pages/TrackDetailsPage';
@@ -35,6 +36,7 @@ function App() {
 
   return (
     <PlayerProvider>
+      <NativeAppBridge />
       <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
         <Navbar
           externalSearchOpen={mobileSearchOpen}

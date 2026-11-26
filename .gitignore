@@ -45,3 +45,11 @@ bun.lock
 *.pdf
 docs_extracted/
 *.zip
+
+# Mobile native build artifacts (Capacitor Android/iOS)
+client/android/.gradle/
+client/android/build/
+client/android/app/build/
+client/android/local.properties
+*.apk
+*.aab

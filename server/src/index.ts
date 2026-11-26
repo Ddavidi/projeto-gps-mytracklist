@@ -41,12 +41,16 @@ const corsOptions: cors.CorsOptions = {
 
     const normalized = origin.replace(/\/+$/, '');
     const isExactAllowed = envOrigins.includes(normalized);
+    const isCapacitorApp =
+      normalized === 'https://localhost' ||
+      normalized === 'http://localhost' ||
+      normalized === 'capacitor://localhost';
     const isVercelProject =
       normalized === 'https://projeto-gps-mytracklist.vercel.app' ||
       /^https:\/\/projeto-gps-mytracklist[a-z0-9-]*\.vercel\.app$/i.test(normalized) ||
       /^https:\/\/projeto-gps-mytracklis[a-z0-9-]*\.vercel\.app$/i.test(normalized);
 
-    if (isExactAllowed || isVercelProject || envOrigins.length === 0) {
+    if (isExactAllowed || isCapacitorApp || isVercelProject || envOrigins.length === 0) {
       return callback(null, true);
     }
     return callback(null, false);
