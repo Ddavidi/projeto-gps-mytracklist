@@ -257,6 +257,20 @@ export class ControllerFactory {
         )
       `);
 
+      // PostgreSQL schema — tokens de redefinição de senha por e-mail
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS password_resets (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          email TEXT NOT NULL,
+          token_hash TEXT NOT NULL UNIQUE,
+          expires_at BIGINT NOT NULL,
+          last_sent_at BIGINT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      `);
+
       // PostgreSQL schema — listas customizadas (estilo Musicboard/Letterboxd)
       await database.exec(`
         CREATE TABLE IF NOT EXISTS custom_lists (
@@ -532,6 +546,20 @@ export class ControllerFactory {
           expires_at INTEGER NOT NULL,
           last_sent_at INTEGER NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // SQLite schema — tokens de redefinição de senha por e-mail
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS password_resets (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          email TEXT NOT NULL,
+          token_hash TEXT NOT NULL UNIQUE,
+          expires_at INTEGER NOT NULL,
+          last_sent_at INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
       `);
 

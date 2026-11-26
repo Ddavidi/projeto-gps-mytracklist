@@ -1,7 +1,7 @@
 import { IDatabase } from '../interfaces/IDatabase';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { sendVerificationCodeEmail } from '../utils/email';
+import { sendVerificationCodeEmail, sendPasswordResetEmail } from '../utils/email';
 
 export class UserController {
   constructor(private db: IDatabase) {}
@@ -632,6 +632,125 @@ export class UserController {
     } catch (error) {
       console.error('Erro ao alterar senha:', error);
       return { success: false, message: 'Erro interno ao alterar senha.' };
+    }
+  }
+
+  private hashResetToken(token: string): string {
+    return crypto.createHash('sha256').update(token.trim()).digest('hex');
+  }
+
+  async requestPasswordReset(email: string, frontendBaseUrl: string) {
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const user = await this.db.get(
+        'SELECT id, username, email FROM users WHERE LOWER(email) = LOWER(?)',
+        [normalizedEmail]
+      );
+
+      if (!user) {
+        return { success: false, message: 'Nenhuma conta encontrada com este e-mail.' };
+      }
+
+      const now = Date.now();
+      const existing = await this.db.get(
+        'SELECT id, last_sent_at FROM password_resets WHERE user_id = ? ORDER BY last_sent_at DESC LIMIT 1',
+        [user.id]
+      );
+
+      if (existing && now - Number(existing.last_sent_at) < 45 * 1000) {
+        const waitSeconds = Math.ceil((45 * 1000 - (now - Number(existing.last_sent_at))) / 1000);
+        return { success: false, message: `Aguarde ${waitSeconds}s antes de solicitar um novo link.` };
+      }
+
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = this.hashResetToken(rawToken);
+      const expiresAt = now + 30 * 60 * 1000; // 30 minutos
+
+      // Invalida solicitações anteriores deste usuário
+      await this.db.run('DELETE FROM password_resets WHERE user_id = ?', [user.id]);
+      await this.db.run(
+        'INSERT INTO password_resets (user_id, email, token_hash, expires_at, last_sent_at) VALUES (?, ?, ?, ?, ?)',
+        [user.id, normalizedEmail, tokenHash, expiresAt, now]
+      );
+
+      const cleanBase = frontendBaseUrl.replace(/\/+$/, '');
+      const resetUrl = `${cleanBase}/reset-password?token=${encodeURIComponent(rawToken)}`;
+
+      await sendPasswordResetEmail(normalizedEmail, user.username, resetUrl);
+
+      return { success: true, email: normalizedEmail };
+    } catch (error: any) {
+      console.error('Erro ao solicitar redefinição de senha:', error);
+      return { success: false, message: error?.message || 'Falha ao enviar e-mail de redefinição.' };
+    }
+  }
+
+  async verifyPasswordResetToken(token: string) {
+    try {
+      const cleanToken = String(token || '').trim();
+      if (!cleanToken) {
+        return { valid: false, message: 'Link de redefinição inválido.' };
+      }
+
+      const tokenHash = this.hashResetToken(cleanToken);
+      const record = await this.db.get(
+        `SELECT pr.id, pr.user_id, pr.email, pr.expires_at, u.username
+         FROM password_resets pr
+         JOIN users u ON u.id = pr.user_id
+         WHERE pr.token_hash = ?`,
+        [tokenHash]
+      );
+
+      if (!record) {
+        return { valid: false, message: 'Este link de redefinição é inválido ou já foi utilizado.' };
+      }
+
+      if (Date.now() > Number(record.expires_at)) {
+        await this.db.run('DELETE FROM password_resets WHERE id = ?', [record.id]);
+        return { valid: false, message: 'Este link expirou. Solicite um novo link para trocar sua senha.' };
+      }
+
+      return {
+        valid: true,
+        email: record.email,
+        username: record.username,
+      };
+    } catch (error) {
+      console.error('Erro ao verificar token de redefinição:', error);
+      return { valid: false, message: 'Erro ao validar link de redefinição.' };
+    }
+  }
+
+  async confirmPasswordReset(token: string, newPassword: string) {
+    try {
+      const cleanToken = String(token || '').trim();
+      if (!cleanToken) {
+        return { success: false, message: 'Link de redefinição inválido.' };
+      }
+
+      const tokenHash = this.hashResetToken(cleanToken);
+      const record = await this.db.get(
+        'SELECT id, user_id, expires_at FROM password_resets WHERE token_hash = ?',
+        [tokenHash]
+      );
+
+      if (!record) {
+        return { success: false, message: 'Este link de redefinição é inválido ou já foi utilizado.' };
+      }
+
+      if (Date.now() > Number(record.expires_at)) {
+        await this.db.run('DELETE FROM password_resets WHERE id = ?', [record.id]);
+        return { success: false, message: 'Este link expirou. Solicite um novo link para trocar sua senha.' };
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await this.db.run('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, record.user_id]);
+      await this.db.run('DELETE FROM password_resets WHERE user_id = ?', [record.user_id]);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao confirmar nova senha:', error);
+      return { success: false, message: 'Erro interno ao redefinir a senha.' };
     }
   }
 

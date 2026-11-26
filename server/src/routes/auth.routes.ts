@@ -251,5 +251,91 @@ export function createAuthRouter(userController: UserController): Router {
     }
   });
 
+  /**
+   * POST /auth/password-reset/request
+   * Envia um e-mail com link de confirmação para redefinir a senha.
+   */
+  router.post('/password-reset/request', authLimiter, async (req: Request, res: Response) => {
+    const { email } = req.body;
+    const cleanEmail = String(email || '').trim().toLowerCase();
+
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      res.status(400).json({ error: 'Informe um endereço de e-mail válido.' });
+      return;
+    }
+
+    const originHeader = typeof req.headers.origin === 'string' ? req.headers.origin.replace(/\/+$/, '') : '';
+    const isWebOrigin = /^https?:\/\/(?!localhost$)/i.test(originHeader) && !originHeader.includes('capacitor://');
+    const frontendUrl = (
+      process.env.FRONTEND_URL ||
+      (isWebOrigin ? originHeader : '') ||
+      (process.env.NODE_ENV === 'production' ? 'https://projeto-gps-mytracklist.vercel.app' : 'http://localhost:5173')
+    ).replace(/\/+$/, '');
+
+    const result = await userController.requestPasswordReset(cleanEmail, frontendUrl);
+
+    if (result.success) {
+      res.json({
+        message: 'Enviamos um link de confirmação para o seu e-mail. Abra sua caixa de entrada para trocar sua senha.',
+        email: result.email,
+      });
+    } else {
+      res.status(400).json({ error: result.message });
+    }
+  });
+
+  /**
+   * GET /auth/password-reset/verify?token=...
+   * Valida se o token do link de redefinição ainda é válido.
+   */
+  router.get('/password-reset/verify', async (req: Request, res: Response) => {
+    const token = String(req.query.token || '').trim();
+    if (!token) {
+      res.status(400).json({ valid: false, error: 'Token de redefinição não informado.' });
+      return;
+    }
+
+    const result = await userController.verifyPasswordResetToken(token);
+    if (result.valid) {
+      res.json({ valid: true, email: result.email, username: result.username });
+    } else {
+      res.status(400).json({ valid: false, error: result.message });
+    }
+  });
+
+  /**
+   * POST /auth/password-reset/confirm
+   * Aplica a nova senha utilizando o token enviado por e-mail.
+   */
+  router.post('/password-reset/confirm', authLimiter, async (req: Request, res: Response) => {
+    const { token, newPassword, confirmPassword } = req.body;
+
+    if (!token || !newPassword) {
+      res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+      return;
+    }
+
+    if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+      res.status(400).json({ error: 'As senhas não coincidem.' });
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[a-zA-Z])(?=.*[\d#?!&@$*^%-]).{10,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      res.status(400).json({
+        error: 'A senha deve ter pelo menos 10 caracteres, conter pelo menos 1 letra e 1 número ou caractere especial.',
+      });
+      return;
+    }
+
+    const result = await userController.confirmPasswordReset(String(token), newPassword);
+
+    if (result.success) {
+      res.json({ message: 'Senha alterada com sucesso! Agora você já pode entrar com a nova senha.' });
+    } else {
+      res.status(400).json({ error: result.message });
+    }
+  });
+
   return router;
 }

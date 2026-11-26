@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import MobileBottomNav from './components/MobileBottomNav';
 import NativeAppBridge from './components/NativeAppBridge';
 import LoginPage from './pages/LoginPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import TrackDetailsPage from './pages/TrackDetailsPage';
 import AlbumDetailsPage from './pages/AlbumDetailsPage';
@@ -49,6 +50,7 @@ function App() {
             <Route path="/lists/:id" element={<ListDetailsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<LoginPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/track/:id" element={<ProtectedRoute><TrackDetailsPage /></ProtectedRoute>} />
             <Route path="/music/:id" element={<ProtectedRoute><TrackDetailsPage /></ProtectedRoute>} />

@@ -120,6 +120,68 @@ export async function sendVerificationCodeEmail(to: string, username: string, co
   await sendEmail({ to, subject, html, text });
 }
 
+export async function sendPasswordResetEmail(to: string, username: string, resetUrl: string): Promise<void> {
+  const subject = 'Redefinição de senha — MyTrackList';
+  const text =
+    `Olá, ${username}!\n\n` +
+    `Recebemos uma solicitação para trocar a senha da sua conta no MyTrackList.\n\n` +
+    `Acesse o link abaixo para escolher uma nova senha:\n` +
+    `${resetUrl}\n\n` +
+    `Este link é válido por 30 minutos e só pode ser usado uma vez.\n` +
+    `Se você não solicitou a troca de senha, pode ignorar este e-mail com segurança.\n\n` +
+    `Atenciosamente,\nEquipe MyTrackList`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="utf-8">
+      <title>Redefinir Senha - MyTrackList</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #121212; color: #ffffff; margin: 0; padding: 0; }
+        .wrapper { width: 100%; max-width: 520px; margin: 40px auto; background-color: #181818; border-radius: 12px; border: 1px solid #282828; overflow: hidden; }
+        .header { background: linear-gradient(135deg, #1db954 0%, #15883e 100%); padding: 32px 24px; text-align: center; }
+        .logo { font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; text-decoration: none; margin: 0; }
+        .content { padding: 32px 28px; color: #e0e0e0; font-size: 15px; line-height: 1.6; }
+        .greeting { font-size: 18px; font-weight: 600; color: #ffffff; margin-top: 0; margin-bottom: 12px; }
+        .btn-wrap { text-align: center; margin: 28px 0; }
+        .btn { display: inline-block; background-color: #1db954; color: #0b0e11 !important; font-weight: 800; font-size: 15px; text-decoration: none; padding: 14px 28px; border-radius: 999px; }
+        .link-fallback { word-break: break-all; font-size: 12px; color: #1db954; background-color: #0c0c0c; border: 1px solid #282828; border-radius: 8px; padding: 12px; margin-top: 12px; }
+        .timer-warning { font-size: 13px; color: #a0a0a0; margin-top: 16px; }
+        .footer { padding: 20px 28px; border-top: 1px solid #282828; font-size: 12px; color: #777777; text-align: center; }
+      </style>
+    </head>
+    <body style="background-color: #121212; margin: 0; padding: 20px;">
+      <div class="wrapper">
+        <div class="header">
+          <h1 class="logo">🎵 MyTrackList</h1>
+        </div>
+        <div class="content">
+          <p class="greeting">Olá, ${escapeHtml(username)}!</p>
+          <p>Recebemos uma solicitação para alterar a senha da sua conta no <strong>MyTrackList</strong>. Clique no botão abaixo para criar uma nova senha:</p>
+
+          <div class="btn-wrap">
+            <a class="btn" href="${escapeHtml(resetUrl)}" target="_blank" rel="noopener noreferrer">Trocar minha senha</a>
+          </div>
+
+          <p class="timer-warning">⏱️ Este link é válido por <strong>30 minutos</strong> e pode ser usado apenas uma vez.</p>
+          <p style="font-size: 12px; color: #999; margin-bottom: 6px;">Se o botão não funcionar, copie e cole o link abaixo no navegador:</p>
+          <div class="link-fallback">${escapeHtml(resetUrl)}</div>
+
+          <p style="font-size: 13px; color: #888; margin-top: 20px;">Se você não solicitou esta alteração, pode ignorar este e-mail com segurança. Sua senha atual continuará funcionando.</p>
+        </div>
+        <div class="footer">
+          <p style="margin: 0;">© ${new Date().getFullYear()} MyTrackList • Sua plataforma social de música.</p>
+          <p style="margin: 4px 0 0 0;">Esta é uma mensagem automática gerada pelo sistema. Não responda a este e-mail.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail({ to, subject, html, text });
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')

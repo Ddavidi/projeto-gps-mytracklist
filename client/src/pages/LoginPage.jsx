@@ -27,9 +27,11 @@ import { getTrending } from '../services/spotify';
 import OnboardingFlow from '../components/OnboardingFlow';
 
 function LoginPage() {
-  const [step, setStep] = useState(1); // 1 | 2 | 'verify' | 'onboarding'
+  const [step, setStep] = useState(1); // 1 | 2 | 'verify' | 'forgot' | 'onboarding'
   const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -235,6 +237,37 @@ function LoginPage() {
     }
   };
 
+  const openForgotPassword = () => {
+    setError('');
+    setInfoMessage('');
+    setForgotSent(false);
+    if (identifier.includes('@')) {
+      setForgotEmail(identifier.trim());
+    }
+    setStep('forgot');
+  };
+
+  const handleForgotPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setInfoMessage('');
+    setIsSubmitting(true);
+    try {
+      const res = await api.post('/auth/password-reset/request', {
+        email: forgotEmail.trim(),
+      });
+      setForgotSent(true);
+      setInfoMessage(
+        res.data?.message ||
+          'Enviamos um link de confirmação para o seu e-mail. Abra sua caixa de entrada para trocar sua senha.'
+      );
+    } catch (err) {
+      setError(err.response?.data?.error || 'Não foi possível enviar o link de redefinição.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const hasMinLength = password.length >= 10;
   const hasLetter = /[a-zA-Z]/.test(password);
   const hasNumberOrSpecial = /[\d#?!&@$*^%-]/.test(password);
@@ -317,6 +350,7 @@ function LoginPage() {
               {step === 2 && isLoginFlow && 'Bem-vindo de volta'}
               {step === 2 && !isLoginFlow && 'Crie sua conta'}
               {step === 'verify' && 'Verifique seu e-mail'}
+              {step === 'forgot' && 'Redefinir senha'}
             </Typography>
 
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -324,6 +358,7 @@ function LoginPage() {
               {step === 2 && isLoginFlow && `Entrando como ${identifier}`}
               {step === 2 && !isLoginFlow && `Cadastrando com ${email}`}
               {step === 'verify' && `Enviamos um código de 6 dígitos para ${email}.`}
+              {step === 'forgot' && 'Informe o e-mail da sua conta e enviaremos um link para você criar uma nova senha.'}
             </Typography>
 
             {error && <Alert severity="error" sx={{ mb: 2.5 }}>{error}</Alert>}
@@ -392,6 +427,16 @@ function LoginPage() {
                   <Button type="submit" fullWidth variant="contained" size="large" sx={{ mt: 2.5 }} disabled={isSubmitting}>
                     {isSubmitting ? 'Verificando...' : 'Continuar'}
                   </Button>
+                  <Button
+                    type="button"
+                    fullWidth
+                    variant="text"
+                    size="small"
+                    onClick={openForgotPassword}
+                    sx={{ mt: 1.5, textTransform: 'none', color: 'text.secondary', fontWeight: 600 }}
+                  >
+                    Esqueci minha senha
+                  </Button>
                 </Box>
               </Box>
             )}
@@ -451,6 +496,20 @@ function LoginPage() {
                   autoFocus={isLoginFlow}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+
+                {isLoginFlow && (
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.25, mb: 1 }}>
+                    <Button
+                      type="button"
+                      variant="text"
+                      size="small"
+                      onClick={openForgotPassword}
+                      sx={{ textTransform: 'none', fontWeight: 600, p: 0.5, minWidth: 0 }}
+                    >
+                      Esqueci minha senha
+                    </Button>
+                  </Box>
+                )}
 
                 {!isLoginFlow && (
                   <>
@@ -600,6 +659,55 @@ function LoginPage() {
                   disabled={isSubmitting}
                 >
                   Voltar
+                </Button>
+              </Box>
+            )}
+
+            {step === 'forgot' && (
+              <Box component="form" onSubmit={handleForgotPasswordSubmit}>
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  id="forgotEmail"
+                  label="E-mail da conta"
+                  name="forgotEmail"
+                  type="email"
+                  autoComplete="email"
+                  autoFocus
+                  value={forgotEmail}
+                  onChange={(e) => {
+                    setForgotEmail(e.target.value);
+                    setForgotSent(false);
+                  }}
+                />
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  sx={{ mt: 2.5, mb: 1.5 }}
+                  disabled={isSubmitting || !forgotEmail.trim()}
+                >
+                  {isSubmitting
+                    ? 'Enviando...'
+                    : forgotSent
+                      ? 'Reenviar link por e-mail'
+                      : 'Enviar link para trocar senha'}
+                </Button>
+                <Button
+                  fullWidth
+                  variant="text"
+                  color="inherit"
+                  startIcon={<ArrowBackIcon />}
+                  onClick={() => {
+                    setError('');
+                    setInfoMessage('');
+                    setStep(1);
+                  }}
+                  disabled={isSubmitting}
+                >
+                  Voltar ao login
                 </Button>
               </Box>
             )}

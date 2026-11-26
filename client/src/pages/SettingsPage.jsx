@@ -66,11 +66,8 @@ function SettingsPage() {
     is_private: false,
   });
   const [listenLaterVisibility, setListenLaterVisibility] = useState('public');
-  const [passwordData, setPasswordData] = useState({
-    oldPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [privacySaving, setPrivacySaving] = useState(false);
@@ -120,6 +117,7 @@ function SettingsPage() {
       });
       setListenLaterVisibility(user.listen_later_visibility || (user.listen_later_is_public === false ? 'private' : 'public'));
       setSpotifyConnected(Boolean(user.spotify_connected));
+      setResetEmail(user.email || '');
     }
   }, [user]);
 
@@ -240,27 +238,28 @@ function SettingsPage() {
     }
   };
 
-  const handlePasswordSubmit = async (e) => {
+  const handleRequestPasswordReset = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
     setError(null);
 
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setError('As senhas novas não coincidem.');
+    const targetEmail = (resetEmail || user?.email || '').trim();
+    if (!targetEmail) {
+      setError('Informe o e-mail da sua conta.');
       setLoading(false);
       return;
     }
 
     try {
-      await api.put('/users/me/password', {
-        oldPassword: passwordData.oldPassword,
-        newPassword: passwordData.newPassword,
-      });
-      setMessage('Senha alterada com sucesso!');
-      setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      const res = await api.post('/auth/password-reset/request', { email: targetEmail });
+      setResetEmailSent(true);
+      setMessage(
+        res.data?.message ||
+          'Enviamos um link de confirmação para o seu e-mail. Clique no link recebido para definir sua nova senha.'
+      );
     } catch (err) {
-      setError(err.response?.data?.error || 'Erro ao alterar senha.');
+      setError(err.response?.data?.error || 'Erro ao enviar e-mail de redefinição de senha.');
     } finally {
       setLoading(false);
     }
@@ -1132,47 +1131,41 @@ function SettingsPage() {
 
           {/* ABA 4: SEGURANÇA */}
           {tabIndex === 4 && (
-            <Box component="form" onSubmit={handlePasswordSubmit}>
-              <Typography variant="h6" mb={2}>Alterar Senha</Typography>
+            <Box component="form" onSubmit={handleRequestPasswordReset}>
+              <Typography variant="h6" mb={0.75}>Alterar Senha</Typography>
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                Não é necessário lembrar sua senha atual. Informe o e-mail da sua conta e enviaremos um link de confirmação — ao clicar nele, você será redirecionado para criar uma nova senha.
+              </Typography>
 
               <TextField
                 fullWidth
-                type="password"
-                label="Senha Atual"
-                value={passwordData.oldPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                type="email"
+                label="E-mail da sua conta"
+                value={resetEmail}
+                onChange={(e) => {
+                  setResetEmail(e.target.value);
+                  setResetEmailSent(false);
+                }}
                 margin="normal"
                 required
-              />
-              <TextField
-                fullWidth
-                type="password"
-                label="Nova Senha"
-                value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                margin="normal"
-                required
-                helperText="Mínimo de 10 caracteres, incluindo letras e números ou símbolos."
-              />
-              <TextField
-                fullWidth
-                type="password"
-                label="Confirmar Nova Senha"
-                value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                margin="normal"
-                required
-                error={Boolean(passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword)}
-                helperText={
-                  passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword
-                    ? 'As senhas novas não coincidem.'
-                    : ''
-                }
+                placeholder="seuemail@exemplo.com"
+                helperText="O link de redefinição é válido por 30 minutos e funciona apenas uma vez."
               />
 
-              <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button type="submit" variant="contained" disabled={loading}>
-                  {loading ? <CircularProgress size={22} color="inherit" /> : 'Atualizar Senha'}
+              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={loading || !resetEmail.trim()}
+                  sx={{ px: 3, py: 1, fontWeight: 700, borderRadius: 2 }}
+                >
+                  {loading ? (
+                    <CircularProgress size={22} color="inherit" />
+                  ) : resetEmailSent ? (
+                    'Reenviar link por e-mail'
+                  ) : (
+                    'Enviar link para trocar senha'
+                  )}
                 </Button>
               </Box>
             </Box>
