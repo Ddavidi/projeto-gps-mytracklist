@@ -149,7 +149,7 @@ export class SpotifyService {
   // ==========================================
 
   public getAuthorizationUrl(state: string): string {
-    const scope = 'playlist-read-private playlist-read-collaborative user-read-recently-played user-top-read user-library-modify user-library-read user-modify-playback-state playlist-modify-public playlist-modify-private';
+    const scope = 'playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-recently-played user-top-read user-library-modify user-library-read user-modify-playback-state playlist-modify-public playlist-modify-private';
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: this.clientId,
@@ -377,6 +377,70 @@ export class SpotifyService {
         durationMs: item.track.duration_ms || 0,
         previewUrl: item.track.preview_url || null,
       }));
+  }
+
+  /**
+   * Retorna o que o usuário está escutando agora no Spotify, ou faz fallback para a última faixa tocada.
+   */
+  public async getUserPlaybackStatus(accessToken: string) {
+    try {
+      const currentRes = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+
+      if (currentRes.status === 200) {
+        const data = await currentRes.json();
+        if (data?.item && data.item.id) {
+          return {
+            status: data.is_playing ? 'playing' : 'paused',
+            playedAt: null,
+            track: {
+              id: data.item.id,
+              name: data.item.name,
+              artist: data.item.artists?.map((a: any) => a.name).join(', ') || '',
+              album: data.item.album?.name || '',
+              imageUrl: data.item.album?.images?.[0]?.url || '',
+              durationMs: data.item.duration_ms || 0,
+              progressMs: data.progress_ms || 0,
+              externalUrl: data.item.external_urls?.spotify || '',
+            },
+          };
+        }
+      }
+    } catch {
+      // Fallback para recently-played se currently-playing não estiver disponível ou escopo antigo
+    }
+
+    // Fallback: última faixa tocada recentemente
+    try {
+      const recentRes = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=1', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (recentRes.ok) {
+        const recentData = await recentRes.json();
+        const first = recentData?.items?.[0];
+        if (first?.track?.id) {
+          return {
+            status: 'recent',
+            playedAt: first.played_at || null,
+            track: {
+              id: first.track.id,
+              name: first.track.name,
+              artist: first.track.artists?.map((a: any) => a.name).join(', ') || '',
+              album: first.track.album?.name || '',
+              imageUrl: first.track.album?.images?.[0]?.url || '',
+              durationMs: first.track.duration_ms || 0,
+              progressMs: 0,
+              externalUrl: first.track.external_urls?.spotify || '',
+            },
+          };
+        }
+      }
+    } catch {
+      // Silencioso
+    }
+
+    return { status: 'idle', playedAt: null, track: null };
   }
 
   public async getUserTopItems(accessToken: string, type: 'tracks' | 'artists', timeRange: 'short_term' | 'medium_term' | 'long_term') {

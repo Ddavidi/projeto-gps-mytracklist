@@ -221,6 +221,20 @@ export function createSpotifyRouter(spotifyService: SpotifyService, userControll
     }
   });
 
+  router.get('/user/:userId/now-playing', async (req: Request, res: Response) => {
+    try {
+      const status = await spotifyService.withUserToken(
+        Number(req.params.userId),
+        userController,
+        (accessToken) => spotifyService.getUserPlaybackStatus(accessToken)
+      );
+      res.json(status);
+    } catch (err: any) {
+      // Status de reprodução é opcional no perfil; devolve idle em caso de conta não vinculada/403
+      res.json({ status: 'idle', playedAt: null, track: null });
+    }
+  });
+
   router.get('/user/:userId/recent', async (req: Request, res: Response) => {
     try {
       const recent = await spotifyService.withUserToken(

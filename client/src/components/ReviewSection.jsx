@@ -28,9 +28,10 @@ import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined
 import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import StarIcon from '@mui/icons-material/Star';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import RatingInput from './RatingInput';
 import BirthDateField from './BirthDateField';
-import { getUserReviewForItem, saveReview } from '../services/reviews';
+import { getUserReviewForItem, saveReview, deleteReview } from '../services/reviews';
 
 function getTodayIso() {
   const now = new Date();
@@ -178,10 +179,28 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
     syncReviewState(currentReview);
   };
 
-  const toggleVibe = (tag) => {
-    setVibeTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : prev.length < 4 ? [...prev, tag] : prev
-    );
+  const handleDeleteReview = async () => {
+    if (!currentReview?.id) return;
+    if (!window.confirm('Tem certeza que deseja excluir esta avaliação?')) return;
+
+    setIsSubmitting(true);
+    try {
+      await deleteReview(currentReview.id);
+      syncReviewState(null);
+      setIsEditing(false);
+      setIsExpanded(false);
+      setSnackbarMessage('Avaliação excluída com sucesso.');
+      setSnackbarSeverity('info');
+      setSnackbarOpen(true);
+      if (onReviewSaved) onReviewSaved(null);
+    } catch (err) {
+      console.error('Erro ao excluir review:', err);
+      setSnackbarMessage(err.response?.data?.error || 'Não foi possível excluir a avaliação.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -616,25 +635,40 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
         </Box>
 
         {/* Botões de Ação */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1.5, mt: 2 }}>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleCancelEdit}
-            disabled={isSubmitting}
-            sx={{ borderRadius: 2, textTransform: 'none' }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            size="small"
-            onClick={() => handleSaveReview()}
-            disabled={isSubmitting || rating === null || rating === undefined}
-            sx={{ borderRadius: 2, textTransform: 'none', px: 2.5, fontWeight: 700 }}
-          >
-            {hasReview ? 'Salvar Alterações' : 'Publicar Avaliação'}
-          </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: hasReview ? 'space-between' : 'flex-end', flexWrap: 'wrap', gap: 1.5, mt: 2 }}>
+          {hasReview && (
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              startIcon={<DeleteOutlineIcon fontSize="small" />}
+              onClick={handleDeleteReview}
+              disabled={isSubmitting}
+              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+            >
+              Excluir Avaliação
+            </Button>
+          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleCancelEdit}
+              disabled={isSubmitting}
+              sx={{ borderRadius: 2, textTransform: 'none' }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => handleSaveReview()}
+              disabled={isSubmitting || rating === null || rating === undefined}
+              sx={{ borderRadius: 2, textTransform: 'none', px: 2.5, fontWeight: 700 }}
+            >
+              {hasReview ? 'Salvar Alterações' : 'Publicar Avaliação'}
+            </Button>
+          </Box>
         </Box>
       </Box>
 

@@ -26,13 +26,23 @@ import { searchMulti } from '../services/spotify';
 import api from '../services/api';
 import { formatCalendarDate } from '../utils/date';
 
-function SearchBar({ onSearch, onSelect, placeholder = "Pesquise por músicas, álbuns ou artistas..." }) {
+function SearchBar({ onSearch, onSelect, autoFocus = false, placeholder = "Pesquise por músicas, álbuns ou artistas..." }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState({ tracks: [], albums: [], artists: [] });
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const searchTimeoutRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (autoFocus) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [autoFocus]);
 
   // Debounced live search
   useEffect(() => {
@@ -152,6 +162,8 @@ function SearchBar({ onSearch, onSelect, placeholder = "Pesquise por músicas, �
         >
           <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
           <InputBase
+            inputRef={inputRef}
+            autoFocus={autoFocus}
             sx={{ ml: 1, flex: 1, fontSize: '1rem' }}
             placeholder={placeholder}
             value={query}

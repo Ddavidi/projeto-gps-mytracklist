@@ -7,6 +7,7 @@ import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import SpotifyNowPlayingBadge from './SpotifyNowPlayingBadge';
 
 export default function ProfileHeader({
   user,
@@ -254,6 +255,13 @@ export default function ProfileHeader({
             </Box>
           </Box>
         </Box>
+
+        {/* Status ao vivo / última música do Spotify */}
+        <SpotifyNowPlayingBadge
+          userId={user.id || user.userId}
+          spotifyConnected={Boolean(user.spotify_connected)}
+          hidden={isPrivateLocked}
+        />
 
         {/* Gêneros Favoritos (oculto se conta privada trancada) */}
         {!isPrivateLocked && genres.length > 0 && (

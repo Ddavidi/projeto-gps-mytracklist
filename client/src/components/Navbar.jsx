@@ -525,6 +525,7 @@ function Navbar({ externalSearchOpen, onExternalSearchClose }) {
       >
         <Box sx={{ width: '100%', maxWidth: 850, mx: 'auto' }}>
           <SearchBar
+            autoFocus
             onSelect={closeSearch}
             onSearch={(q) => { closeSearch(); navigate(`/search?q=${encodeURIComponent(q)}`); }}
           />
