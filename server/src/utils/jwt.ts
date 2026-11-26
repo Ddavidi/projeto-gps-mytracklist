@@ -41,13 +41,13 @@ export function verifyToken(token: string): JwtPayload | null {
 /**
  * Gera um token temporário (15m) para o parâmetro `state` do fluxo OAuth.
  */
-export function generateOAuthStateToken(userId: number): string {
-  return jwt.sign({ userId }, getJwtSecret(), { expiresIn: '15m' });
+export function generateOAuthStateToken(userId: number, platform: 'web' | 'mobile' = 'web'): string {
+  return jwt.sign({ userId, platform }, getJwtSecret(), { expiresIn: '15m' });
 }
 
 /**
  * Verifica e decodifica o token de `state` do fluxo OAuth.
  */
-export function verifyOAuthStateToken(token: string): { userId: number } {
-  return jwt.verify(token, getJwtSecret()) as { userId: number };
+export function verifyOAuthStateToken(token: string): { userId: number; platform?: 'web' | 'mobile' } {
+  return jwt.verify(token, getJwtSecret()) as { userId: number; platform?: 'web' | 'mobile' };
 }

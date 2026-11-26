@@ -7,6 +7,7 @@ import MobileBottomNav from './components/MobileBottomNav';
 import NativeAppBridge from './components/NativeAppBridge';
 import LoginPage from './pages/LoginPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import MobileAuthBridgePage from './pages/MobileAuthBridgePage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import TrackDetailsPage from './pages/TrackDetailsPage';
 import AlbumDetailsPage from './pages/AlbumDetailsPage';
@@ -51,6 +52,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<LoginPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/mobile-auth" element={<MobileAuthBridgePage />} />
             <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/track/:id" element={<ProtectedRoute><TrackDetailsPage /></ProtectedRoute>} />
             <Route path="/music/:id" element={<ProtectedRoute><TrackDetailsPage /></ProtectedRoute>} />

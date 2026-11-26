@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import {
   Container,
@@ -46,9 +47,35 @@ function LoginPage() {
   const [showcaseAlbums, setShowcaseAlbums] = useState([]);
   const googleBtnRef = useRef(null);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+  const isNativeApp = Capacitor.isNativePlatform();
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, setAuth } = useAuth();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('onboarding') === '1') {
+      setStep('onboarding');
+    }
+  }, [location.search]);
+
+  const handleNativeGoogleLogin = async () => {
+    setError('');
+    setInfoMessage('');
+    try {
+      const { Browser } = await import('@capacitor/browser');
+      const webBaseUrl = (
+        import.meta.env.VITE_WEB_APP_URL || 'https://projeto-gps-mytracklist.vercel.app'
+      ).replace(/\/+$/, '');
+      await Browser.open({
+        url: `${webBaseUrl}/mobile-auth?provider=google`,
+        presentationStyle: 'popover',
+      });
+    } catch {
+      setError('Não foi possível abrir o navegador seguro para login com o Google.');
+    }
+  };
 
   const handleGoogleCredential = useCallback(async (response) => {
     if (!response?.credential) return;
@@ -71,7 +98,7 @@ function LoginPage() {
   }, [setAuth, navigate]);
 
   useEffect(() => {
-    if (!googleClientId || (step !== 1 && !(step === 2 && isGoogleOnlyAccount))) return;
+    if (isNativeApp || !googleClientId || (step !== 1 && !(step === 2 && isGoogleOnlyAccount))) return;
 
     let attempts = 0;
     const renderGoogleButton = () => {
@@ -367,7 +394,33 @@ function LoginPage() {
             {step === 1 && (
               <Box>
                 <Box sx={{ mb: 2.5 }}>
-                  {googleClientId ? (
+                  {isNativeApp ? (
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      size="large"
+                      onClick={handleNativeGoogleLogin}
+                      sx={{
+                        borderRadius: 99,
+                        py: 1.15,
+                        borderColor: 'divider',
+                        bgcolor: '#131314',
+                        color: '#E3E3E3',
+                        fontWeight: 700,
+                        gap: 1.25,
+                        textTransform: 'none',
+                        '&:hover': { bgcolor: '#1e1f20', borderColor: 'text.secondary' },
+                      }}
+                    >
+                      <Box component="svg" viewBox="0 0 24 24" sx={{ width: 18, height: 18 }}>
+                        <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+                        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
+                        <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
+                        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
+                      </Box>
+                      Continuar com Google
+                    </Button>
+                  ) : googleClientId ? (
                     <Box
                       ref={googleBtnRef}
                       sx={{
@@ -443,12 +496,38 @@ function LoginPage() {
 
             {step === 2 && isGoogleOnlyAccount && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {googleClientId && (
+                {isNativeApp ? (
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    size="large"
+                    onClick={handleNativeGoogleLogin}
+                    sx={{
+                      borderRadius: 99,
+                      py: 1.15,
+                      borderColor: 'divider',
+                      bgcolor: '#131314',
+                      color: '#E3E3E3',
+                      fontWeight: 700,
+                      gap: 1.25,
+                      textTransform: 'none',
+                      '&:hover': { bgcolor: '#1e1f20', borderColor: 'text.secondary' },
+                    }}
+                  >
+                    <Box component="svg" viewBox="0 0 24 24" sx={{ width: 18, height: 18 }}>
+                      <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
+                      <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
+                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
+                    </Box>
+                    Continuar com Google
+                  </Button>
+                ) : googleClientId ? (
                   <Box
                     ref={googleBtnRef}
                     sx={{ display: 'flex', justifyContent: 'center', minHeight: 44, width: '100%' }}
                   />
-                )}
+                ) : null}
                 <Button
                   fullWidth
                   variant="text"

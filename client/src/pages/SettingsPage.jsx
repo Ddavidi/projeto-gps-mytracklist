@@ -41,6 +41,7 @@ import LinkIcon from '@mui/icons-material/Link';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CheckIcon from '@mui/icons-material/Check';
 import { useLocation, Link } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import { useThemeMode } from '../context/ThemeContext';
 import api from '../services/api';
@@ -269,9 +270,17 @@ function SettingsPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get('/auth/spotify/url');
+      const isNative = Capacitor.isNativePlatform();
+      const res = await api.get('/auth/spotify/url', {
+        params: isNative ? { platform: 'mobile' } : undefined,
+      });
       if (res.data?.url) {
-        window.location.href = res.data.url;
+        if (isNative) {
+          const { Browser } = await import('@capacitor/browser');
+          await Browser.open({ url: res.data.url, presentationStyle: 'popover' });
+        } else {
+          window.location.href = res.data.url;
+        }
       }
     } catch {
       setError('Falha ao obter link de autorização do Spotify.');

@@ -20,7 +20,8 @@ export function createSpotifyAuthRouter(spotifyService: SpotifyService, userCont
    */
   router.get('/url', requireAuth, (req: Request, res: Response) => {
     // req.user contains the decoded JWT { userId, username }
-    const stateToken = generateOAuthStateToken(req.user!.userId);
+    const platform = req.query.platform === 'mobile' ? 'mobile' : 'web';
+    const stateToken = generateOAuthStateToken(req.user!.userId, platform);
 
     const url = spotifyService.getAuthorizationUrl(stateToken);
     res.json({ url });
@@ -36,19 +37,31 @@ export function createSpotifyAuthRouter(spotifyService: SpotifyService, userCont
     const { code, state, error } = req.query;
     const frontendUrl = getFrontendUrl();
 
-    if (error) {
-      console.error('Erro na autorização do Spotify:', error);
-      return res.redirect(`${frontendUrl}/settings?spotify_error=access_denied`);
+    let decodedState: { userId: number; platform?: 'web' | 'mobile' } | null = null;
+    if (state) {
+      try {
+        decodedState = verifyOAuthStateToken(state as string);
+      } catch {
+        decodedState = null;
+      }
     }
 
-    if (!code || !state) {
-      return res.redirect(`${frontendUrl}/settings?spotify_error=missing_params`);
+    const isMobile = decodedState?.platform === 'mobile';
+    const buildRedirect = (query: string) =>
+      isMobile ? `mytracklist://spotify-callback?${query}` : `${frontendUrl}/settings?${query}`;
+
+    if (error) {
+      console.error('Erro na autorização do Spotify:', error);
+      return res.redirect(buildRedirect('spotify_error=access_denied'));
+    }
+
+    if (!code || !state || !decodedState) {
+      return res.redirect(buildRedirect('spotify_error=missing_params'));
     }
 
     try {
       // 1. Validar qual usuário fez a requisição decodificando o state
-      const decoded = verifyOAuthStateToken(state as string);
-      const userId = decoded.userId;
+      const userId = decodedState.userId;
 
       // 2. Trocar o código pelo token
       const tokenData = await spotifyService.exchangeCodeForToken(code as string);
@@ -61,11 +74,11 @@ export function createSpotifyAuthRouter(spotifyService: SpotifyService, userCont
       // 3. Salvar no banco de dados
       await userController.updateSpotifyTokens(userId, accessToken, refreshToken, expiresAt);
 
-      // 4. Redirecionar de volta para o frontend com sucesso
-      return res.redirect(`${frontendUrl}/settings?spotify_connected=true`);
+      // 4. Redirecionar de volta para o frontend (ou deep link mobile) com sucesso
+      return res.redirect(buildRedirect('spotify_connected=true'));
     } catch (err) {
       console.error('Falha ao processar callback do Spotify:', err);
-      return res.redirect(`${frontendUrl}/settings?spotify_error=auth_failed`);
+      return res.redirect(buildRedirect('spotify_error=auth_failed'));
     }
   });
 
