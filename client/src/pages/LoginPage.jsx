@@ -130,7 +130,7 @@ function LoginPage() {
       }, 250);
       return () => clearInterval(timer);
     }
-  }, [googleClientId, step, isGoogleOnlyAccount, handleGoogleCredential]);
+  }, [isNativeApp, googleClientId, step, isGoogleOnlyAccount, handleGoogleCredential]);
 
   useEffect(() => {
     getTrending()

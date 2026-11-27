@@ -16,7 +16,6 @@ import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import AlbumIcon from '@mui/icons-material/Album';
 import PersonIcon from '@mui/icons-material/Person';
 import ReviewCard from './ReviewCard';
-import { formatDateShort } from '../utils/date';
 
 const ITEM_META = {
   track: { label: 'Música', icon: <MusicNoteIcon fontSize="small" />, path: '/track' },
@@ -86,8 +85,6 @@ function FeedList() {
       setLoadingMore(false);
     }
   };
-
-  const formatDate = (dateStr) => formatDateShort(dateStr);
 
   if (loading) {
     return (

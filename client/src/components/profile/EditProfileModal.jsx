@@ -455,7 +455,7 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
               {/* Seletor de Categoria dos Favoritos */}
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, mb: 2.5 }}>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  {FAV_CATEGORIES.map(({ key, label, icon: CatIcon }) => {
+                  {FAV_CATEGORIES.map(({ key, label }) => {
                     const active = favCategory === key;
                     const count = favorites.filter((f) => f.item_type === key).length;
                     return (

@@ -40,7 +40,6 @@ scripts/admin/           # Scripts de administração CLI
 ### Implementações de Database
 
 - `SqliteDatabase`: Persistência real em arquivo SQLite
-- `SqliteMemoryDatabase`: Banco em memória para testes
 - Suporte a configuração via variáveis de ambiente (`DB_TYPE`, `DB_FILENAME`)
 
 ## Middlewares e Segurança
@@ -125,31 +124,28 @@ bun run start
 ### Testes
 
 ```bash
-bun test
+npm test
 ```
-
-Executa toda a suíte de testes com isolamento de database.
 
 ## Testes
 
-### Estratégia de Testes
+Os testes usam [Vitest](https://vitest.dev) e rodam contra um **PostgreSQL de verdade**
+(o mesmo banco de produção), cobrindo cadastro/login de usuários e criação, edição,
+exclusão e estatísticas de avaliações.
 
-- **Testes Unitários**: Controllers e utilitários
-- **Testes de Integração**: Fluxos completos de API
-- **Testes de API**: Endpoints HTTP com supertest
+- **Banco de teste:** definido em `TEST_DATABASE_URL`. O padrão é
+  `postgresql://postgres:postgres@localhost:5432/mytracklist_test`.
+  Por segurança, o nome do banco precisa conter `test`: antes de cada teste
+  todas as tabelas são esvaziadas.
+- **Rodar localmente com Docker:**
 
-### Isolamento de Database
+  ```bash
+  docker run -d --name mytracklist-test-db -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=mytracklist_test postgres:16
+  ```
 
-- Cada teste usa instância separada de `SqliteMemoryDatabase`
-- Setup/teardown automático por teste
-- Sem interferência entre testes
-
-### Cobertura
-
-- Autenticação: registro, login, validação
-- Administração: CRUD de usuários, logs
-- Segurança: rate limiting, validação de entrada
-- Integração: fluxos end-to-end
+  Depois, `npm test` (ou `npm run test:watch` enquanto desenvolve).
+- **CI:** o GitHub Actions sobe um serviço Postgres e roda `npm test` a cada push e
+  pull request em `development` e `master`.
 
 ## Scripts de Administração
 

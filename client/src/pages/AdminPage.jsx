@@ -15,7 +15,7 @@ function AdminPage() {
       try {
         const data = await getAdminStats();
         setStats(data);
-      } catch (err) {
+      } catch {
         setError('Não foi possível carregar os dados do painel.');
       } finally {
         setLoading(false);
