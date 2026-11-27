@@ -25,3 +25,29 @@ describe('ratingColor', () => {
     expect(getRatingMeta(9).isGold).toBe(false);
   });
 });
+
+describe('destaque das notas extremas', () => {
+  it('nota 0 é destacada com brilho vermelho', () => {
+    const meta = getRatingMeta(0);
+    expect(meta).toMatchObject({ isZero: true, isGold: false, isHighlight: true, label: 'Zero' });
+    expect(meta.glow(0.5)).toBe('rgba(239, 68, 68, 0.5)');
+  });
+
+  it('nota 10 é destacada com brilho dourado', () => {
+    const meta = getRatingMeta(10);
+    expect(meta).toMatchObject({ isGold: true, isZero: false, isHighlight: true });
+    expect(meta.glow(0.5)).toBe('rgba(245, 197, 24, 0.5)');
+  });
+
+  it.each([1, 5, 9])('nota %i não tem brilho', (score) => {
+    const meta = getRatingMeta(score);
+    expect(meta.isHighlight).toBe(false);
+    expect(meta.glow(0.5)).toBeNull();
+  });
+
+  it('sem nota não é confundido com zero', () => {
+    for (const empty of [null, undefined, '']) {
+      expect(getRatingMeta(empty)).toMatchObject({ isZero: false, isHighlight: false });
+    }
+  });
+});

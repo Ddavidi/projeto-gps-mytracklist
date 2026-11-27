@@ -252,7 +252,7 @@ function ReviewCard({ review }) {
           </Typography>
 
           {(() => {
-            const { color: ratingColor, isGold } = getRatingMeta(review.rating);
+            const { color: ratingColor, isGold, isHighlight, glow } = getRatingMeta(review.rating);
             return (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
                 <Rating
@@ -263,7 +263,7 @@ function ReviewCard({ review }) {
                   sx={{
                     '& .MuiRating-iconFilled': {
                       color: ratingColor,
-                      ...(isGold && { filter: 'drop-shadow(0 0 5px rgba(245, 197, 24, 0.55))' }),
+                      ...(isGold && { filter: `drop-shadow(0 0 5px ${glow(0.55)})` }),
                     },
                   }}
                 />
@@ -276,11 +276,11 @@ function ReviewCard({ review }) {
                     borderRadius: 1,
                     fontSize: '0.75rem',
                     fontWeight: 800,
-                    bgcolor: alpha(ratingColor, isGold ? 0.2 : 0.15),
+                    bgcolor: alpha(ratingColor, isHighlight ? 0.2 : 0.15),
                     color: ratingColor,
                     border: '1px solid',
-                    borderColor: alpha(ratingColor, isGold ? 0.55 : 0.3),
-                    ...(isGold && { boxShadow: '0 0 10px rgba(245, 197, 24, 0.22)' }),
+                    borderColor: alpha(ratingColor, isHighlight ? 0.55 : 0.3),
+                    ...(isHighlight && { boxShadow: `0 0 10px ${glow(0.3)}` }),
                   }}
                 >
                   {review.rating}/10

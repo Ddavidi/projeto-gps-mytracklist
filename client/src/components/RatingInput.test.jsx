@@ -108,6 +108,34 @@ describe('RatingInput', () => {
     expect(slider).toHaveAttribute('aria-valuenow', '7');
   });
 
+  it('o botão 0 dá nota zero, e tocar de novo não apaga', () => {
+    const spy = vi.fn();
+    const slider = setup({ initial: 7, onChangeSpy: spy });
+    const zero = screen.getByRole('button', { name: 'Dar nota 0' });
+    expect(zero).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(zero);
+    fireEvent.click(zero);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(0);
+    expect(slider).toHaveAttribute('aria-valuenow', '0');
+    expect(zero).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('0/10')).toBeInTheDocument();
+  });
+
+  it('dá para sair do 0 tocando nas estrelas', () => {
+    const slider = setup({ initial: 0 });
+    tap(slider, 25);
+    expect(slider).toHaveAttribute('aria-valuenow', '3');
+    expect(screen.getByRole('button', { name: 'Dar nota 0' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('nota 0 em modo leitura aparece como "0/10", não como "sem nota"', () => {
+    render(<RatingInput value={0} readOnly />);
+    expect(screen.getByRole('img', { name: 'Nota 0 de 10' })).toBeInTheDocument();
+    expect(screen.getByText('0/10')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Dar nota 0' })).not.toBeInTheDocument();
+  });
+
   it('em modo leitura não é interativo e descreve a nota', () => {
     const onChange = vi.fn();
     render(<RatingInput value={8} readOnly onChange={onChange} />);

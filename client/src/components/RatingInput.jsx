@@ -17,6 +17,9 @@ const clampScore = (n) => Math.min(MAX_SCORE, Math.max(0, n));
  * de hover/focus do MUI ficava dessincronizado do valor real: a estrela exibida não batia com a
  * nota salva e tocar de novo numa nota às vezes apagava a avaliação.
  * Aqui o valor exibido é sempre o valor controlado (ou a prévia enquanto o dedo/mouse está sobre as estrelas).
+ *
+ * A nota 0 tem um botão próprio à esquerda das estrelas (nas estrelas a menor nota é 1).
+ * As notas extremas brilham: dourado no 10, vermelho no 0.
  */
 function RatingInput({ value, onChange, readOnly = false, size = 'large' }) {
   const starsRef = useRef(null);
@@ -28,7 +31,9 @@ function RatingInput({ value, onChange, readOnly = false, size = 'large' }) {
   const interactive = !readOnly && typeof onChange === 'function';
 
   const displayed = preview !== null ? preview : numericValue;
-  const { color, isGold } = displayed !== null ? getRatingMeta(displayed) : { color: undefined, isGold: false };
+  const meta = displayed !== null ? getRatingMeta(displayed) : null;
+  const color = meta?.color;
+  const isZeroShown = Boolean(meta?.isZero);
   const chipMeta = hasValue ? getRatingMeta(numericValue) : null;
   const iconSize = ICON_SIZES[size] || ICON_SIZES.large;
 
@@ -106,8 +111,48 @@ function RatingInput({ value, onChange, readOnly = false, size = 'large' }) {
     <Box sx={{ display: 'flex', alignItems: 'center', flexDirection: 'column', my: readOnly ? 0 : 1.5 }}>
       {!readOnly && (
         <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-          Toque ou arraste nas estrelas
+          Toque no 0 ou nas estrelas
         </Typography>
+      )}
+      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+      {interactive && (
+        <Box
+          component="button"
+          type="button"
+          aria-label="Dar nota 0"
+          aria-pressed={numericValue === 0}
+          onClick={() => {
+            setPreview(null);
+            if (numericValue !== 0) onChange(0);
+          }}
+          onPointerEnter={(e) => e.pointerType === 'mouse' && setPreview(0)}
+          onPointerLeave={(e) => e.pointerType === 'mouse' && setPreview(null)}
+          className="mtl-mono"
+          sx={(theme) => {
+            const zero = getRatingMeta(0);
+            const active = isZeroShown;
+            return {
+              width: iconSize,
+              height: iconSize,
+              p: 0,
+              borderRadius: '50%',
+              border: '1.5px solid',
+              borderColor: active ? zero.color : theme.palette.action.disabled,
+              bgcolor: active ? alpha(zero.color, 0.16) : 'transparent',
+              color: active ? zero.color : theme.palette.text.secondary,
+              fontWeight: 800,
+              fontSize: Math.round(iconSize * 0.45),
+              lineHeight: 1,
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'all 0.2s ease',
+              boxShadow: active ? `0 0 12px ${zero.glow(0.55)}, inset 0 0 6px ${zero.glow(0.25)}` : 'none',
+              '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
+            };
+          }}
+        >
+          0
+        </Box>
       )}
       <Box
         ref={starsRef}
@@ -150,7 +195,16 @@ function RatingInput({ value, onChange, readOnly = false, size = 'large' }) {
               aria-hidden
               sx={{ position: 'relative', width: iconSize, height: iconSize, flexShrink: 0, pointerEvents: 'none' }}
             >
-              <StarOutlineRoundedIcon sx={{ fontSize: iconSize, color: 'action.disabled', position: 'absolute', inset: 0 }} />
+              <StarOutlineRoundedIcon
+                sx={{
+                  fontSize: iconSize,
+                  position: 'absolute',
+                  inset: 0,
+                  color: isZeroShown ? alpha(meta.color, 0.75) : 'action.disabled',
+                  transition: 'color 0.2s ease, filter 0.2s ease',
+                  ...(isZeroShown && { filter: `drop-shadow(0 0 5px ${meta.glow(0.45)})` }),
+                }}
+              />
               {fill > 0 && (
                 <Box sx={{ position: 'absolute', inset: 0, width: `${fill * 100}%`, overflow: 'hidden' }}>
                   <StarRoundedIcon
@@ -158,7 +212,7 @@ function RatingInput({ value, onChange, readOnly = false, size = 'large' }) {
                       fontSize: iconSize,
                       color,
                       display: 'block',
-                      ...(isGold && { filter: 'drop-shadow(0 0 6px rgba(245, 197, 24, 0.55))' }),
+                      ...(meta?.isGold && { filter: `drop-shadow(0 0 6px ${meta.glow(0.55)})` }),
                     }}
                   />
                 </Box>
@@ -166,6 +220,7 @@ function RatingInput({ value, onChange, readOnly = false, size = 'large' }) {
             </Box>
           );
         })}
+      </Box>
       </Box>
       {hasValue && size !== 'small' && (
         <Box
@@ -177,10 +232,10 @@ function RatingInput({ value, onChange, readOnly = false, size = 'large' }) {
             px: 1.4,
             py: 0.35,
             borderRadius: 99,
-            bgcolor: alpha(chipMeta.color, chipMeta.isGold ? 0.18 : 0.14),
+            bgcolor: alpha(chipMeta.color, chipMeta.isHighlight ? 0.18 : 0.14),
             border: '1px solid',
-            borderColor: alpha(chipMeta.color, chipMeta.isGold ? 0.6 : 0.4),
-            ...(chipMeta.isGold && { boxShadow: '0 0 14px rgba(245, 197, 24, 0.25)' }),
+            borderColor: alpha(chipMeta.color, chipMeta.isHighlight ? 0.6 : 0.4),
+            ...(chipMeta.isHighlight && { boxShadow: `0 0 14px ${chipMeta.glow(0.3)}` }),
           }}
         >
           <Typography variant="subtitle1" className="mtl-mono" fontWeight={800} sx={{ color: chipMeta.color, lineHeight: 1 }}>

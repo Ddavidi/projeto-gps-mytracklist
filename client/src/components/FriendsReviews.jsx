@@ -197,7 +197,7 @@ function FriendsReviews({ itemType, itemId }) {
                   }
                   subheader={formatDateShort(review.createdAt)}
                   action={(() => {
-                    const { color: ratingColor, isGold } = getRatingMeta(review.rating);
+                    const { color: ratingColor, isGold, isHighlight, glow } = getRatingMeta(review.rating);
                     return (
                       <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mr: 1, gap: 1 }}>
                         <Rating
@@ -208,7 +208,7 @@ function FriendsReviews({ itemType, itemId }) {
                           sx={{
                             '& .MuiRating-iconFilled': {
                               color: ratingColor,
-                              ...(isGold && { filter: 'drop-shadow(0 0 5px rgba(245, 197, 24, 0.55))' }),
+                              ...(isGold && { filter: `drop-shadow(0 0 5px ${glow(0.55)})` }),
                             },
                           }}
                         />
@@ -221,10 +221,11 @@ function FriendsReviews({ itemType, itemId }) {
                             borderRadius: 1,
                             fontSize: '0.78rem',
                             fontWeight: 800,
-                            bgcolor: alpha(ratingColor, isGold ? 0.2 : 0.15),
+                            bgcolor: alpha(ratingColor, isHighlight ? 0.2 : 0.15),
                             color: ratingColor,
                             border: '1px solid',
-                            borderColor: alpha(ratingColor, isGold ? 0.55 : 0.3),
+                            borderColor: alpha(ratingColor, isHighlight ? 0.55 : 0.3),
+                            ...(isHighlight && { boxShadow: `0 0 10px ${glow(0.3)}` }),
                           }}
                         >
                           {review.rating}/10

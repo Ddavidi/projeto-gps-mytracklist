@@ -57,6 +57,20 @@ describe('ReviewSection — publicar avaliação', () => {
     expect(await screen.findByText('Avaliação salva com sucesso!')).toBeInTheDocument();
   });
 
+  it('permite publicar com nota 0', async () => {
+    getUserReviewForItem.mockResolvedValue(null);
+    saveReview.mockResolvedValue({ reviewId: 1 });
+    render(<ReviewSection itemType="album" itemId="album-1" itemData={{ name: 'Disco' }} defaultEditing />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Dar nota 0' }));
+    const publish = screen.getByRole('button', { name: 'Publicar Avaliação' });
+    expect(publish).toBeEnabled();
+    fireEvent.click(publish);
+
+    await waitFor(() => expect(saveReview).toHaveBeenCalledTimes(1));
+    expect(saveReview.mock.calls[0][2]).toBe(0);
+  });
+
   it('ao editar uma avaliação existente, atualiza a mesma review com a nova nota', async () => {
     getUserReviewForItem.mockResolvedValue({ id: 7, rating: 9, review_text: 'Muito bom', visibility: 'public' });
     saveReview.mockResolvedValue({});

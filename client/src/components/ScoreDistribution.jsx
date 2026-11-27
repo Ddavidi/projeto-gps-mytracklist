@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, alpha } from '@mui/material';
 import { getItemStats } from '../services/reviews';
-import { getRatingColor } from '../utils/ratingColor';
+import { getRatingColor, getRatingMeta } from '../utils/ratingColor';
 
 function ScoreDistribution({ itemType, itemId }) {
   const [stats, setStats] = useState(null);
@@ -47,6 +47,7 @@ function ScoreDistribution({ itemType, itemId }) {
           const count = distribution[score] || 0;
           const heightPercent = (count / maxCount) * 100;
           const barColor = getRatingColor(score);
+          const { isHighlight, glow } = getRatingMeta(score);
 
           return (
             <Box key={score} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%', justifyContent: 'flex-end' }}>
@@ -58,7 +59,7 @@ function ScoreDistribution({ itemType, itemId }) {
                   bgcolor: count > 0 ? barColor : (theme) => alpha(theme.palette.text.primary, 0.1),
                   borderRadius: '4px 4px 0 0',
                   transition: 'height 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
-                  ...(count > 0 && score >= 10 && { boxShadow: '0 0 8px rgba(245, 197, 24, 0.5)' }),
+                  ...(count > 0 && isHighlight && { boxShadow: `0 0 8px ${glow(0.5)}` }),
                 }}
               />
               <Typography variant="caption" className="mtl-mono" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.65rem' }}>

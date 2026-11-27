@@ -199,7 +199,7 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
                       )}
 
                       {(() => {
-                        const { color: ratingColor, isGold } = getRatingMeta(review.rating);
+                        const { color: ratingColor, isHighlight, glow } = getRatingMeta(review.rating);
                         return (
                           <Box
                             sx={{
@@ -209,7 +209,7 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
                               bgcolor: 'rgba(0,0,0,0.84)',
                               backdropFilter: 'blur(6px)',
                               border: '1px solid',
-                              borderColor: alpha(ratingColor, isGold ? 0.7 : 0.45),
+                              borderColor: alpha(ratingColor, isHighlight ? 0.7 : 0.45),
                               color: ratingColor,
                               px: 0.9,
                               py: 0.35,
@@ -217,7 +217,7 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
                               display: 'flex',
                               alignItems: 'center',
                               gap: 0.4,
-                              ...(isGold && { boxShadow: '0 0 12px rgba(245, 197, 24, 0.35)' }),
+                              ...(isHighlight && { boxShadow: `0 0 12px ${glow(0.4)}` }),
                             }}
                           >
                             <StarIcon sx={{ fontSize: 13, color: ratingColor }} />
@@ -294,7 +294,7 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
                       </TableCell>
                       <TableCell align="center">
                         {(() => {
-                          const { color: ratingColor, isGold } = getRatingMeta(review.rating);
+                          const { color: ratingColor, isHighlight, glow } = getRatingMeta(review.rating);
                           return (
                             <Box
                               sx={{
@@ -304,10 +304,11 @@ export default function ProfileMediaGrid({ type, reviews, itemDetails }) {
                                 px: 1,
                                 py: 0.25,
                                 borderRadius: 1.5,
-                                bgcolor: alpha(ratingColor, isGold ? 0.18 : 0.14),
+                                bgcolor: alpha(ratingColor, isHighlight ? 0.18 : 0.14),
                                 border: '1px solid',
-                                borderColor: alpha(ratingColor, isGold ? 0.55 : 0.3),
+                                borderColor: alpha(ratingColor, isHighlight ? 0.55 : 0.3),
                                 color: ratingColor,
+                                ...(isHighlight && { boxShadow: `0 0 10px ${glow(0.3)}` }),
                               }}
                             >
                               <StarIcon sx={{ fontSize: 14, color: ratingColor }} />
