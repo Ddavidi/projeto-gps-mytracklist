@@ -115,8 +115,7 @@ avaliações, social (seguir, pedidos, close friends, privacidade) e listas.
 - **CI:** o GitHub Actions sobe um serviço Postgres e roda `npm test` a cada push e
   pull request em `development` e `master`.
 
-## Scripts de administração (desatualizados)
+## Administração
 
-Os scripts em `scripts/admin/` são da versão antiga do projeto (Bun + SQLite) e **não funcionam**
-com o código atual: chamam métodos que não existem mais no `AdminController`. Hoje a administração
-é feita pelo painel `/admin` do frontend.
+A administração é feita pelo painel `/admin` do frontend, liberado para quem tem `is_admin`.
+Quem entra com um e-mail listado em `ADMIN_EMAILS` vira admin automaticamente.
