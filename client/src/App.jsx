@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
 import HomePage from './pages/HomePage';
 import Navbar from './components/Navbar';
@@ -21,8 +21,33 @@ import ExplorePage from './pages/ExplorePage';
 import ListDetailsPage from './pages/ListDetailsPage';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import { PlayerProvider } from './context/PlayerContext';
+import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import GlobalPlayer from './components/GlobalPlayer';
+import { BOTTOM_NAV_HEIGHT, PLAYER_HEIGHT, PLAYER_MOBILE_GAP, isBottomNavHidden } from './utils/layout';
+
+/**
+ * Espaço reservado no fim da página para que a navegação inferior e o player
+ * nunca cubram o conteúdo. Só reserva espaço do player quando ele está aberto.
+ */
+function useMainBottomPadding() {
+  const { isVisible } = usePlayer();
+  const { pathname } = useLocation();
+  const navSpace = isBottomNavHidden(pathname) ? 0 : BOTTOM_NAV_HEIGHT;
+  const playerSpaceMobile = isVisible ? PLAYER_HEIGHT + PLAYER_MOBILE_GAP : 0;
+  return {
+    xs: `calc(${navSpace + playerSpaceMobile + 24}px + env(safe-area-inset-bottom))`,
+    md: `${(isVisible ? PLAYER_HEIGHT : 0) + 28}px`,
+  };
+}
+
+function MainContent({ children }) {
+  const pb = useMainBottomPadding();
+  return (
+    <Box component="main" sx={{ flex: 1, pb }}>
+      {children}
+    </Box>
+  );
+}
 
 function App() {
   const { loading } = useAuth();
@@ -44,7 +69,7 @@ function App() {
           externalSearchOpen={mobileSearchOpen}
           onExternalSearchClose={() => setMobileSearchOpen(false)}
         />
-        <Box component="main" sx={{ flex: 1, pb: { xs: 'calc(150px + env(safe-area-inset-bottom))', md: '108px' } }}>
+        <MainContent>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/explore" element={<ExplorePage />} />
@@ -64,7 +89,7 @@ function App() {
             <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           </Routes>
-        </Box>
+        </MainContent>
         <GlobalPlayer />
         <MobileBottomNav onOpenSearch={() => setMobileSearchOpen(true)} />
       </Box>

@@ -7,6 +7,7 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import FormatListNumberedRoundedIcon from '@mui/icons-material/FormatListNumberedRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import { useAuth } from '../context/AuthContext';
+import { BOTTOM_NAV_HEIGHT, isBottomNavHidden } from '../utils/layout';
 
 export default function MobileBottomNav({ onOpenSearch }) {
   const { isAuthenticated } = useAuth();
@@ -14,7 +15,7 @@ export default function MobileBottomNav({ onOpenSearch }) {
   const navigate = useNavigate();
 
   // Esconde na tela de login/cadastro
-  if (location.pathname === '/login' || location.pathname === '/register') {
+  if (isBottomNavHidden(location.pathname)) {
     return null;
   }
 
@@ -64,7 +65,7 @@ export default function MobileBottomNav({ onOpenSearch }) {
         onChange={handleChange}
         showLabels
         sx={{
-          height: 62,
+          height: BOTTOM_NAV_HEIGHT,
           bgcolor: 'transparent',
           '& .MuiBottomNavigationAction-root': {
             minWidth: 0,
