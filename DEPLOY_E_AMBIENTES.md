@@ -8,9 +8,14 @@ Este documento descreve onde cada serviço do **MyTrackList** fica hospedado, co
 
 | Ambiente | Branch Git | Frontend (Vercel) | Backend (Render) | Banco PostgreSQL (Neon / Supabase) | Dados |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Produção (`prod`)** | `master` | Projeto Vercel — *Production* | `mytracklist-api` | Banco `mytracklist-prod` | **Zerado** (sem dados de teste) |
-| **Desenvolvimento (`dev`)** | `development` | Projeto Vercel — *Preview / Branch `development`* | `mytracklist-api-dev` | Banco `mytracklist-dev` | Dados de desenvolvimento e testes |
+| **Produção (`prod`)** | `master` | [projeto-gps-mytracklist.vercel.app](https://projeto-gps-mytracklist.vercel.app) | `mytracklist-api` | Banco `mytracklist-prod` | **Zerado** (sem dados de teste) |
+| **Desenvolvimento (`dev`)** | `development` | [projeto-gps-mytracklist-git-development-david-nunes-ribeiros-projects.vercel.app](https://projeto-gps-mytracklist-git-development-david-nunes-ribeiros-projects.vercel.app) *(Preview da branch)* | `mytracklist-api-dev` | Banco `mytracklist-dev` | Dados de desenvolvimento e testes |
 | **Local (sua máquina)** | qualquer branch | `http://localhost:5173` | `http://localhost:3000` *(ou API `dev` direto)* | **Lê do banco `mytracklist-dev`** | Mesmos dados da `dev` |
+
+> **Link da dev:** o Vercel dá a cada branch um endereço fixo no formato
+> `<projeto>-git-<branch>-<escopo-do-time>.vercel.app`, que sempre aponta para o último deploy da branch.
+> Se ele pedir login do Vercel ao abrir, é a *Deployment Protection* do projeto (padrão para Previews):
+> dá para desligar em **Settings → Deployment Protection** se a dev precisar ser aberta por quem não tem conta no time.
 
 > **Armazenamento de Imagens:** Cloudinary (`CLOUDINARY_*`)  
 > **Catálogo & OAuth Musical:** Spotify Developer Dashboard (`SPOTIFY_*`)
@@ -44,8 +49,8 @@ Preencha as variáveis de ambiente de cada serviço no painel do Render:
 | `APP_ENV` | `production` | `development` |
 | `DATABASE_URL` | Connection string do banco **`prod`** | Connection string do banco **`dev`** |
 | `JWT_SECRET` | Gerado automaticamente pelo Render | Gerado automaticamente pelo Render |
-| `FRONTEND_URL` | `https://<seu-app-prod>.vercel.app` | `https://<seu-app-dev>.vercel.app` |
-| `ALLOWED_ORIGINS` | `https://<seu-app-prod>.vercel.app` | `https://<seu-app-dev>.vercel.app,http://localhost:5173` |
+| `FRONTEND_URL` | `https://projeto-gps-mytracklist.vercel.app` | `https://projeto-gps-mytracklist-git-development-david-nunes-ribeiros-projects.vercel.app` |
+| `ALLOWED_ORIGINS` | `https://projeto-gps-mytracklist.vercel.app` | `https://projeto-gps-mytracklist-git-development-david-nunes-ribeiros-projects.vercel.app,http://localhost:5173` |
 | `SPOTIFY_CLIENT_ID` | Client ID do Spotify | Client ID do Spotify |
 | `SPOTIFY_CLIENT_SECRET` | Client Secret do Spotify | Client Secret do Spotify |
 | `SPOTIFY_REDIRECT_URI` | `https://mytracklist-api.onrender.com/api/v1/auth/spotify/callback` | `https://mytracklist-api-dev.onrender.com/api/v1/auth/spotify/callback` |
