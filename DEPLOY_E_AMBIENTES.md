@@ -9,13 +9,11 @@ Este documento descreve onde cada serviço do **MyTrackList** fica hospedado, co
 | Ambiente | Branch Git | Frontend (Vercel) | Backend (Render) | Banco PostgreSQL (Neon / Supabase) | Dados |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Produção (`prod`)** | `master` | [projeto-gps-mytracklist.vercel.app](https://projeto-gps-mytracklist.vercel.app) | `mytracklist-api` | Banco `mytracklist-prod` | **Zerado** (sem dados de teste) |
-| **Desenvolvimento (`dev`)** | `development` | *Preview da branch `development`* — ver nota abaixo | `mytracklist-api-dev` | Banco `mytracklist-dev` | Dados de desenvolvimento e testes |
+| **Desenvolvimento (`dev`)** | `development` | [projeto-gps-mytracklis-git-3c1846-david-nunes-ribeiros-projects.vercel.app](https://projeto-gps-mytracklis-git-3c1846-david-nunes-ribeiros-projects.vercel.app) | `mytracklist-api-dev` | Banco `mytracklist-dev` | Dados de desenvolvimento e testes |
 | **Local (sua máquina)** | qualquer branch | `http://localhost:5173` | `http://localhost:3000` *(ou API `dev` direto)* | **Lê do banco `mytracklist-dev`** | Mesmos dados da `dev` |
 
-> **Link da dev:** no painel do Vercel, abra **Deployments**, filtre pela branch `development`,
-> abra o deploy mais recente e copie o domínio que termina em `-git-...vercel.app`.
-> Esse endereço é fixo e sempre aponta para o último deploy da branch. Como o nome do projeto + time passa
-> de 63 caracteres, o Vercel encurta e inclui um código no meio, então ele não pode ser montado "de cabeça".
+> **Link da dev:** endereço fixo da branch `development` no Vercel; sempre aponta para o último deploy dela.
+> O Vercel encurta o nome (projeto + time passam de 63 caracteres) e inclui um código, por isso o formato diferente.
 > Se ele pedir login do Vercel ao abrir, é a *Deployment Protection* do projeto (padrão para Previews):
 > dá para desligar em **Settings → Deployment Protection** se a dev precisar ser aberta por quem não tem conta no time.
 
@@ -51,8 +49,8 @@ Preencha as variáveis de ambiente de cada serviço no painel do Render:
 | `APP_ENV` | `production` | `development` |
 | `DATABASE_URL` | Connection string do banco **`prod`** | Connection string do banco **`dev`** |
 | `JWT_SECRET` | Gerado automaticamente pelo Render | Gerado automaticamente pelo Render |
-| `FRONTEND_URL` | `https://projeto-gps-mytracklist.vercel.app` | `https://<link-da-dev>.vercel.app` |
-| `ALLOWED_ORIGINS` | `https://projeto-gps-mytracklist.vercel.app` | `https://<link-da-dev>.vercel.app,http://localhost:5173` |
+| `FRONTEND_URL` | `https://projeto-gps-mytracklist.vercel.app` | `https://projeto-gps-mytracklis-git-3c1846-david-nunes-ribeiros-projects.vercel.app` |
+| `ALLOWED_ORIGINS` | `https://projeto-gps-mytracklist.vercel.app` | `https://projeto-gps-mytracklis-git-3c1846-david-nunes-ribeiros-projects.vercel.app,http://localhost:5173` |
 | `SPOTIFY_CLIENT_ID` | Client ID do Spotify | Client ID do Spotify |
 | `SPOTIFY_CLIENT_SECRET` | Client Secret do Spotify | Client Secret do Spotify |
 | `SPOTIFY_REDIRECT_URI` | `https://mytracklist-api.onrender.com/api/v1/auth/spotify/callback` | `https://mytracklist-api-dev.onrender.com/api/v1/auth/spotify/callback` |
