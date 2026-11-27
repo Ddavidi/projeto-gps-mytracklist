@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Dialog,
   Box,
@@ -62,34 +62,7 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
   const [snack, setSnack] = useState({ open: false, text: '', severity: 'success' });
   const notify = (text, severity = 'success') => setSnack({ open: true, text, severity });
 
-  useEffect(() => {
-    if (open && userProfile?.id) {
-      fetchFavorites();
-    }
-  }, [open, userProfile]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery.trim().length >= 2) {
-        performSearch();
-      } else {
-        setSearchResults({ tracks: [], albums: [], artists: [] });
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const fetchFavorites = async () => {
-    try {
-      const data = await getUserFavorites(userProfile.id);
-      setFavorites(data || []);
-      enrichFavoritesWithSpotify(data || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const enrichFavoritesWithSpotify = async (favs) => {
+  const enrichFavoritesWithSpotify = useCallback(async (favs) => {
     const trackIds = favs.filter((f) => f.item_type === 'track').map((f) => f.item_id);
     const albumIds = favs.filter((f) => f.item_type === 'album').map((f) => f.item_id);
     const artistIds = favs.filter((f) => f.item_type === 'artist').map((f) => f.item_id);
@@ -101,19 +74,56 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
     ]);
 
     setFavoriteDetails({ ...tracks, ...albums, ...artists });
-  };
+  }, []);
 
-  const performSearch = async () => {
+  const userId = userProfile?.id;
+  const fetchFavorites = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const data = await getUserFavorites(userId);
+      setFavorites(data || []);
+      enrichFavoritesWithSpotify(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [userId, enrichFavoritesWithSpotify]);
+
+  // Guarda a última busca disparada: se uma resposta antiga chegar depois, é descartada.
+  const latestSearchRef = useRef('');
+  const performSearch = useCallback(async (query) => {
+    latestSearchRef.current = query;
     setSearching(true);
     try {
-      const results = await searchMulti(searchQuery.trim());
-      setSearchResults(results || { tracks: [], albums: [], artists: [] });
+      const results = await searchMulti(query);
+      if (latestSearchRef.current === query) {
+        setSearchResults(results || { tracks: [], albums: [], artists: [] });
+      }
     } catch (err) {
       console.error(err);
     } finally {
-      setSearching(false);
+      if (latestSearchRef.current === query) setSearching(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (open && userId) {
+      fetchFavorites();
+    }
+  }, [open, userId, fetchFavorites]);
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+    const timer = setTimeout(() => {
+      if (query.length >= 2) {
+        performSearch(query);
+      } else {
+        latestSearchRef.current = '';
+        setSearching(false);
+        setSearchResults({ tracks: [], albums: [], artists: [] });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery, performSearch]);
 
   const handleFileSelect = (event, type) => {
     const file = event.target.files?.[0];
@@ -455,7 +465,7 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
               {/* Seletor de Categoria dos Favoritos */}
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, mb: 2.5 }}>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  {FAV_CATEGORIES.map(({ key, label }) => {
+                  {FAV_CATEGORIES.map(({ key, label, icon: CatIcon }) => {
                     const active = favCategory === key;
                     const count = favorites.filter((f) => f.item_type === key).length;
                     return (

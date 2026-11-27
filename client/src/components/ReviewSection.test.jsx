@@ -87,4 +87,24 @@ describe('ReviewSection — publicar avaliação', () => {
     expect(text).toBe('Muito bom');
     expect(existingId).toBe(7);
   });
+
+  it('ao trocar de álbum rápido, a avaliação do álbum anterior não aparece', async () => {
+    let resolveFirst;
+    getUserReviewForItem.mockImplementation((type, id) =>
+      id === 'album-1'
+        ? new Promise((r) => {
+            resolveFirst = r;
+          })
+        : Promise.resolve({ id: 2, rating: 3, review_text: 'Do álbum 2', visibility: 'public' })
+    );
+    const { rerender } = render(<ReviewSection itemType="album" itemId="album-1" defaultEditing />);
+    rerender(<ReviewSection itemType="album" itemId="album-2" defaultEditing />);
+
+    const slider = await screen.findByRole('slider');
+    await waitFor(() => expect(slider).toHaveAttribute('aria-valuenow', '3'));
+
+    resolveFirst({ id: 1, rating: 10, review_text: 'Do álbum 1', visibility: 'public' });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(slider).toHaveAttribute('aria-valuenow', '3');
+  });
 });

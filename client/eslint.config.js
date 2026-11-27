@@ -2,6 +2,7 @@ import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import react from 'eslint-plugin-react'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
@@ -22,8 +23,14 @@ export default defineConfig([
         sourceType: 'module',
       },
     },
+    plugins: { react },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Sem esta regra o ESLint não enxerga variáveis usadas só no JSX (ex.: <CatIcon />)
+      // e acusa "não usada" — remover por causa disso quebra a tela.
+      'react/jsx-uses-vars': 'error',
+      // Acusa componente usado no JSX que não existe (ex.: <CatIcon /> sem definição).
+      'react/jsx-no-undef': 'error',
     },
   },
   {

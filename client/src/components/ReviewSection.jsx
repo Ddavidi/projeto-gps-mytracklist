@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -71,7 +71,7 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  const syncReviewState = (review) => {
+  const syncReviewState = useCallback((review) => {
     setCurrentReview(review);
     if (review && review.rating !== undefined && review.rating !== null) {
       setRating(Number(review.rating));
@@ -92,22 +92,28 @@ function ReviewSection({ itemType, itemId, itemData = {}, onReviewSaved, trackAv
     }
     setIsEditing(Boolean(defaultEditing));
     setIsExpanded(Boolean(defaultEditing));
-  };
+  }, [defaultEditing]);
 
   useEffect(() => {
+    // Ignora respostas atrasadas: se o item mudar antes da resposta chegar,
+    // a avaliação do item anterior não pode aparecer no novo.
+    let cancelled = false;
     const fetchReview = async () => {
       setLoading(true);
       try {
         const review = await getUserReviewForItem(itemType, itemId);
-        syncReviewState(review);
+        if (!cancelled) syncReviewState(review);
       } catch (err) {
-        console.error('Falha ao carregar avaliação:', err);
+        if (!cancelled) console.error('Falha ao carregar avaliação:', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     if (itemId) fetchReview();
-  }, [itemType, itemId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [itemType, itemId, syncReviewState]);
 
   const handleSaveReview = async (overrideRating = null) => {
     const targetRating = overrideRating !== null ? overrideRating : rating;

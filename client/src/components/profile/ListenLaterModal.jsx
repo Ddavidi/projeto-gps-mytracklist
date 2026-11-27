@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -53,7 +53,7 @@ export default function ListenLaterModal({ open, onClose, userId, isOwner = fals
   // Estado de Drag & Drop por categoria
   const [dragState, setDragState] = useState({ section: null, draggedIdx: null, overIdx: null });
 
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     try {
@@ -66,14 +66,14 @@ export default function ListenLaterModal({ open, onClose, userId, isOwner = fals
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
     if (open) {
       setExpanded({ album: false, track: false, artist: false });
       loadItems();
     }
-  }, [open, userId]);
+  }, [open, loadItems]);
 
   const handleVisibilityChange = async (e, nextVal) => {
     if (!nextVal || nextVal === visibility) return;
@@ -243,7 +243,7 @@ export default function ListenLaterModal({ open, onClose, userId, isOwner = fals
           </Box>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {SECTIONS.map(({ key, label, pathPrefix }) => {
+            {SECTIONS.map(({ key, label, icon: SectionIcon, pathPrefix }) => {
               const sectionItems = items.filter((i) => i.item_type === key);
               const isOpen = expanded[key];
 
