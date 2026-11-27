@@ -23,12 +23,13 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import api from '../services/api';
 import { getTrending } from '../services/spotify';
 import OnboardingFlow from '../components/OnboardingFlow';
 
 function LoginPage() {
-  const [step, setStep] = useState(1); // 1 | 2 | 'verify' | 'forgot' | 'onboarding'
+  const [step, setStep] = useState(1); // 1 | 2 | 'verify' | 'code' | 'forgot' | 'onboarding'
   const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
@@ -38,6 +39,10 @@ function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
+  // Entrar com código por e-mail (sem senha), como no Spotify
+  const [loginCode, setLoginCode] = useState('');
+  const [loginCodeEmail, setLoginCodeEmail] = useState('');
+  const [resendIn, setResendIn] = useState(0);
 
   const [isLoginFlow, setIsLoginFlow] = useState(false);
   const [isGoogleOnlyAccount, setIsGoogleOnlyAccount] = useState(false);
@@ -138,6 +143,49 @@ function LoginPage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
+
+  const requestLoginCode = async () => {
+    setError('');
+    setInfoMessage('');
+    setIsSubmitting(true);
+    try {
+      const res = await api.post('/auth/login-code/request', { identifier: identifier.trim() });
+      setLoginCodeEmail(res.data?.email || '');
+      setLoginCode('');
+      setResendIn(45);
+      setStep('code');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Não foi possível enviar o código.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLoginCodeSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setInfoMessage('');
+    if (loginCode.length !== 6) {
+      setError('Digite o código de 6 dígitos enviado para o seu e-mail.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await api.post('/auth/login-code/verify', { identifier: identifier.trim(), code: loginCode });
+      setAuth(res.data.token, res.data.user);
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Código inválido ou expirado.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleIdentifierSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -150,7 +198,7 @@ function LoginPage() {
         setIsLoginFlow(true);
         if (response.data.isGoogleOnly) {
           setIsGoogleOnlyAccount(true);
-          setInfoMessage('Este e-mail já está cadastrado via Google. Use o botão "Continuar com Google" abaixo para entrar.');
+          setInfoMessage('Você criou esta conta com o Google. Entre com o Google ou receba um código no seu e-mail.');
         } else if (response.data.isEmail) {
           setInfoMessage('Encontramos uma conta com este e-mail. Digite sua senha para entrar.');
         }
@@ -377,6 +425,7 @@ function LoginPage() {
               {step === 2 && isLoginFlow && 'Bem-vindo de volta'}
               {step === 2 && !isLoginFlow && 'Crie sua conta'}
               {step === 'verify' && 'Verifique seu e-mail'}
+              {step === 'code' && 'Digite o código'}
               {step === 'forgot' && 'Redefinir senha'}
             </Typography>
 
@@ -385,6 +434,7 @@ function LoginPage() {
               {step === 2 && isLoginFlow && `Entrando como ${identifier}`}
               {step === 2 && !isLoginFlow && `Cadastrando com ${email}`}
               {step === 'verify' && `Enviamos um código de 6 dígitos para ${email}.`}
+              {step === 'code' && `Enviamos um código de 6 dígitos para ${loginCodeEmail || 'o seu e-mail'}. Ele vale por 10 minutos.`}
               {step === 'forgot' && 'Informe o e-mail da sua conta e enviaremos um link para você criar uma nova senha.'}
             </Typography>
 
@@ -528,6 +578,18 @@ function LoginPage() {
                     sx={{ display: 'flex', justifyContent: 'center', minHeight: 44, width: '100%' }}
                   />
                 ) : null}
+                <Divider sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>ou</Divider>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  size="large"
+                  startIcon={<MailOutlineIcon />}
+                  onClick={requestLoginCode}
+                  disabled={isSubmitting}
+                  sx={{ borderRadius: 99, py: 1.1, textTransform: 'none', fontWeight: 700 }}
+                >
+                  {isSubmitting ? 'Enviando...' : 'Entrar com código por e-mail'}
+                </Button>
                 <Button
                   fullWidth
                   variant="text"
@@ -675,6 +737,19 @@ function LoginPage() {
                 >
                   {isSubmitting ? 'Aguarde...' : isLoginFlow ? 'Entrar' : 'Enviar código de verificação'}
                 </Button>
+                {isLoginFlow && (
+                  <Button
+                    type="button"
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<MailOutlineIcon />}
+                    onClick={requestLoginCode}
+                    disabled={isSubmitting}
+                    sx={{ mb: 1, textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Entrar sem senha (código por e-mail)
+                  </Button>
+                )}
                 <Button
                   fullWidth
                   variant="text"
@@ -724,6 +799,63 @@ function LoginPage() {
                 </Button>
                 <Button fullWidth variant="outlined" sx={{ mb: 1 }} onClick={handleResendCode} disabled={isSubmitting}>
                   Reenviar código
+                </Button>
+                <Button
+                  fullWidth
+                  variant="text"
+                  color="inherit"
+                  startIcon={<ArrowBackIcon />}
+                  onClick={() => {
+                    setError('');
+                    setInfoMessage('');
+                    setStep(2);
+                  }}
+                  disabled={isSubmitting}
+                >
+                  Voltar
+                </Button>
+              </Box>
+            )}
+
+            {step === 'code' && (
+              <Box component="form" onSubmit={handleLoginCodeSubmit}>
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  id="loginCode"
+                  label="Código (6 dígitos)"
+                  name="loginCode"
+                  autoFocus
+                  autoComplete="one-time-code"
+                  value={loginCode}
+                  onChange={(e) => setLoginCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  inputProps={{
+                    inputMode: 'numeric',
+                    maxLength: 6,
+                    className: 'mtl-mono',
+                    style: { letterSpacing: '8px', textAlign: 'center', fontSize: '1.35rem', fontWeight: 700 },
+                  }}
+                />
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  sx={{ mt: 2.5, mb: 1.5 }}
+                  disabled={isSubmitting || loginCode.length !== 6}
+                >
+                  {isSubmitting ? 'Verificando...' : 'Entrar'}
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  sx={{ mb: 1 }}
+                  onClick={requestLoginCode}
+                  disabled={isSubmitting || resendIn > 0}
+                >
+                  {resendIn > 0 ? `Reenviar código em ${resendIn}s` : 'Reenviar código'}
                 </Button>
                 <Button
                   fullWidth

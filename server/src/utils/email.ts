@@ -191,3 +191,43 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+
+export async function sendLoginCodeEmail(to: string, username: string, code: string): Promise<void> {
+  const subject = `${code} é o seu código para entrar — MyTrackList`;
+  const text =
+    `Olá, ${username}!\n\n` +
+    `Use este código para entrar no MyTrackList:\n\n` +
+    `>> ${code} <<\n\n` +
+    `Ele vale por 10 minutos e só pode ser usado uma vez.\n` +
+    `Se não foi você que pediu, ignore este e-mail: sem o código ninguém entra na sua conta.\n\n` +
+    `Atenciosamente,\nEquipe MyTrackList`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head><meta charset="utf-8"><title>Código para entrar - MyTrackList</title></head>
+    <body style="background-color:#121212;margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;">
+      <div style="width:100%;max-width:520px;margin:40px auto;background-color:#181818;border-radius:12px;border:1px solid #282828;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#1db954 0%,#15883e 100%);padding:32px 24px;text-align:center;">
+          <h1 style="font-size:26px;font-weight:800;color:#ffffff;margin:0;">🎵 MyTrackList</h1>
+        </div>
+        <div style="padding:32px 28px;color:#e0e0e0;font-size:15px;line-height:1.6;">
+          <p style="font-size:18px;font-weight:600;color:#ffffff;margin:0 0 12px;">Olá, ${escapeHtml(username)}!</p>
+          <p>Use o código abaixo para entrar no <strong>MyTrackList</strong>:</p>
+          <div style="background-color:#0c0c0c;border:1px dashed #1db954;border-radius:8px;padding:20px;text-align:center;margin:24px 0;">
+            <div style="font-size:34px;font-weight:800;letter-spacing:10px;color:#1db954;font-family:'Courier New',monospace;">${code}</div>
+            <p style="font-size:13px;color:#a0a0a0;margin:8px 0 0;">⏱️ Válido por <strong>10 minutos</strong> e para um único acesso</p>
+          </div>
+          <p style="font-size:13px;color:#888;">Se não foi você que pediu, ignore este e-mail: sem o código ninguém entra na sua conta.</p>
+        </div>
+        <div style="padding:20px 28px;border-top:1px solid #282828;font-size:12px;color:#777777;text-align:center;">
+          <p style="margin:0;">© ${new Date().getFullYear()} MyTrackList • Sua plataforma social de música.</p>
+          <p style="margin:4px 0 0;">Esta é uma mensagem automática. Não responda a este e-mail.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail({ to, subject, html, text });
+}

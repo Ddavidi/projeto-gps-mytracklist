@@ -161,6 +161,50 @@ export function createAuthRouter(userController: UserController): Router {
   });
 
   /**
+   * POST /auth/login-code/request
+   * Envia um código de 6 dígitos para o e-mail da conta (entrar sem senha, como no Spotify).
+   */
+  router.post('/login-code/request', authLimiter, async (req: Request, res: Response) => {
+    const { identifier } = req.body;
+    if (!identifier) {
+      res.status(400).json({ error: 'Informe seu e-mail ou nome de usuário.' });
+      return;
+    }
+    const result = await userController.requestLoginCode(identifier);
+    if (result.success) {
+      res.json({ message: 'Código enviado.', email: result.email });
+    } else {
+      res.status(400).json({ error: result.message });
+    }
+  });
+
+  /**
+   * POST /auth/login-code/verify
+   * Confere o código e faz o login (mesma resposta de /auth/login).
+   */
+  router.post('/login-code/verify', authLimiter, async (req: Request, res: Response) => {
+    const { identifier, code } = req.body;
+    const result = await userController.verifyLoginCode(identifier, code);
+    if (!result.success || !result.userId) {
+      res.status(401).json({ error: result.message });
+      return;
+    }
+    const user = await userController.getUserById(result.userId);
+    const token = generateToken({ userId: result.userId, username: user?.username || identifier });
+    res.json({
+      message: 'Login realizado com sucesso!',
+      token,
+      user: {
+        id: result.userId,
+        username: user?.username || identifier,
+        avatar_url: user?.avatar_url,
+        cover_url: user?.cover_url,
+        is_admin: user?.is_admin,
+      },
+    });
+  });
+
+  /**
    * POST /auth/google
    * Autentica ou cria conta usando ID Token do Google Identity Services.
    */

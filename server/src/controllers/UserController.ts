@@ -1,7 +1,7 @@
 import { IDatabase } from '../interfaces/IDatabase';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { sendVerificationCodeEmail, sendPasswordResetEmail } from '../utils/email';
+import { sendVerificationCodeEmail, sendPasswordResetEmail, sendLoginCodeEmail } from '../utils/email';
 
 export class UserController {
   constructor(private db: IDatabase) {}
@@ -245,6 +245,109 @@ export class UserController {
       console.error('Erro ao buscar utilizador por nome:', error);
       return null;
     }
+  }
+
+  private hashLoginCode(userId: number, code: string): string {
+    return crypto.createHash('sha256').update(`login:${userId}:${code.trim()}`).digest('hex');
+  }
+
+  /**
+   * Envia um código de 6 dígitos para o e-mail da conta, para entrar sem senha (como no Spotify).
+   * Funciona para qualquer conta com e-mail, inclusive as criadas pelo Google (que não têm senha).
+   */
+  async requestLoginCode(identifier: string) {
+    try {
+      const normalized = String(identifier || '').trim();
+      if (!normalized) return { success: false, message: 'Informe seu e-mail ou nome de usuário.' };
+
+      const user = await this.db.get(
+        'SELECT id, username, email FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)',
+        [normalized, normalized]
+      );
+      if (!user) return { success: false, message: 'Nenhuma conta encontrada com este e-mail ou usuário.' };
+      if (!user.email) return { success: false, message: 'Esta conta não tem e-mail cadastrado.' };
+
+      const now = Date.now();
+      const pending = await this.db.get('SELECT id, last_sent_at FROM login_codes WHERE user_id = ?', [user.id]);
+      if (pending && now - Number(pending.last_sent_at) < 45 * 1000) {
+        const waitSeconds = Math.ceil((45 * 1000 - (now - Number(pending.last_sent_at))) / 1000);
+        return { success: false, message: `Aguarde ${waitSeconds}s antes de pedir um novo código.` };
+      }
+
+      const code = crypto.randomInt(100000, 1000000).toString();
+      const codeHash = this.hashLoginCode(Number(user.id), code);
+      const expiresAt = now + 10 * 60 * 1000; // 10 minutos
+
+      await this.db.run('DELETE FROM login_codes WHERE user_id = ?', [user.id]);
+      await this.db.run(
+        'INSERT INTO login_codes (user_id, code_hash, attempts, expires_at, last_sent_at) VALUES (?, ?, 0, ?, ?)',
+        [user.id, codeHash, expiresAt, now]
+      );
+
+      await sendLoginCodeEmail(String(user.email).toLowerCase(), user.username, code);
+
+      return { success: true, email: this.maskEmail(String(user.email)) };
+    } catch (error: any) {
+      console.error('Erro ao enviar código de login:', error);
+      return { success: false, message: error?.message || 'Falha ao enviar o código.' };
+    }
+  }
+
+  /**
+   * Confere o código de login. Cada código vale 10 minutos, aceita até 5 tentativas e só pode ser usado uma vez.
+   */
+  async verifyLoginCode(identifier: string, code: string) {
+    try {
+      const normalized = String(identifier || '').trim();
+      const cleanCode = String(code || '').replace(/\D/g, '');
+      if (!normalized || cleanCode.length !== 6) {
+        return { success: false, message: 'Digite o código de 6 dígitos.' };
+      }
+
+      const user = await this.db.get(
+        'SELECT id, email FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)',
+        [normalized, normalized]
+      );
+      const pending = user
+        ? await this.db.get('SELECT * FROM login_codes WHERE user_id = ?', [user.id])
+        : null;
+      if (!user || !pending) {
+        return { success: false, message: 'Nenhum código ativo. Peça um novo código.' };
+      }
+
+      if (Date.now() > Number(pending.expires_at)) {
+        await this.db.run('DELETE FROM login_codes WHERE id = ?', [pending.id]);
+        return { success: false, message: 'Código expirado. Peça um novo código.' };
+      }
+      if (Number(pending.attempts) >= 5) {
+        await this.db.run('DELETE FROM login_codes WHERE id = ?', [pending.id]);
+        return { success: false, message: 'Muitas tentativas incorretas. Peça um novo código.' };
+      }
+
+      if (this.hashLoginCode(Number(user.id), cleanCode) !== pending.code_hash) {
+        await this.db.run('UPDATE login_codes SET attempts = attempts + 1 WHERE id = ?', [pending.id]);
+        return { success: false, message: 'Código incorreto.' };
+      }
+
+      await this.db.run('DELETE FROM login_codes WHERE id = ?', [pending.id]);
+
+      if (user.email === 'ddnr03@gmail.com') {
+        try { await this.db.run('UPDATE users SET is_admin = true WHERE id = ?', [user.id]); }
+        catch { await this.db.run('UPDATE users SET is_admin = 1 WHERE id = ?', [user.id]); }
+      }
+
+      return { success: true, userId: user.id };
+    } catch (error) {
+      console.error('Erro ao verificar código de login:', error);
+      return { success: false, message: 'Falha ao verificar o código.' };
+    }
+  }
+
+  /** "fulano@gmail.com" -> "fu•••••@gmail.com" (mostra para onde o código foi sem expor o e-mail inteiro). */
+  private maskEmail(email: string): string {
+    const [local = '', domain = ''] = email.split('@');
+    const visible = local.slice(0, Math.min(2, local.length));
+    return `${visible}${'•'.repeat(Math.max(3, local.length - visible.length))}@${domain}`;
   }
 
   async checkIdentifierExists(identifier: string) {

@@ -271,6 +271,20 @@ export class ControllerFactory {
         )
       `);
 
+      // PostgreSQL schema — códigos de login por e-mail (entrar sem senha, como no Spotify)
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS login_codes (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL UNIQUE,
+          code_hash TEXT NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          expires_at BIGINT NOT NULL,
+          last_sent_at BIGINT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      `);
+
       // PostgreSQL schema — listas customizadas (estilo Musicboard/Letterboxd)
       await database.exec(`
         CREATE TABLE IF NOT EXISTS custom_lists (
@@ -556,6 +570,19 @@ export class ControllerFactory {
           user_id INTEGER NOT NULL,
           email TEXT NOT NULL,
           token_hash TEXT NOT NULL UNIQUE,
+          expires_at INTEGER NOT NULL,
+          last_sent_at INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+      `);
+
+      await database.exec(`
+        CREATE TABLE IF NOT EXISTS login_codes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL UNIQUE,
+          code_hash TEXT NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
           expires_at INTEGER NOT NULL,
           last_sent_at INTEGER NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
