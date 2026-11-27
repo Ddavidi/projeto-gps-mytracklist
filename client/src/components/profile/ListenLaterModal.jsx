@@ -243,7 +243,7 @@ export default function ListenLaterModal({ open, onClose, userId, isOwner = fals
           </Box>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {SECTIONS.map(({ key, label, pathPrefix }) => {
+            {SECTIONS.map(({ key, label, icon: SectionIcon, pathPrefix }) => {
               const sectionItems = items.filter((i) => i.item_type === key);
               const isOpen = expanded[key];
 
