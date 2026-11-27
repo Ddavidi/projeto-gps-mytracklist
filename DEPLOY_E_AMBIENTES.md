@@ -49,6 +49,7 @@ Preencha as variáveis de ambiente de cada serviço no painel do Render:
 | `APP_ENV` | `production` | `development` |
 | `DATABASE_URL` | Connection string do banco **`prod`** | Connection string do banco **`dev`** |
 | `JWT_SECRET` | Gerado automaticamente pelo Render | Gerado automaticamente pelo Render |
+| `ADMIN_EMAILS` | E-mails dos administradores, separados por vírgula | Idem (pode incluir contas de teste) |
 | `FRONTEND_URL` | `https://projeto-gps-mytracklist.vercel.app` | `https://projeto-gps-mytracklis-git-3c1846-david-nunes-ribeiros-projects.vercel.app` |
 | `ALLOWED_ORIGINS` | `https://projeto-gps-mytracklist.vercel.app` | `https://projeto-gps-mytracklis-git-3c1846-david-nunes-ribeiros-projects.vercel.app,http://localhost:5173` |
 | `SPOTIFY_CLIENT_ID` | Client ID do Spotify | Client ID do Spotify |

@@ -2,6 +2,7 @@ import { IDatabase } from '../interfaces/IDatabase';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { sendVerificationCodeEmail, sendPasswordResetEmail, sendLoginCodeEmail } from '../utils/email';
+import { isAdminEmail } from '../utils/admin';
 
 export class UserController {
   constructor(private db: IDatabase) {}
@@ -177,10 +178,7 @@ export class UserController {
 
       const isMatch = await bcrypt.compare(password, user.password_hash);
       if (isMatch) {
-        if (user.email === 'ddnr03@gmail.com') {
-          try { await this.db.run('UPDATE users SET is_admin = true WHERE id = ?', [user.id]); } 
-          catch (e) { await this.db.run('UPDATE users SET is_admin = 1 WHERE id = ?', [user.id]); }
-        }
+        await this.promoteIfAdminEmail(user.id, user.email);
         return { success: true, userId: user.id };
       } else {
         return { success: false, message: 'Utilizador ou palavra-passe inválidos' };
@@ -244,6 +242,16 @@ export class UserController {
     } catch (error) {
       console.error('Erro ao buscar utilizador por nome:', error);
       return null;
+    }
+  }
+
+  /** Marca como admin quem entrar com um e-mail listado em ADMIN_EMAILS (nunca remove o admin de ninguém). */
+  private async promoteIfAdminEmail(userId: number | string, email: string | null | undefined) {
+    if (!isAdminEmail(email)) return;
+    try {
+      await this.db.run('UPDATE users SET is_admin = true WHERE id = ?', [userId]);
+    } catch {
+      await this.db.run('UPDATE users SET is_admin = 1 WHERE id = ?', [userId]);
     }
   }
 
@@ -331,10 +339,7 @@ export class UserController {
 
       await this.db.run('DELETE FROM login_codes WHERE id = ?', [pending.id]);
 
-      if (user.email === 'ddnr03@gmail.com') {
-        try { await this.db.run('UPDATE users SET is_admin = true WHERE id = ?', [user.id]); }
-        catch { await this.db.run('UPDATE users SET is_admin = 1 WHERE id = ?', [user.id]); }
-      }
+      await this.promoteIfAdminEmail(user.id, user.email);
 
       return { success: true, userId: user.id };
     } catch (error) {
@@ -430,10 +435,7 @@ export class UserController {
           await this.db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
         }
 
-        if (email === 'ddnr03@gmail.com') {
-          try { await this.db.run('UPDATE users SET is_admin = true WHERE id = ?', [existing.id]); }
-          catch { await this.db.run('UPDATE users SET is_admin = 1 WHERE id = ?', [existing.id]); }
-        }
+        await this.promoteIfAdminEmail(existing.id, email);
 
         return {
           success: true,
@@ -469,10 +471,7 @@ export class UserController {
       );
 
       const newUserId = result.lastInsertRowid;
-      if (email === 'ddnr03@gmail.com') {
-        try { await this.db.run('UPDATE users SET is_admin = true WHERE id = ?', [newUserId]); }
-        catch { await this.db.run('UPDATE users SET is_admin = 1 WHERE id = ?', [newUserId]); }
-      }
+      await this.promoteIfAdminEmail(newUserId, email);
 
       return {
         success: true,

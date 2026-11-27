@@ -80,6 +80,7 @@ Modelo completo em [`.env.example`](.env.example).
 | `PORT`, `NODE_ENV`, `APP_ENV` | Porta e ambiente (`APP_ENV` separa dev de produção) |
 | `FRONTEND_URL`, `ALLOWED_ORIGINS` | Links nos e-mails e origens liberadas no CORS |
 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI` | Spotify |
+| `ADMIN_EMAILS` | E-mails (separados por vírgula) que viram admin automaticamente ao entrar |
 | `GOOGLE_CLIENT_ID` | Confere se o token do "Entrar com Google" é deste app |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Uploads |
 | `BREVO_API_KEY`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME` | Envio de e-mails. Sem a chave, em dev o código aparece no terminal |
