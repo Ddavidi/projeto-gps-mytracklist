@@ -3,6 +3,8 @@ import { IDatabase } from '../interfaces/IDatabase';
 export class ListController {
   constructor(private db: IDatabase) {}
 
+  // Obs.: "is_public = true OR is_public = 1" quebra no PostgreSQL (boolean = integer dá erro).
+  // CAST(... AS INTEGER) = 1 funciona tanto com coluna BOOLEAN (Postgres) quanto 0/1 (SQLite).
   async getPublicLists(limit: number = 24, userId?: number) {
     try {
       const lists = await this.db.all(
@@ -12,7 +14,7 @@ export class ListController {
                 (SELECT COUNT(*) FROM custom_list_likes ll WHERE ll.list_id = l.id) as likes_count
          FROM custom_lists l
          JOIN users u ON u.id = l.user_id
-         WHERE l.is_public = true OR l.is_public = 1
+         WHERE CAST(l.is_public AS INTEGER) = 1
          ORDER BY likes_count DESC, l.updated_at DESC
          LIMIT ?`,
         [limit]
@@ -61,7 +63,7 @@ export class ListController {
       const isOwner = requesterId === targetUserId;
       const whereClause = isOwner
         ? 'l.user_id = ?'
-        : 'l.user_id = ? AND (l.is_public = true OR l.is_public = 1)';
+        : 'l.user_id = ? AND CAST(l.is_public AS INTEGER) = 1';
 
       const lists = await this.db.all(
         `SELECT l.id, l.user_id, l.title, l.description, l.list_type, l.is_ranked, l.is_public, l.created_at, l.updated_at,
