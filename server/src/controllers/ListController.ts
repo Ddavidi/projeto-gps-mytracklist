@@ -367,6 +367,13 @@ export class ListController {
 
   async toggleLikeList(listId: number, userId: number) {
     try {
+      // Só dá para curtir o que se pode ver: lista privada, só a própria dona.
+      const list = await this.db.get('SELECT id, user_id, is_public FROM custom_lists WHERE id = ?', [listId]);
+      if (!list) return { success: false, status: 404, message: 'Lista não encontrada.' };
+      if (!Boolean(list.is_public) && list.user_id !== userId) {
+        return { success: false, status: 403, message: 'Esta lista é privada.' };
+      }
+
       const existing = await this.db.get(
         'SELECT id FROM custom_list_likes WHERE list_id = ? AND user_id = ?',
         [listId, userId]

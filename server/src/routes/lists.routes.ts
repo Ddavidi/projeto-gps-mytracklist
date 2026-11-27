@@ -133,7 +133,7 @@ export function createListRouter(listController: ListController): Router {
   router.post('/:id/like', async (req: Request, res: Response) => {
     const result = await listController.toggleLikeList(Number(req.params.id), req.user!.userId);
     if (result.success) res.json(result);
-    else res.status(400).json({ error: result.message });
+    else res.status((result as any).status || 400).json({ error: result.message });
   });
 
   return router;

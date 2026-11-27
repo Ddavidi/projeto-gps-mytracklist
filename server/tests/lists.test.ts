@@ -139,6 +139,22 @@ describe('ListController', () => {
   });
 
   describe('curtidas', () => {
+    it('não dá para curtir lista privada de outra pessoa', async () => {
+      const id = await newList({ isPublic: false });
+      expect(await lists.toggleLikeList(id, bob)).toMatchObject({ success: false, status: 403 });
+      const likes = await db.get('SELECT COUNT(*)::int AS n FROM custom_list_likes WHERE list_id = ?', [id]);
+      expect(likes.n).toBe(0);
+    });
+
+    it('curtir lista inexistente dá 404', async () => {
+      expect(await lists.toggleLikeList(999999, bob)).toMatchObject({ success: false, status: 404 });
+    });
+
+    it('a dona pode curtir a própria lista privada', async () => {
+      const id = await newList({ isPublic: false });
+      expect(await lists.toggleLikeList(id, alice)).toEqual({ success: true, liked: true });
+    });
+
     it('curtir de novo descurte', async () => {
       const id = await newList();
       expect(await lists.toggleLikeList(id, bob)).toEqual({ success: true, liked: true });
